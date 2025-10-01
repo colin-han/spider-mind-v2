@@ -1,0 +1,18 @@
+.claude/agents/
+.claude/commands/
+.claude/templates/
+node_modules
+.claude.backup-*
+.next/
+
+# Environment variables
+.env.local
+.env*.local
+
+# Testing
+/test-results/
+/playwright-report/
+/playwright/.cache/
+/coverage/
+
+tsconfig.tsbuildinfo
