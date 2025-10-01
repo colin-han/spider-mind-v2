@@ -4,6 +4,8 @@
 node_modules
 .claude.backup-*
 .next/
+*.local.json
+
 
 # Environment variables
 .env.local

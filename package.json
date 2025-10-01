@@ -96,5 +96,9 @@
     "*.{js,jsx,json,md,css}": [
       "prettier --write"
     ]
+  },
+  "volta": {
+    "yarn": "1.22.22",
+    "node": "24.2.0"
   }
 }
