@@ -1,21 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
-import { cookies } from "next/headers";
+import { createServerClient as createSSRClient } from "@supabase/ssr";
 import { getSupabaseConfig } from "@/lib/env";
 import type { Database } from "@/lib/types/supabase";
 
-// 获取验证后的 Supabase 配置
-const {
-  url: supabaseUrl,
-  anonKey: supabaseAnonKey,
-  serviceRoleKey: supabaseServiceRoleKey,
-} = getSupabaseConfig();
-
-// 验证服务端密钥是否可用
-if (!supabaseServiceRoleKey) {
-  throw new Error(
-    "SUPABASE_SERVICE_ROLE_KEY is required for server-side operations"
-  );
-}
+// 获取验证后的 Supabase 配置（仅获取公共配置）
+const config = getSupabaseConfig();
+const supabaseUrl = config.url;
+const supabaseAnonKey = config.anonKey;
 
 /**
  * 创建服务端 Supabase 客户端
@@ -23,6 +14,15 @@ if (!supabaseServiceRoleKey) {
  * 注意：这个客户端绕过了 RLS (Row Level Security) 策略
  */
 export const createServerClient = () => {
+  const { serviceRoleKey: supabaseServiceRoleKey } = getSupabaseConfig();
+
+  // 验证服务端密钥是否可用
+  if (!supabaseServiceRoleKey) {
+    throw new Error(
+      "SUPABASE_SERVICE_ROLE_KEY is required for server-side operations"
+    );
+  }
+
   return createClient<Database>(supabaseUrl, supabaseServiceRoleKey, {
     auth: {
       // 服务端不需要自动刷新令牌
@@ -40,23 +40,25 @@ export const createServerClient = () => {
 
 /**
  * 创建用于 Server Components 的 Supabase 客户端
- * 使用 cookies 来维护用户会话状态
+ * 使用 @supabase/ssr 来正确处理 cookies
  */
 export const createServerComponentClient = async () => {
+  const { cookies } = await import("next/headers");
   const cookieStore = await cookies();
 
-  // 获取所有 cookies 作为字符串
-
-  return createClient<Database>(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-      detectSessionInUrl: false,
-    },
-    global: {
-      headers: {
-        // 添加自定义 header 来处理 cookie
-        cookie: cookieStore.toString(),
+  return createSSRClient<Database>(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      getAll() {
+        return cookieStore.getAll();
+      },
+      setAll(cookiesToSet) {
+        try {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, options);
+          });
+        } catch (_error) {
+          // Server Component 中调用 setAll 会被忽略
+        }
       },
     },
   });

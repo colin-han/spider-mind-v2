@@ -1,4 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
+import { loadEnvConfig } from "@next/env";
+
+// 加载 Next.js 环境变量（包括 .env.local）
+loadEnvConfig(process.cwd());
 
 /**
  * @see https://playwright.dev/docs/test-configuration
@@ -108,15 +112,16 @@ export default defineConfig({
   ],
 
   // 开发服务器配置
-  webServer: {
-    command: "yarn dev",
-    url: "http://localhost:3000",
-    reuseExistingServer: !process.env["CI"],
-    timeout: 120 * 1000,
-    env: {
-      NODE_ENV: "test",
-    },
-  },
+  // 注释掉，因为已经手动启动了服务器
+  // webServer: {
+  //   command: "yarn dev",
+  //   url: "http://localhost:3000",
+  //   reuseExistingServer: !process.env["CI"],
+  //   timeout: 120 * 1000,
+  //   env: {
+  //     NODE_ENV: "test",
+  //   },
+  // },
 
   // 输出目录配置
   outputDir: "./test-results/",

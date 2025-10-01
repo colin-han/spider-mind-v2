@@ -18,12 +18,6 @@ export type {
   TablesInsert,
   TablesUpdate,
   Enums,
-  Profile,
-  MindMap,
-  ProfileInsert,
-  MindMapInsert,
-  ProfileUpdate,
-  MindMapUpdate,
 } from "@/lib/types/supabase";
 
 // Supabase 常用类型重新导出

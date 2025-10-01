@@ -11,28 +11,10 @@ import type {
   TablesInsert,
   TablesUpdate,
   Enums,
-  Profile,
-  MindMap,
-  ProfileInsert,
-  MindMapInsert,
-  ProfileUpdate,
-  MindMapUpdate,
 } from "./supabase";
 
 // 重新导出 Supabase 数据库类型定义
-export type {
-  Database,
-  Tables,
-  TablesInsert,
-  TablesUpdate,
-  Enums,
-  Profile,
-  MindMap,
-  ProfileInsert,
-  MindMapInsert,
-  ProfileUpdate,
-  MindMapUpdate,
-};
+export type { Database, Tables, TablesInsert, TablesUpdate, Enums };
 
 // 通用类型定义
 export interface ApiResponse<T = unknown> {
@@ -53,6 +35,9 @@ export interface LoadingState {
   isLoading: boolean;
   error: string | null;
 }
+
+// 用户资料类型
+export type Profile = Tables<"user_profiles">;
 
 // 用户界面相关类型
 export interface UserSession {
