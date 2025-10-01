@@ -46,34 +46,10 @@ export interface UserSession {
   isLoading: boolean;
 }
 
-// 思维导图相关类型
-export interface MindMapNode {
-  id: string;
-  text: string;
-  x: number;
-  y: number;
-  children: MindMapNode[];
-  parentId?: string;
-  color?: string;
-  fontSize?: number;
-  shape?: "rectangle" | "ellipse" | "diamond";
-}
+export type MindMap = Tables<"mind_maps">;
+export type MindMapInsert = TablesInsert<"mind_maps">;
+export type MindMapUpdate = TablesUpdate<"mind_maps">;
 
-export interface MindMapData {
-  nodes: MindMapNode[];
-  connections: MindMapConnection[];
-  viewport: {
-    x: number;
-    y: number;
-    zoom: number;
-  };
-}
-
-export interface MindMapConnection {
-  id: string;
-  sourceId: string;
-  targetId: string;
-  type: "straight" | "curved" | "step";
-  color?: string;
-  strokeWidth?: number;
-}
+export type MindMapNode = Tables<"mind_map_nodes">;
+export type MindMapNodeInsert = TablesInsert<"mind_map_nodes">;
+export type MindMapNodeUpdate = TablesUpdate<"mind_map_nodes">;
