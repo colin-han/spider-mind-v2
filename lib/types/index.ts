@@ -53,3 +53,25 @@ export type MindMapUpdate = TablesUpdate<"mind_maps">;
 export type MindMapNode = Tables<"mind_map_nodes">;
 export type MindMapNodeInsert = TablesInsert<"mind_map_nodes">;
 export type MindMapNodeUpdate = TablesUpdate<"mind_map_nodes">;
+
+// Server Action 结果类型
+export interface CreateMindMapResult {
+  success: boolean;
+  shortId?: string;
+  error?: string;
+}
+
+export interface DeleteMindMapResult {
+  success: boolean;
+  error?: string;
+}
+
+// Dashboard 列表项类型
+export interface MindMapListItem {
+  id: string;
+  short_id: string;
+  title: string;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+}

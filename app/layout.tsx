@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "@/lib/providers/auth-provider";
+import { ConfirmProvider } from "@/components/ui/confirm-provider";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -20,8 +21,10 @@ export default function RootLayout({ children }: RootLayoutProps): JSX.Element {
     <html lang="zh-CN">
       <body className={inter.className}>
         <AuthProvider>
-          {children}
-          <Toaster position="top-center" />
+          <ConfirmProvider>
+            {children}
+            <Toaster position="top-center" />
+          </ConfirmProvider>
         </AuthProvider>
       </body>
     </html>
