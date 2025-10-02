@@ -91,6 +91,7 @@ export async function createMindmap(): Promise<CreateMindmapResult> {
       title,
       content: null,
       parent_id: null,
+      parent_short_id: null, // 根节点没有父节点
       order_index: 0,
     };
 

@@ -44,7 +44,7 @@ export const useMindmapEditorStore = create<MindmapEditorStore>()(
 
         // 获取当前子节点
         const siblings = Array.from(state.nodes.values())
-          .filter((node) => node.parent_id === parent.id)
+          .filter((node) => node.parent_short_id === parentId)
           .sort((a, b) => a.order_index - b.order_index);
 
         const count = siblings.length;
@@ -64,6 +64,7 @@ export const useMindmapEditorStore = create<MindmapEditorStore>()(
           short_id: shortId,
           mindmap_id: parent.mindmap_id,
           parent_id: parent.id,
+          parent_short_id: parentId, // 使用 parent 的 short_id
           title,
           content: content || null,
           node_type: "normal",
@@ -128,6 +129,7 @@ export const useMindmapEditorStore = create<MindmapEditorStore>()(
           short_id: shortId,
           mindmap_id: mindmapId,
           parent_id: null,
+          parent_short_id: null, // 浮动节点没有父节点
           title,
           content: content || null,
           node_type: "floating",
@@ -212,9 +214,9 @@ export const useMindmapEditorStore = create<MindmapEditorStore>()(
           const currentNode = state.nodes.get(currentNodeId);
           if (!currentNode) return;
 
-          // 查找子节点
+          // 查找子节点 (通过 parent_short_id)
           Array.from(state.nodes.values())
-            .filter((n) => n.parent_id === currentNode.id)
+            .filter((n) => n.parent_short_id === currentNodeId)
             .forEach((child) => collectDescendants(child.short_id));
         };
 
@@ -238,9 +240,9 @@ export const useMindmapEditorStore = create<MindmapEditorStore>()(
         });
 
         // 更新后续兄弟节点的 order_index
-        if (node.parent_id) {
+        if (node.parent_short_id) {
           const siblings = Array.from(state.nodes.values())
-            .filter((n) => n.parent_id === node.parent_id)
+            .filter((n) => n.parent_short_id === node.parent_short_id)
             .sort((a, b) => a.order_index - b.order_index);
 
           siblings.forEach((sibling, index) => {
@@ -288,7 +290,7 @@ export const useMindmapEditorStore = create<MindmapEditorStore>()(
       if (!node) return [];
 
       return Array.from(get().nodes.values())
-        .filter((n) => n.parent_id === node.id)
+        .filter((n) => n.parent_short_id === nodeId)
         .sort((a, b) => a.order_index - b.order_index);
     },
 
