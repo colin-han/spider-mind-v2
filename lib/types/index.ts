@@ -46,28 +46,28 @@ export interface UserSession {
   isLoading: boolean;
 }
 
-export type MindMap = Tables<"mind_maps">;
-export type MindMapInsert = TablesInsert<"mind_maps">;
-export type MindMapUpdate = TablesUpdate<"mind_maps">;
+export type Mindmap = Tables<"mindmaps">;
+export type MindmapInsert = TablesInsert<"mindmaps">;
+export type MindmapUpdate = TablesUpdate<"mindmaps">;
 
-export type MindMapNode = Tables<"mind_map_nodes">;
-export type MindMapNodeInsert = TablesInsert<"mind_map_nodes">;
-export type MindMapNodeUpdate = TablesUpdate<"mind_map_nodes">;
+export type MindmapNode = Tables<"mindmap_nodes">;
+export type MindmapNodeInsert = TablesInsert<"mindmap_nodes">;
+export type MindmapNodeUpdate = TablesUpdate<"mindmap_nodes">;
 
 // Server Action 结果类型
-export interface CreateMindMapResult {
+export interface CreateMindmapResult {
   success: boolean;
   shortId?: string;
   error?: string;
 }
 
-export interface DeleteMindMapResult {
+export interface DeleteMindmapResult {
   success: boolean;
   error?: string;
 }
 
 // Dashboard 列表项类型
-export interface MindMapListItem {
+export interface MindmapListItem {
   id: string;
   short_id: string;
   title: string;

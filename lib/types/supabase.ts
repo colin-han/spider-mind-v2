@@ -34,12 +34,12 @@ export type Database = {
   }
   public: {
     Tables: {
-      mind_map_nodes: {
+      mindmap_nodes: {
         Row: {
           content: string | null
           created_at: string
           id: string
-          mind_map_id: string
+          mindmap_id: string
           node_type: string
           order_index: number
           parent_id: string | null
@@ -51,7 +51,7 @@ export type Database = {
           content?: string | null
           created_at?: string
           id?: string
-          mind_map_id: string
+          mindmap_id: string
           node_type: string
           order_index?: number
           parent_id?: string | null
@@ -63,7 +63,7 @@ export type Database = {
           content?: string | null
           created_at?: string
           id?: string
-          mind_map_id?: string
+          mindmap_id?: string
           node_type?: string
           order_index?: number
           parent_id?: string | null
@@ -74,21 +74,21 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "mind_map_nodes_mind_map_id_fkey"
-            columns: ["mind_map_id"]
+            columns: ["mindmap_id"]
             isOneToOne: false
-            referencedRelation: "mind_maps"
+            referencedRelation: "mindmaps"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "mind_map_nodes_parent_id_fkey"
             columns: ["parent_id"]
             isOneToOne: false
-            referencedRelation: "mind_map_nodes"
+            referencedRelation: "mindmap_nodes"
             referencedColumns: ["id"]
           },
         ]
       }
-      mind_maps: {
+      mindmaps: {
         Row: {
           created_at: string
           deleted_at: string | null

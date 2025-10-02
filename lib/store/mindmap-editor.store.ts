@@ -7,9 +7,9 @@
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import { nanoid } from "nanoid";
-import type { MindMapNode } from "@/lib/types";
+import type { MindmapNode } from "@/lib/types";
 import type {
-  MindMapEditorStore,
+  MindmapEditorStore,
   AddChildNodeParams,
   CreateFloatingNodeParams,
 } from "./mindmap-editor.types";
@@ -17,10 +17,10 @@ import type {
 /**
  * 创建思维导图编辑器 Store
  */
-export const useMindMapEditorStore = create<MindMapEditorStore>()(
+export const useMindmapEditorStore = create<MindmapEditorStore>()(
   immer((set, get) => ({
     // ========== 初始状态 ==========
-    currentMindMap: null,
+    currentMindmap: null,
     nodes: new Map(),
     currentNode: null,
     selectedNodes: new Set(),
@@ -34,7 +34,7 @@ export const useMindMapEditorStore = create<MindMapEditorStore>()(
     // ========== 节点创建操作 ==========
     addChildNode: (params: AddChildNodeParams) => {
       const { parentId, position, title, content } = params;
-      let newNode: MindMapNode | null = null;
+      let newNode: MindmapNode | null = null;
 
       set((state) => {
         const parent = state.nodes.get(parentId);
@@ -62,7 +62,7 @@ export const useMindMapEditorStore = create<MindMapEditorStore>()(
         newNode = {
           id: nanoid(), // UUID,仅用于数据库
           short_id: shortId,
-          mind_map_id: parent.mind_map_id,
+          mindmap_id: parent.mindmap_id,
           parent_id: parent.id,
           title,
           content: content || null,
@@ -93,19 +93,19 @@ export const useMindMapEditorStore = create<MindMapEditorStore>()(
     },
 
     createFloatingNode: (params: CreateFloatingNodeParams) => {
-      const { mindMapId, position, title, content } = params;
-      let newNode: MindMapNode | null = null;
+      const { mindmapId, position, title, content } = params;
+      let newNode: MindmapNode | null = null;
 
       set((state) => {
-        if (!state.currentMindMap || state.currentMindMap.id !== mindMapId) {
-          throw new Error(`思维导图不存在或不匹配: ${mindMapId}`);
+        if (!state.currentMindmap || state.currentMindmap.id !== mindmapId) {
+          throw new Error(`思维导图不存在或不匹配: ${mindmapId}`);
         }
 
         // 获取当前所有浮动节点
         const floatingNodes = Array.from(state.nodes.values())
           .filter(
             (node) =>
-              node.mind_map_id === mindMapId &&
+              node.mindmap_id === mindmapId &&
               node.parent_id === null &&
               node.node_type === "floating"
           )
@@ -126,7 +126,7 @@ export const useMindMapEditorStore = create<MindMapEditorStore>()(
         newNode = {
           id: nanoid(),
           short_id: shortId,
-          mind_map_id: mindMapId,
+          mindmap_id: mindmapId,
           parent_id: null,
           title,
           content: content || null,
@@ -167,10 +167,10 @@ export const useMindMapEditorStore = create<MindMapEditorStore>()(
         node.title = newTitle;
         node.updated_at = new Date().toISOString();
 
-        // 如果是根节点,同步更新 MindMap.title
-        if (node.node_type === "root" && state.currentMindMap) {
-          state.currentMindMap.title = newTitle;
-          state.currentMindMap.updated_at = new Date().toISOString();
+        // 如果是根节点,同步更新 Mindmap.title
+        if (node.node_type === "root" && state.currentMindmap) {
+          state.currentMindmap.title = newTitle;
+          state.currentMindmap.updated_at = new Date().toISOString();
         }
 
         state.isDirty = true;
@@ -262,23 +262,23 @@ export const useMindMapEditorStore = create<MindMapEditorStore>()(
       return get().nodes.get(nodeId);
     },
 
-    getAllNodes: (mindMapId: string) => {
+    getAllNodes: (mindmapId: string) => {
       return Array.from(get().nodes.values()).filter(
-        (node) => node.mind_map_id === mindMapId
+        (node) => node.mindmap_id === mindmapId
       );
     },
 
-    getRootNode: (mindMapId: string) => {
+    getRootNode: (mindmapId: string) => {
       return Array.from(get().nodes.values()).find(
-        (node) => node.mind_map_id === mindMapId && node.node_type === "root"
+        (node) => node.mindmap_id === mindmapId && node.node_type === "root"
       );
     },
 
-    getFloatingNodes: (mindMapId: string) => {
+    getFloatingNodes: (mindmapId: string) => {
       return Array.from(get().nodes.values())
         .filter(
           (node) =>
-            node.mind_map_id === mindMapId && node.node_type === "floating"
+            node.mindmap_id === mindmapId && node.node_type === "floating"
         )
         .sort((a, b) => a.order_index - b.order_index);
     },

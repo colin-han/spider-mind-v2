@@ -2,11 +2,11 @@
  * Store 统一导出
  */
 
-export { useMindMapEditorStore } from "./mindmap-editor.store";
+export { useMindmapEditorStore } from "./mindmap-editor.store";
 export type {
   EditorState,
-  MindMapEditorActions,
-  MindMapEditorStore,
+  MindmapEditorActions,
+  MindmapEditorStore,
   AddChildNodeParams,
   CreateFloatingNodeParams,
   MoveNodeParams,

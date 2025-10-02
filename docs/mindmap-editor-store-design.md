@@ -90,8 +90,8 @@ interface MindMapNode {
 ```typescript
 interface EditorState {
   // 核心数据
-  currentMindMap: MindMap | null;
-  nodes: Map<string, MindMapNode>; // key 是 short_id
+  currentMindmap: Mindmap | null;
+  nodes: Map<string, MindmapNode>; // key 是 short_id
 
   // 焦点和选中状态
   currentNode: string | null; // short_id
@@ -111,7 +111,7 @@ interface EditorState {
 
 ### 3.2 数据结构选择
 
-- **`Map<string, MindMapNode>`**: 节点存储
+- **`Map<string, MindmapNode>`**: 节点存储
   - 快速查找: O(1)
   - key 使用 `short_id`
 
@@ -130,7 +130,7 @@ interface EditorState {
 在指定父节点下添加子节点。
 
 ```typescript
-addChildNode(params: AddChildNodeParams): MindMapNode
+addChildNode(params: AddChildNodeParams): MindmapNode
 
 interface AddChildNodeParams {
   parentId: string; // 父节点 short_id
@@ -158,10 +158,10 @@ interface AddChildNodeParams {
 创建浮动节点。
 
 ```typescript
-createFloatingNode(params: CreateFloatingNodeParams): MindMapNode
+createFloatingNode(params: CreateFloatingNodeParams): MindmapNode
 
 interface CreateFloatingNodeParams {
-  mindMapId: string;
+  mindmapId: string;
   position: number; // 在浮动节点列表中的位置
   title: string;
   content?: string;
@@ -188,7 +188,7 @@ updateNodeTitle(nodeId: string, newTitle: string): void
 
 1. 验证节点存在
 2. 更新 `node.title` 和 `node.updated_at`
-3. **特殊处理**: 如果是根节点,同步更新 `MindMap.title`
+3. **特殊处理**: 如果是根节点,同步更新 `Mindmap.title`
 4. 标记 `isDirty = true`
 
 **约束**:
@@ -241,7 +241,7 @@ deleteNode(nodeId: string): void
 获取单个节点。
 
 ```typescript
-getNode(nodeId: string): MindMapNode | undefined
+getNode(nodeId: string): MindmapNode | undefined
 ```
 
 #### `getAllNodes`
@@ -249,7 +249,7 @@ getNode(nodeId: string): MindMapNode | undefined
 获取思维导图的所有节点。
 
 ```typescript
-getAllNodes(mindMapId: string): MindMapNode[]
+getAllNodes(mindmapId: string): MindmapNode[]
 ```
 
 #### `getRootNode`
@@ -257,7 +257,7 @@ getAllNodes(mindMapId: string): MindMapNode[]
 获取根节点。
 
 ```typescript
-getRootNode(mindMapId: string): MindMapNode | undefined
+getRootNode(mindmapId: string): MindmapNode | undefined
 ```
 
 #### `getFloatingNodes`
@@ -265,7 +265,7 @@ getRootNode(mindMapId: string): MindMapNode | undefined
 获取所有浮动节点 (按 `order_index` 排序)。
 
 ```typescript
-getFloatingNodes(mindMapId: string): MindMapNode[]
+getFloatingNodes(mindmapId: string): MindmapNode[]
 ```
 
 #### `getChildren`
@@ -273,7 +273,7 @@ getFloatingNodes(mindMapId: string): MindMapNode[]
 获取节点的子节点 (按 `order_index` 排序)。
 
 ```typescript
-getChildren(nodeId: string): MindMapNode[]
+getChildren(nodeId: string): MindmapNode[]
 ```
 
 **行为**:
@@ -379,17 +379,17 @@ siblings.forEach((sibling, index) => {
 });
 ```
 
-### 5.2 根节点与 MindMap 同步
+### 5.2 根节点与 Mindmap 同步
 
 ```typescript
 updateNodeTitle: (nodeId, newTitle) => {
   const node = state.nodes.get(nodeId);
   node.title = newTitle;
 
-  // 根节点标题同步到 MindMap
-  if (node.node_type === "root" && state.currentMindMap) {
-    state.currentMindMap.title = newTitle;
-    state.currentMindMap.updated_at = new Date().toISOString();
+  // 根节点标题同步到 Mindmap
+  if (node.node_type === "root" && state.currentMindmap) {
+    state.currentMindmap.title = newTitle;
+    state.currentMindmap.updated_at = new Date().toISOString();
   }
 };
 ```
@@ -439,7 +439,7 @@ function checkInvariant(state: EditorState) {
 ### 5.5 使用 Immer 中间件
 
 ```typescript
-export const useMindMapEditorStore = create<MindMapEditorStore>()(
+export const useMindmapEditorStore = create<MindmapEditorStore>()(
   immer((set, get) => ({
     // 在 set() 中可以直接"修改" state
     // Immer 会自动转换为不可变更新
@@ -497,8 +497,8 @@ if (node.node_type === "root") {
 ### 6.5 思维导图匹配验证
 
 ```typescript
-if (!state.currentMindMap || state.currentMindMap.id !== mindMapId) {
-  throw new Error(`思维导图不存在或不匹配: ${mindMapId}`);
+if (!state.currentMindmap || state.currentMindmap.id !== mindmapId) {
+  throw new Error(`思维导图不存在或不匹配: ${mindmapId}`);
 }
 ```
 
@@ -509,9 +509,9 @@ if (!state.currentMindMap || state.currentMindMap.id !== mindMapId) {
 ### 7.1 基础用法
 
 ```typescript
-import { useMindMapEditorStore } from '@/lib/store';
+import { useMindmapEditorStore } from '@/lib/store';
 
-function MindMapEditor() {
+function MindmapEditor() {
   const {
     nodes,
     currentNode,
@@ -520,7 +520,7 @@ function MindMapEditor() {
     selectNode,
     updateNodeTitle,
     deleteNode,
-  } = useMindMapEditorStore();
+  } = useMindmapEditorStore();
 
   // 添加子节点
   const handleAddChild = () => {
@@ -562,10 +562,10 @@ function MindMapEditor() {
 ### 7.2 获取节点层次结构
 
 ```typescript
-function useNodeTree(mindMapId: string) {
-  const { getRootNode, getChildren } = useMindMapEditorStore();
+function useNodeTree(mindmapId: string) {
+  const { getRootNode, getChildren } = useMindmapEditorStore();
 
-  const root = getRootNode(mindMapId);
+  const root = getRootNode(mindmapId);
   if (!root) return null;
 
   // 递归构建树
@@ -588,7 +588,7 @@ function useNodeTree(mindMapId: string) {
 
 ```typescript
 function NodeList() {
-  const { selectNode, selectedNodes } = useMindMapEditorStore();
+  const { selectNode, selectedNodes } = useMindmapEditorStore();
 
   const handleNodeClick = (nodeId: string, event: React.MouseEvent) => {
     const multiSelect = event.metaKey || event.ctrlKey;
@@ -626,7 +626,7 @@ Store 仅负责状态管理和领域操作,不包含:
 
 - 不能删除根节点 → 运行时检查并抛出异常
 - 焦点与选中的不变式 → 所有相关操作自动维护
-- order_index 连续性 → 自动维护,无需手动管理
+- `order_index` 连续性 → 自动维护,无需手动管理
 
 ### 8.4 类型安全
 

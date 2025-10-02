@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
-import { createMindMap } from "@/lib/actions/mind-map-actions";
+import { createMindmap } from "@/lib/actions/mindmap-actions";
 
 /**
  * 创建思维导图按钮
@@ -18,11 +18,11 @@ export function CreateButton() {
     setIsCreating(true);
 
     try {
-      const result = await createMindMap();
+      const result = await createMindmap();
 
       if (result.success && result.shortId) {
         toast.success("创建成功");
-        router.push(`/mind-maps/${result.shortId}`);
+        router.push(`/mindmaps/${result.shortId}`);
       } else {
         toast.error(result.error || "创建失败");
         setIsCreating(false);

@@ -4,24 +4,24 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { useConfirm } from "@/lib/hooks/use-confirm";
-import { deleteMindMap } from "@/lib/actions/mind-map-actions";
+import { deleteMindmap } from "@/lib/actions/mindmap-actions";
 import { formatRelativeTime } from "@/lib/utils/date-format";
-import type { MindMapListItem } from "@/lib/types";
+import type { MindmapListItem } from "@/lib/types";
 
-type MindMapCardProps = MindMapListItem;
+type MindmapCardProps = MindmapListItem;
 
 /**
  * 思维导图卡片组件
  * 显示单个思维导图的信息，支持点击打开和删除
  */
-export function MindMapCard({
+export function MindmapCard({
   id,
   short_id,
   title,
   description,
   created_at,
   updated_at,
-}: MindMapCardProps) {
+}: MindmapCardProps) {
   const router = useRouter();
   const confirm = useConfirm();
   const [isHovered, setIsHovered] = useState(false);
@@ -44,7 +44,7 @@ export function MindMapCard({
     setIsDeleting(true);
 
     try {
-      const result = await deleteMindMap(id);
+      const result = await deleteMindmap(id);
 
       if (result.success) {
         toast.success("删除成功");
@@ -60,7 +60,7 @@ export function MindMapCard({
   }
 
   function handleCardClick() {
-    router.push(`/mind-maps/${short_id}`);
+    router.push(`/mindmaps/${short_id}`);
   }
 
   return (
@@ -69,7 +69,7 @@ export function MindMapCard({
       onClick={handleCardClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      data-testid={`mind-map-card-${short_id}`}
+      data-testid={`mindmap-card-${short_id}`}
     >
       {/* 标题 */}
       <div className="flex items-start justify-between mb-3">
@@ -77,7 +77,7 @@ export function MindMapCard({
           <div className="text-2xl mb-2">📝</div>
           <h3
             className="text-lg font-semibold text-gray-900 dark:text-white truncate"
-            data-testid={`mind-map-card-title-${short_id}`}
+            data-testid={`mindmap-card-title-${short_id}`}
           >
             {title}
           </h3>
@@ -89,7 +89,7 @@ export function MindMapCard({
             onClick={handleDelete}
             disabled={isDeleting}
             className="ml-2 p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors disabled:opacity-50"
-            data-testid={`mind-map-card-delete-${short_id}`}
+            data-testid={`mindmap-card-delete-${short_id}`}
             aria-label="删除"
           >
             {isDeleting ? (

@@ -2,7 +2,7 @@
 
 ## 概述
 
-本文档描述了 Spider Mark V2 项目中思维导图(mind-map)和节点(mind-map-node)的双 ID 机制设计。
+本文档描述了 Spider Mark V2 项目中思维导图(mindmap)和节点(mindmap-node)的双 ID 机制设计。
 
 ## 设计目标
 
@@ -13,7 +13,7 @@
 
 ## 双 ID 机制
 
-### Mind Map ID
+### Mindmap ID
 
 #### UUID (主键)
 
@@ -34,13 +34,13 @@
 **命名空间分析:**
 
 - 总空间: 36^6 = 2,176,782,336 (21亿+组合)
-- 100 个 mind-maps: 冲突概率 0.0002%
-- 1000 个 mind-maps: 冲突概率 0.023%
+- 100 个 mindmaps: 冲突概率 0.0002%
+- 1000 个 mindmaps: 冲突概率 0.023%
 
 **数据库约束:**
 
 ```sql
-mind_maps:
+mindmaps:
   id uuid PRIMARY KEY DEFAULT gen_random_uuid()
   user_id uuid NOT NULL REFERENCES auth.users(id)
   short_id text NOT NULL CHECK (short_id = lower(short_id))
@@ -48,7 +48,7 @@ mind_maps:
   CONSTRAINT unique_user_short_id UNIQUE (user_id, short_id)
 ```
 
-### Mind Map Node ID
+### Mindmap Node ID
 
 #### UUID (主键)
 
@@ -62,7 +62,7 @@ mind_maps:
 - **类型:** `text`
 - **长度:** 6 字符
 - **字符集:** base36 (小写字母 a-z + 数字 0-9)
-- **唯一性范围:** 在同一 mind-map (mind_map_id) 范围内唯一
+- **唯一性范围:** 在同一 mindmap (mindmap_id) 范围内唯一
 - **格式:** 无前缀,纯随机字符
 - **示例:** `xyz789`, `a1b2c3`
 
@@ -75,12 +75,12 @@ mind_maps:
 **数据库约束:**
 
 ```sql
-mind_map_nodes:
+mindmap_nodes:
   id uuid PRIMARY KEY DEFAULT gen_random_uuid()
-  mind_map_id uuid NOT NULL REFERENCES mind_maps(id) ON DELETE CASCADE
+  mindmap_id uuid NOT NULL REFERENCES mindmaps(id) ON DELETE CASCADE
   short_id text NOT NULL CHECK (short_id = lower(short_id))
 
-  CONSTRAINT unique_map_short_id UNIQUE (mind_map_id, short_id)
+  CONSTRAINT unique_map_short_id UNIQUE (mindmap_id, short_id)
 ```
 
 ## URL 设计
@@ -124,8 +124,8 @@ import { customAlphabet } from "nanoid";
 const alphabet = "abcdefghijklmnopqrstuvwxyz0123456789";
 const generateShortId = customAlphabet(alphabet, 6);
 
-// 为 mind_map 生成唯一 short_id
-async function generateUniqueMindMapShortId(userId: string): Promise<string> {
+// 为 mindmap 生成唯一 short_id
+async function generateUniqueMindmapShortId(userId: string): Promise<string> {
   const maxRetries = 3;
 
   for (let i = 0; i < maxRetries; i++) {
@@ -138,7 +138,7 @@ async function generateUniqueMindMapShortId(userId: string): Promise<string> {
 
     // 检查是否在该用户范围内已存在
     const { data } = await supabase
-      .from("mind_maps")
+      .from("mindmaps")
       .select("id")
       .eq("user_id", userId)
       .eq("short_id", shortId)
@@ -151,7 +151,7 @@ async function generateUniqueMindMapShortId(userId: string): Promise<string> {
 }
 
 // 为 node 生成唯一 short_id
-async function generateUniqueNodeShortId(mindMapId: string): Promise<string> {
+async function generateUniqueNodeShortId(mindmapId: string): Promise<string> {
   const maxRetries = 3;
 
   for (let i = 0; i < maxRetries; i++) {
@@ -162,11 +162,11 @@ async function generateUniqueNodeShortId(mindMapId: string): Promise<string> {
       continue;
     }
 
-    // 检查是否在该 mind_map 范围内已存在
+    // 检查是否在该 mindmap 范围内已存在
     const { data } = await supabase
-      .from("mind_map_nodes")
+      .from("mindmap_nodes")
       .select("id")
-      .eq("mind_map_id", mindMapId)
+      .eq("mindmap_id", mindmapId)
       .eq("short_id", shortId)
       .single();
 
@@ -232,43 +232,43 @@ function isReservedShortId(shortId: string): boolean {
 
 ## 数据库索引
 
-### Mind Maps
+### Mindmaps
 
 ```sql
 -- 复合唯一索引(保证范围内唯一)
-CREATE UNIQUE INDEX idx_mind_maps_user_short_id
-  ON mind_maps(user_id, short_id);
+CREATE UNIQUE INDEX idx_mindmaps_user_short_id
+  ON mindmaps(user_id, short_id);
 
 -- 用户查询优化
-CREATE INDEX idx_mind_maps_user_id
-  ON mind_maps(user_id);
+CREATE INDEX idx_mindmaps_user_id
+  ON mindmaps(user_id);
 
 -- 活跃文档查询优化
-CREATE INDEX idx_mind_maps_user_id_active
-  ON mind_maps(user_id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_mindmaps_user_id_active
+  ON mindmaps(user_id) WHERE deleted_at IS NULL;
 ```
 
-### Mind Map Nodes
+### Mindmap Nodes
 
 ```sql
 -- 复合唯一索引(保证范围内唯一)
 CREATE UNIQUE INDEX idx_nodes_map_short_id
-  ON mind_map_nodes(mind_map_id, short_id);
+  ON mindmap_nodes(mindmap_id, short_id);
 
 -- 文档查询优化
 CREATE INDEX idx_nodes_map_id
-  ON mind_map_nodes(mind_map_id);
+  ON mindmap_nodes(mindmap_id);
 
 -- 树形结构查询优化
 CREATE INDEX idx_nodes_parent_id
-  ON mind_map_nodes(parent_id);
+  ON mindmap_nodes(parent_id);
 ```
 
 ## 软删除处理
 
 ### 策略
 
-当 mind_map 被软删除(设置 deleted_at)时:
+当 mindmap 被软删除(设置 deleted_at)时:
 
 - **不复用 short_id** (推荐)
 - 保持唯一约束,避免用户混淆
@@ -278,8 +278,8 @@ CREATE INDEX idx_nodes_parent_id
 
 ```sql
 -- 唯一约束不排除已删除的记录
-CREATE UNIQUE INDEX idx_mind_maps_user_short_id
-  ON mind_maps(user_id, short_id);
+CREATE UNIQUE INDEX idx_mindmaps_user_short_id
+  ON mindmaps(user_id, short_id);
   -- 注意: 没有 WHERE deleted_at IS NULL 条件
 ```
 
@@ -337,7 +337,7 @@ username text CHECK (username = lower(username))
 ### 3. 访问控制
 
 - 通过 RLS (Row Level Security) 策略控制访问
-- 仅拥有者可以访问自己的 mind_maps 和 nodes
+- 仅拥有者可以访问自己的 mindmaps 和 nodes
 
 ### 4. 防止遍历
 
@@ -354,19 +354,19 @@ username text CHECK (username = lower(username))
 ### 2. 查询模式
 
 ```sql
--- 通过 short_id 查找 mind_map (需要 user_id)
-SELECT * FROM mind_maps
+-- 通过 short_id 查找 mindmap (需要 user_id)
+SELECT * FROM mindmaps
 WHERE user_id = ? AND short_id = ?;
 
--- 通过 short_id 查找 node (需要 mind_map_id)
-SELECT * FROM mind_map_nodes
-WHERE mind_map_id = ? AND short_id = ?;
+-- 通过 short_id 查找 node (需要 mindmap_id)
+SELECT * FROM mindmap_nodes
+WHERE mindmap_id = ? AND short_id = ?;
 ```
 
 ### 3. 批量操作
 
 - 获取思维导图时,可以批量加载所有节点
-- 使用 `mind_map_id` 的索引快速过滤
+- 使用 `mindmap_id` 的索引快速过滤
 
 ## 未来扩展
 
@@ -375,7 +375,7 @@ WHERE mind_map_id = ? AND short_id = ?;
 如需支持公开分享,可添加:
 
 ```sql
-mind_maps:
+mindmaps:
   is_public boolean DEFAULT false
   share_token text UNIQUE  -- 用于私密分享
 ```
@@ -392,7 +392,7 @@ URL 结构:
 允许用户自定义 short_id (类似 GitHub repo 名):
 
 ```sql
-mind_maps:
+mindmaps:
   custom_short_id text
   is_custom_short_id boolean DEFAULT false
 ```
@@ -404,7 +404,7 @@ mind_maps:
 ```sql
 short_id_aliases:
   id uuid PRIMARY KEY
-  mind_map_id uuid REFERENCES mind_maps(id)
+  mindmap_id uuid REFERENCES mindmaps(id)
   old_short_id text
   created_at timestamptz
 ```

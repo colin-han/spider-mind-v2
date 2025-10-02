@@ -6,15 +6,15 @@
  * - 在领域模型中,节点的唯一标识是 short_id,而 id 字段仅用于数据库存储
  */
 
-import type { MindMap, MindMapNode } from "@/lib/types";
+import type { Mindmap, MindmapNode } from "@/lib/types";
 
 /**
  * 编辑器状态
  */
 export interface EditorState {
   // 核心数据
-  currentMindMap: MindMap | null;
-  nodes: Map<string, MindMapNode>; // key 是 short_id
+  currentMindmap: Mindmap | null;
+  nodes: Map<string, MindmapNode>; // key 是 short_id
 
   // 焦点和选中状态
   // 不变式: selectedNodes 必然包含 currentNode (当 currentNode 不为 null 时)
@@ -44,7 +44,7 @@ export interface AddChildNodeParams {
 }
 
 export interface CreateFloatingNodeParams {
-  mindMapId: string; // 思维导图 ID
+  mindmapId: string; // 思维导图 ID
   position: number; // 在浮动节点列表中的位置
   title: string;
   content?: string;
@@ -84,22 +84,22 @@ export interface NodeWithDepth {
 /**
  * 编辑器操作接口 (P0 优先级)
  */
-export interface MindMapEditorActions {
+export interface MindmapEditorActions {
   // ========== 节点创建操作 ==========
   /**
    * 在指定父节点下添加子节点
    */
-  addChildNode: (params: AddChildNodeParams) => MindMapNode;
+  addChildNode: (params: AddChildNodeParams) => MindmapNode;
 
   /**
    * 创建浮动节点
    */
-  createFloatingNode: (params: CreateFloatingNodeParams) => MindMapNode;
+  createFloatingNode: (params: CreateFloatingNodeParams) => MindmapNode;
 
   // ========== 节点编辑操作 ==========
   /**
    * 更新节点标题
-   * 注意: 如果是根节点,同时更新 MindMap.title
+   * 注意: 如果是根节点,同时更新 Mindmap.title
    */
   updateNodeTitle: (nodeId: string, newTitle: string) => void;
 
@@ -119,27 +119,27 @@ export interface MindMapEditorActions {
   /**
    * 获取单个节点
    */
-  getNode: (nodeId: string) => MindMapNode | undefined;
+  getNode: (nodeId: string) => MindmapNode | undefined;
 
   /**
    * 获取思维导图的所有节点
    */
-  getAllNodes: (mindMapId: string) => MindMapNode[];
+  getAllNodes: (mindmapId: string) => MindmapNode[];
 
   /**
    * 获取根节点
    */
-  getRootNode: (mindMapId: string) => MindMapNode | undefined;
+  getRootNode: (mindmapId: string) => MindmapNode | undefined;
 
   /**
    * 获取所有浮动节点
    */
-  getFloatingNodes: (mindMapId: string) => MindMapNode[];
+  getFloatingNodes: (mindmapId: string) => MindmapNode[];
 
   /**
    * 获取节点的子节点 (按 order_index 排序)
    */
-  getChildren: (nodeId: string) => MindMapNode[];
+  getChildren: (nodeId: string) => MindmapNode[];
 
   // ========== 状态操作 ==========
   /**
@@ -163,4 +163,4 @@ export interface MindMapEditorActions {
 /**
  * 完整的编辑器 Store 类型
  */
-export type MindMapEditorStore = EditorState & MindMapEditorActions;
+export type MindmapEditorStore = EditorState & MindmapEditorActions;
