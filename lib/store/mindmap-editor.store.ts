@@ -6,6 +6,7 @@
 
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
+import { enableMapSet } from "immer";
 import { nanoid } from "nanoid";
 import type { MindmapNode } from "@/lib/types";
 import type {
@@ -13,6 +14,9 @@ import type {
   AddChildNodeParams,
   CreateFloatingNodeParams,
 } from "./mindmap-editor.types";
+
+// 启用 Immer 的 MapSet 插件以支持 Map 和 Set
+enableMapSet();
 
 /**
  * 创建思维导图编辑器 Store

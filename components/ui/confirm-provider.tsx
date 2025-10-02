@@ -1,6 +1,12 @@
 "use client";
 
-import { createContext, useState, useCallback, type ReactNode } from "react";
+import {
+  createContext,
+  useState,
+  useCallback,
+  useContext,
+  type ReactNode,
+} from "react";
 import { ConfirmDialog } from "./confirm-dialog";
 
 export interface ConfirmOptions {
@@ -15,6 +21,14 @@ export interface ConfirmContextValue {
 }
 
 export const ConfirmContext = createContext<ConfirmContextValue | null>(null);
+
+export function useConfirm() {
+  const context = useContext(ConfirmContext);
+  if (!context) {
+    throw new Error("useConfirm must be used within ConfirmProvider");
+  }
+  return context.confirm;
+}
 
 export function ConfirmProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<{
