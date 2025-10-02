@@ -1,13 +1,13 @@
 -- ============================================================================
 -- Mind Map Schema Migration
--- 创建思维导图相关表: mind_maps 和 mind_map_nodes
+-- 创建思维导图相关表: mindmaps 和 mindmap_nodes
 -- ============================================================================
 
 -- ============================================================================
--- 1. 创建 mind_maps 表
+-- 1. 创建 mindmaps 表
 -- ============================================================================
 
-CREATE TABLE IF NOT EXISTS public.mind_maps (
+CREATE TABLE IF NOT EXISTS public.mindmaps (
   -- 主键
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
 
@@ -37,31 +37,31 @@ CREATE TABLE IF NOT EXISTS public.mind_maps (
 );
 
 -- 表注释
-COMMENT ON TABLE public.mind_maps IS '思维导图文档表';
-COMMENT ON COLUMN public.mind_maps.id IS '主键 UUID, 数据库内部使用';
-COMMENT ON COLUMN public.mind_maps.user_id IS '所属用户ID, 关联 user_profiles';
-COMMENT ON COLUMN public.mind_maps.short_id IS '短ID, 6位base36(a-z,0-9), 在用户范围内唯一, 用于URL';
-COMMENT ON COLUMN public.mind_maps.title IS '文档标题, 不能为空或仅空格';
-COMMENT ON COLUMN public.mind_maps.description IS '文档描述';
-COMMENT ON COLUMN public.mind_maps.created_at IS '创建时间';
-COMMENT ON COLUMN public.mind_maps.updated_at IS '最后更新时间';
-COMMENT ON COLUMN public.mind_maps.deleted_at IS '软删除时间戳, 非NULL表示已删除';
+COMMENT ON TABLE public.mindmaps IS '思维导图文档表';
+COMMENT ON COLUMN public.mindmaps.id IS '主键 UUID, 数据库内部使用';
+COMMENT ON COLUMN public.mindmaps.user_id IS '所属用户ID, 关联 user_profiles';
+COMMENT ON COLUMN public.mindmaps.short_id IS '短ID, 6位base36(a-z,0-9), 在用户范围内唯一, 用于URL';
+COMMENT ON COLUMN public.mindmaps.title IS '文档标题, 不能为空或仅空格';
+COMMENT ON COLUMN public.mindmaps.description IS '文档描述';
+COMMENT ON COLUMN public.mindmaps.created_at IS '创建时间';
+COMMENT ON COLUMN public.mindmaps.updated_at IS '最后更新时间';
+COMMENT ON COLUMN public.mindmaps.deleted_at IS '软删除时间戳, 非NULL表示已删除';
 
 -- ============================================================================
--- 2. 创建 mind_map_nodes 表
+-- 2. 创建 mindmap_nodes 表
 -- ============================================================================
 
-CREATE TABLE IF NOT EXISTS public.mind_map_nodes (
+CREATE TABLE IF NOT EXISTS public.mindmap_nodes (
   -- 主键
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
 
   -- 外键: 关联思维导图
-  mind_map_id uuid NOT NULL REFERENCES public.mind_maps(id) ON DELETE CASCADE,
+  mindmap_id uuid NOT NULL REFERENCES public.mindmaps(id) ON DELETE CASCADE,
 
   -- 外键: 父节点 (自引用)
-  parent_id uuid REFERENCES public.mind_map_nodes(id) ON DELETE CASCADE,
+  parent_id uuid REFERENCES public.mindmap_nodes(id) ON DELETE CASCADE,
 
-  -- Short ID (用户可见, 在 mind_map 范围内唯一)
+  -- Short ID (用户可见, 在 mindmap 范围内唯一)
   short_id text NOT NULL,
 
   -- 节点类型
@@ -98,73 +98,73 @@ CREATE TABLE IF NOT EXISTS public.mind_map_nodes (
     (node_type IN ('root', 'floating'))
   ),
 
-  -- 唯一约束: short_id 在 mind_map 范围内唯一
-  CONSTRAINT unique_map_short_id UNIQUE (mind_map_id, short_id)
+  -- 唯一约束: short_id 在 mindmap 范围内唯一
+  CONSTRAINT unique_map_short_id UNIQUE (mindmap_id, short_id)
 );
 
--- 唯一约束: 每个 mind_map 只能有一个 root 节点
+-- 唯一约束: 每个 mindmap 只能有一个 root 节点
 CREATE UNIQUE INDEX IF NOT EXISTS idx_one_root_per_map
-  ON public.mind_map_nodes(mind_map_id)
+  ON public.mindmap_nodes(mindmap_id)
   WHERE node_type = 'root';
 
 -- 表注释
-COMMENT ON TABLE public.mind_map_nodes IS '思维导图节点表';
-COMMENT ON COLUMN public.mind_map_nodes.id IS '主键 UUID, 用于内部引用(如 parent_id)';
-COMMENT ON COLUMN public.mind_map_nodes.mind_map_id IS '所属思维导图ID';
-COMMENT ON COLUMN public.mind_map_nodes.parent_id IS '父节点ID, root和floating节点为NULL';
-COMMENT ON COLUMN public.mind_map_nodes.short_id IS '短ID, 6位base36, 在mind_map范围内唯一, 用于内容引用';
-COMMENT ON COLUMN public.mind_map_nodes.node_type IS '节点类型: root(根节点), floating(浮动节点), normal(普通节点)';
-COMMENT ON COLUMN public.mind_map_nodes.title IS '节点标题';
-COMMENT ON COLUMN public.mind_map_nodes.content IS '节点内容, 支持Markdown格式';
-COMMENT ON COLUMN public.mind_map_nodes.order_index IS '同级节点排序索引';
+COMMENT ON TABLE public.mindmap_nodes IS '思维导图节点表';
+COMMENT ON COLUMN public.mindmap_nodes.id IS '主键 UUID, 用于内部引用(如 parent_id)';
+COMMENT ON COLUMN public.mindmap_nodes.mindmap_id IS '所属思维导图ID';
+COMMENT ON COLUMN public.mindmap_nodes.parent_id IS '父节点ID, root和floating节点为NULL';
+COMMENT ON COLUMN public.mindmap_nodes.short_id IS '短ID, 6位base36, 在mindmap范围内唯一, 用于内容引用';
+COMMENT ON COLUMN public.mindmap_nodes.node_type IS '节点类型: root(根节点), floating(浮动节点), normal(普通节点)';
+COMMENT ON COLUMN public.mindmap_nodes.title IS '节点标题';
+COMMENT ON COLUMN public.mindmap_nodes.content IS '节点内容, 支持Markdown格式';
+COMMENT ON COLUMN public.mindmap_nodes.order_index IS '同级节点排序索引';
 
 -- ============================================================================
 -- 3. 创建索引
 -- ============================================================================
 
--- mind_maps 索引
-CREATE INDEX IF NOT EXISTS idx_mind_maps_user_id
-  ON public.mind_maps(user_id);
+-- mindmaps 索引
+CREATE INDEX IF NOT EXISTS idx_mindmaps_user_id
+  ON public.mindmaps(user_id);
 
-CREATE INDEX IF NOT EXISTS idx_mind_maps_user_active
-  ON public.mind_maps(user_id)
+CREATE INDEX IF NOT EXISTS idx_mindmaps_user_active
+  ON public.mindmaps(user_id)
   WHERE deleted_at IS NULL;
 
-CREATE INDEX IF NOT EXISTS idx_mind_maps_created_at
-  ON public.mind_maps(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_mindmaps_created_at
+  ON public.mindmaps(created_at DESC);
 
-CREATE INDEX IF NOT EXISTS idx_mind_maps_updated_at
-  ON public.mind_maps(updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_mindmaps_updated_at
+  ON public.mindmaps(updated_at DESC);
 
--- mind_map_nodes 索引
+-- mindmap_nodes 索引
 CREATE INDEX IF NOT EXISTS idx_nodes_map_id
-  ON public.mind_map_nodes(mind_map_id);
+  ON public.mindmap_nodes(mindmap_id);
 
 CREATE INDEX IF NOT EXISTS idx_nodes_parent_id
-  ON public.mind_map_nodes(parent_id);
+  ON public.mindmap_nodes(parent_id);
 
 CREATE INDEX IF NOT EXISTS idx_nodes_map_parent
-  ON public.mind_map_nodes(mind_map_id, parent_id);
+  ON public.mindmap_nodes(mindmap_id, parent_id);
 
 CREATE INDEX IF NOT EXISTS idx_nodes_map_type
-  ON public.mind_map_nodes(mind_map_id, node_type);
+  ON public.mindmap_nodes(mindmap_id, node_type);
 
 CREATE INDEX IF NOT EXISTS idx_nodes_parent_order
-  ON public.mind_map_nodes(parent_id, order_index);
+  ON public.mindmap_nodes(parent_id, order_index);
 
 -- ============================================================================
 -- 4. 创建触发器 (自动更新 updated_at)
 -- ============================================================================
 
--- mind_maps 表的 updated_at 触发器
-CREATE TRIGGER set_mind_maps_updated_at
-  BEFORE UPDATE ON public.mind_maps
+-- mindmaps 表的 updated_at 触发器
+CREATE TRIGGER set_mindmaps_updated_at
+  BEFORE UPDATE ON public.mindmaps
   FOR EACH ROW
   EXECUTE FUNCTION public.handle_updated_at();
 
--- mind_map_nodes 表的 updated_at 触发器
-CREATE TRIGGER set_mind_map_nodes_updated_at
-  BEFORE UPDATE ON public.mind_map_nodes
+-- mindmap_nodes 表的 updated_at 触发器
+CREATE TRIGGER set_mindmap_nodes_updated_at
+  BEFORE UPDATE ON public.mindmap_nodes
   FOR EACH ROW
   EXECUTE FUNCTION public.handle_updated_at();
 
@@ -201,7 +201,7 @@ BEGIN
 
     -- 获取下一个父节点
     SELECT parent_id INTO current_parent_id
-    FROM public.mind_map_nodes
+    FROM public.mindmap_nodes
     WHERE id = current_parent_id;
 
     depth := depth + 1;
@@ -216,9 +216,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 为 mind_map_nodes 添加循环引用检查触发器
+-- 为 mindmap_nodes 添加循环引用检查触发器
 CREATE TRIGGER check_node_circular_reference_trigger
-  BEFORE INSERT OR UPDATE OF parent_id ON public.mind_map_nodes
+  BEFORE INSERT OR UPDATE OF parent_id ON public.mindmap_nodes
   FOR EACH ROW
   EXECUTE FUNCTION public.check_node_circular_reference();
 
@@ -247,7 +247,7 @@ BEGIN
       n.title,
       n.node_type,
       0 as depth
-    FROM public.mind_map_nodes n
+    FROM public.mindmap_nodes n
     WHERE n.id = root_node_id
 
     UNION ALL
@@ -260,7 +260,7 @@ BEGIN
       n.title,
       n.node_type,
       nt.depth + 1
-    FROM public.mind_map_nodes n
+    FROM public.mindmap_nodes n
     INNER JOIN node_tree nt ON n.parent_id = nt.id
   )
   SELECT
@@ -298,7 +298,7 @@ BEGIN
       n.title,
       n.node_type,
       0 as depth
-    FROM public.mind_map_nodes n
+    FROM public.mindmap_nodes n
     WHERE n.id = leaf_node_id
 
     UNION ALL
@@ -311,7 +311,7 @@ BEGIN
       n.title,
       n.node_type,
       np.depth + 1
-    FROM public.mind_map_nodes n
+    FROM public.mindmap_nodes n
     INNER JOIN node_path np ON n.id = np.parent_id
   )
   SELECT
@@ -334,7 +334,7 @@ COMMENT ON FUNCTION public.get_node_ancestors IS '获取某个节点的所有祖
 -- 注意:
 -- 1. 本 migration 不包含 RLS 策略, 权限控制在应用层实现
 -- 2. 未来如需协同编辑, 需要单独添加 RLS 策略
--- 3. mind_maps.user_id 引用 user_profiles(id)
--- 4. 每个 mind_map 只能有一个 root 节点 (通过部分唯一索引保证)
+-- 3. mindmaps.user_id 引用 user_profiles(id)
+-- 4. 每个 mindmap 只能有一个 root 节点 (通过部分唯一索引保证)
 -- 5. 防止节点循环引用 (通过触发器检查)
 -- ============================================================================

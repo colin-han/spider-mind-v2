@@ -73,14 +73,14 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "mind_map_nodes_mind_map_id_fkey"
+            foreignKeyName: "mindmap_nodes_mindmap_id_fkey"
             columns: ["mindmap_id"]
             isOneToOne: false
             referencedRelation: "mindmaps"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "mind_map_nodes_parent_id_fkey"
+            foreignKeyName: "mindmap_nodes_parent_id_fkey"
             columns: ["parent_id"]
             isOneToOne: false
             referencedRelation: "mindmap_nodes"
@@ -121,7 +121,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "mind_maps_user_id_fkey"
+            foreignKeyName: "mindmaps_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "user_profiles"
