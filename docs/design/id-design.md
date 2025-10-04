@@ -6,7 +6,7 @@
 - **创建日期**: 2024
 - **最后更新**: 2025-10-04
 - **相关文档**:
-  - coding-standards.md
+  - ../standard/coding-standards.md
   - database-schema.md
 
 ## 概述
