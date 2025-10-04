@@ -19,3 +19,6 @@ node_modules
 /coverage/
 
 tsconfig.tsbuildinfo
+
+# Claude local instructions (worktree specific)
+CLAUDE.local.md
