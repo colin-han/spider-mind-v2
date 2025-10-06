@@ -9,6 +9,18 @@
   - ../standard/coding-standards.md
   - database-schema.md
 
+## 关键概念
+
+本节定义该设计文档引入的新概念。
+
+| 概念 | 定义 | 示例/说明 |
+|------|------|----------|
+| 双ID机制 | 同一实体使用UUID和short_id两种标识符的设计模式 | UUID内部使用，short_id对外展示 |
+| short_id | 6字符base36编码的短标识符，范围内唯一 | 如: "a1b2c3" |
+| 范围唯一性 | ID仅在特定范围内保证唯一，而非全局唯一 | mindmap.short_id在user_id范围内唯一 |
+| 用户范围 | 以user_id为边界的ID唯一性范围 | 同一用户的所有mindmap不重复 |
+| 导图范围 | 以mindmap_id为边界的ID唯一性范围 | 同一导图的所有节点不重复 |
+
 ## 概述
 
 本文档定义了 Spider Mark V2 项目中思维导图(mindmap)和节点(mindmap_node)的双 ID 机制设计。

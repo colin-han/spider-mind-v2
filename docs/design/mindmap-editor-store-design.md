@@ -1,8 +1,8 @@
 # 思维导图编辑器 Store 设计文档
 
-**版本**: v1.0
+**版本**: v1.1
 **创建日期**: 2025-10-02
-**最后更新**: 2025-10-02
+**最后更新**: 2025-01-06
 
 ---
 
@@ -27,9 +27,31 @@
 
 ---
 
-## 2. 核心概念
+## 2. 关键概念
 
-### 2.1 节点标识符
+本节定义该设计文档引入的新概念。
+
+| 概念 | 定义 | 示例/说明 |
+|------|------|----------|
+| order_index | 节点排序索引，维护兄弟节点间的顺序 | 0, 1, 2... 连续递增 |
+| currentNode | 当前激活/焦点节点的short_id | 单选状态，可为null |
+| selectedNodes | 多选节点的short_id集合 | Set结构，必包含currentNode |
+| root节点 | 思维导图根节点，每个导图唯一 | node_type='root' |
+| floating节点 | 独立浮动节点，不属于主树结构 | node_type='floating', parent_id=null |
+| normal节点 | 普通子节点，属于树结构一部分 | node_type='normal', 有parent_id |
+| isDirty | 标记是否有未保存的更改 | boolean值，本地编辑标志 |
+| isSynced | 标记是否与服务器同步 | boolean值，同步状态标志 |
+| expandedNodes | 展开状态的节点集合 | Set<string>结构 |
+| collapsedNodes | 折叠状态的节点集合 | Set<string>结构 |
+| position | 节点插入位置参数 | 0到子节点数量之间 |
+| 选中状态不变式 | currentNode与selectedNodes的一致性约束 | currentNode必在selectedNodes中 |
+| 级联删除 | 删除节点时自动删除所有子节点 | 递归删除操作 |
+
+---
+
+## 3. 核心概念
+
+### 3.1 节点标识符
 
 在领域模型中,节点有两个 ID:
 
@@ -38,7 +60,7 @@
 
 **重要**: 文档和代码中的所有 `nodeId` 参数都指 `short_id`。
 
-### 2.2 节点类型
+### 3.2 节点类型
 
 ```typescript
 type NodeType = "root" | "floating" | "normal";
@@ -54,7 +76,7 @@ type NodeType = "root" | "floating" | "normal";
 - `parent_id = null && 非根节点` → `floating`
 - `parent_id != null` → `normal`
 
-### 2.3 焦点与选中
+### 3.3 焦点与选中
 
 编辑器维护两个相关状态:
 
@@ -66,7 +88,7 @@ type NodeType = "root" | "floating" | "normal";
 1. `selectedNodes` 必然包含 `currentNode` (当 `currentNode` 不为 null 时)
 2. 如果 `currentNode` 为 null,则 `selectedNodes` 必为空集
 
-### 2.4 节点顺序
+### 3.4 节点顺序
 
 节点通过 `order_index` 字段维护在父节点下的顺序:
 
@@ -83,9 +105,9 @@ interface MindMapNode {
 
 ---
 
-## 3. 状态结构
+## 4. 状态结构
 
-### 3.1 EditorState
+### 4.1 EditorState
 
 ```typescript
 interface EditorState {
@@ -109,7 +131,7 @@ interface EditorState {
 }
 ```
 
-### 3.2 数据结构选择
+### 4.2 数据结构选择
 
 - **`Map<string, MindmapNode>`**: 节点存储
   - 快速查找: O(1)
@@ -121,9 +143,37 @@ interface EditorState {
 
 ---
 
-## 4. 操作接口
+## 5. 约束与不变式
 
-### 4.1 节点创建操作
+所有操作都必须遵守以下约束条件，确保数据一致性。
+
+### 5.1 选择状态约束
+
+1. `selectedNodes` 必然包含 `currentNode` (当 `currentNode` 不为 null 时)
+2. 如果 `currentNode` 为 null,则 `selectedNodes` 必为空集
+
+### 5.2 节点关系约束
+
+- 每个思维导图有且仅有一个 root 节点
+- 节点类型由结构决定，不可手动修改
+- 删除节点时必须级联删除所有子节点
+
+### 5.3 数据完整性约束
+
+- 父节点必须存在（除了 root 和 floating 节点）
+- order_index 在同一父节点下必须连续
+- position 参数自动 clamp 到有效范围
+
+### 5.4 根节点保护
+
+- 不能删除根节点
+- 根节点的 title 与 Mindmap.title 保持同步
+
+---
+
+## 6. 操作接口
+
+### 6.1 节点创建操作
 
 #### `addChildNode`
 
@@ -349,9 +399,27 @@ clearSelection(): void
 
 ---
 
-## 5. 核心实现细节
+## 7. 实现方案
 
-### 5.1 order_index 维护
+### 7.1 使用 Immer 中间件
+
+```typescript
+export const useMindmapEditorStore = create<MindmapEditorStore>()(
+  immer((set, get) => ({
+    // 在 set() 中可以直接"修改" state
+    // Immer 会自动转换为不可变更新
+    addChildNode: (params) => {
+      set((state) => {
+        // 直接修改,Immer 处理不可变性
+        state.nodes.set(shortId, newNode);
+        state.isDirty = true;
+      });
+    }
+  }))
+);
+```
+
+### 7.2 order_index 维护算法
 
 #### 插入节点时
 
@@ -379,7 +447,7 @@ siblings.forEach((sibling, index) => {
 });
 ```
 
-### 5.2 根节点与 Mindmap 同步
+### 7.3 根节点与 Mindmap 同步
 
 ```typescript
 updateNodeTitle: (nodeId, newTitle) => {
@@ -394,7 +462,7 @@ updateNodeTitle: (nodeId, newTitle) => {
 };
 ```
 
-### 5.3 递归删除子树
+### 7.4 递归删除子树
 
 ```typescript
 // 递归收集所有子孙节点
@@ -421,7 +489,7 @@ toDelete.forEach((id) => {
 });
 ```
 
-### 5.4 选中状态维护
+### 7.5 选中状态维护
 
 所有修改选中状态的操作都确保不变式:
 
@@ -436,178 +504,60 @@ function checkInvariant(state: EditorState) {
 }
 ```
 
-### 5.5 使用 Immer 中间件
-
-```typescript
-export const useMindmapEditorStore = create<MindmapEditorStore>()(
-  immer((set, get) => ({
-    // 在 set() 中可以直接"修改" state
-    // Immer 会自动转换为不可变更新
-    addChildNode: (params) => {
-      set((state) => {
-        // 直接修改,Immer 处理不可变性
-        state.nodes.set(shortId, newNode);
-        state.isDirty = true;
-      });
-    },
-  }))
-);
-```
 
 ---
 
-## 6. 约束验证
+## 8. 使用示例
 
-所有操作都包含必要的约束验证,确保数据一致性。
-
-### 6.1 节点存在性验证
-
-```typescript
-const node = state.nodes.get(nodeId);
-if (!node) {
-  throw new Error(`节点不存在: ${nodeId}`);
-}
-```
-
-### 6.2 父节点验证
-
-```typescript
-const parent = state.nodes.get(parentId);
-if (!parent) {
-  throw new Error(`父节点不存在: ${parentId}`);
-}
-```
-
-### 6.3 position 范围验证
-
-```typescript
-if (position < 0) {
-  throw new Error(`position 不能为负数: ${position}`);
-}
-```
-
-### 6.4 根节点保护
-
-```typescript
-if (node.node_type === "root") {
-  throw new Error("不能删除根节点");
-}
-```
-
-### 6.5 思维导图匹配验证
-
-```typescript
-if (!state.currentMindmap || state.currentMindmap.id !== mindmapId) {
-  throw new Error(`思维导图不存在或不匹配: ${mindmapId}`);
-}
-```
-
----
-
-## 7. 使用示例
-
-### 7.1 基础用法
+### 8.1 基础用法
 
 ```typescript
 import { useMindmapEditorStore } from '@/lib/store';
 
 function MindmapEditor() {
-  const {
-    nodes,
-    currentNode,
-    selectedNodes,
-    addChildNode,
-    selectNode,
-    updateNodeTitle,
-    deleteNode,
-  } = useMindmapEditorStore();
+  const { currentNode, addChildNode, selectNode } = useMindmapEditorStore();
 
-  // 添加子节点
+  // 添加子节点示例
   const handleAddChild = () => {
     if (!currentNode) return;
 
     const newNode = addChildNode({
       parentId: currentNode,
-      position: 0, // 插入到最前面
-      title: '新节点',
-      content: '节点内容',
+      position: 0,
+      title: '新节点'
     });
 
-    // 选中新创建的节点
     selectNode(newNode.short_id);
   };
 
-  // 更新标题
-  const handleUpdateTitle = (nodeId: string, title: string) => {
-    updateNodeTitle(nodeId, title);
-  };
-
-  // 删除节点
-  const handleDelete = (nodeId: string) => {
-    try {
-      deleteNode(nodeId);
-    } catch (error) {
-      console.error('删除失败:', error);
-    }
-  };
-
-  return (
-    <div>
-      {/* UI 实现 */}
-    </div>
-  );
+  // ... 其他操作类似
 }
 ```
 
-### 7.2 获取节点层次结构
+### 8.2 构建节点树与多选
 
 ```typescript
-function useNodeTree(mindmapId: string) {
-  const { getRootNode, getChildren } = useMindmapEditorStore();
+// 递归构建节点树
+const buildTree = (nodeId: string) => {
+  const children = getChildren(nodeId);
+  return children.map(child => ({
+    node: child,
+    children: buildTree(child.short_id)
+  }));
+};
 
-  const root = getRootNode(mindmapId);
-  if (!root) return null;
-
-  // 递归构建树
-  const buildTree = (nodeId: string) => {
-    const children = getChildren(nodeId);
-    return children.map((child) => ({
-      node: child,
-      children: buildTree(child.short_id),
-    }));
-  };
-
-  return {
-    root,
-    tree: buildTree(root.short_id),
-  };
-}
-```
-
-### 7.3 多选操作
-
-```typescript
-function NodeList() {
-  const { selectNode, selectedNodes } = useMindmapEditorStore();
-
-  const handleNodeClick = (nodeId: string, event: React.MouseEvent) => {
-    const multiSelect = event.metaKey || event.ctrlKey;
-    selectNode(nodeId, multiSelect);
-  };
-
-  return (
-    <div>
-      {/* 渲染节点列表 */}
-    </div>
-  );
-}
+// 多选操作
+const handleNodeClick = (nodeId: string, event: React.MouseEvent) => {
+  const multiSelect = event.metaKey || event.ctrlKey;
+  selectNode(nodeId, multiSelect);
+};
 ```
 
 ---
 
-## 8. 设计原则
+## 9. 设计原则
 
-### 8.1 单一职责
+### 9.1 单一职责
 
 Store 仅负责状态管理和领域操作,不包含:
 
@@ -616,11 +566,11 @@ Store 仅负责状态管理和领域操作,不包含:
 - 网络请求
 - 撤销/重做历史管理
 
-### 8.2 数据不可变
+### 9.2 数据不可变
 
 通过 Immer 中间件确保所有状态更新都是不可变的,避免意外修改导致的 bug。
 
-### 8.3 约束优先
+### 9.3 约束优先
 
 所有领域约束在代码层面强制执行,而不是依赖文档或开发者自觉:
 
@@ -628,7 +578,7 @@ Store 仅负责状态管理和领域操作,不包含:
 - 焦点与选中的不变式 → 所有相关操作自动维护
 - `order_index` 连续性 → 自动维护,无需手动管理
 
-### 8.4 类型安全
+### 9.4 类型安全
 
 完整的 TypeScript 类型定义,编译时发现问题:
 
@@ -647,7 +597,7 @@ addChildNode({
 });
 ```
 
-### 8.5 明确的 API
+### 9.5 明确的 API
 
 - 所有操作都有清晰的参数类型
 - 所有操作都有明确的行为定义
@@ -655,7 +605,9 @@ addChildNode({
 
 ---
 
-## 9. 文件结构
+## 10. 附录
+
+### 10.1 文件结构
 
 ```
 lib/store/
@@ -669,9 +621,7 @@ lib/store/
     └── useMindMapEditorStore    # Zustand store
 ```
 
----
-
-## 10. 已实现功能清单
+### 10.2 已实现功能清单
 
 - [x] Zustand + Immer 状态管理
 - [x] 完整的 TypeScript 类型定义
@@ -699,9 +649,14 @@ lib/store/
 - [x] 完整的约束验证
 - [x] 递归删除子树
 
----
+### 10.3 更新历史
 
-## 11. 参考资料
+| 日期 | 版本 | 修改内容 | 作者 |
+|------|------|---------|------|
+| 2025-10-02 | v1.0 | 初始版本 | - |
+| 2025-01-06 | v1.1 | 添加名词解释章节，调整章节结构，精简示例代码 | - |
+
+### 10.4 参考资料
 
 - [Zustand 官方文档](https://github.com/pmndrs/zustand)
 - [Immer 官方文档](https://immerjs.github.io/immer/)
