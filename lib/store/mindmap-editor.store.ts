@@ -8,6 +8,7 @@ import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import { enableMapSet } from "immer";
 import { nanoid } from "nanoid";
+import { generateShortId } from "@/lib/utils/short-id";
 import type { MindmapNode } from "@/lib/types";
 import type {
   MindmapEditorStore,
@@ -62,7 +63,7 @@ export const useMindmapEditorStore = create<MindmapEditorStore>()(
         const insertPosition = Math.min(position, count);
 
         // 创建新节点
-        const shortId = nanoid(10);
+        const shortId = generateShortId();
         newNode = {
           id: nanoid(), // UUID,仅用于数据库
           short_id: shortId,
@@ -127,7 +128,7 @@ export const useMindmapEditorStore = create<MindmapEditorStore>()(
         const insertPosition = Math.min(position, count);
 
         // 创建新浮动节点
-        const shortId = nanoid(10);
+        const shortId = generateShortId();
         newNode = {
           id: nanoid(),
           short_id: shortId,
