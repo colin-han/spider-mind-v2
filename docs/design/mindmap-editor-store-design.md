@@ -660,8 +660,6 @@ lib/store/
 
 - [Zustand 官方文档](https://github.com/pmndrs/zustand)
 - [Immer 官方文档](https://immerjs.github.io/immer/)
-- [领域模型设计文档](../.claude/logs/mindmap-domain-model.md)
-- [实现总结文档](../.claude/logs/mindmap-store-implementation.md)
 
 ---
 
