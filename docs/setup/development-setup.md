@@ -466,8 +466,8 @@ git push origin feature/your-feature-name
 
 ### 项目相关文档
 
-- [项目结构说明](./project-structure.md)
-- [代码规范文档](./coding-standards.md)
+- [项目结构说明](../standard/project-structure.md)
+- [代码规范文档](../standard/coding-standards.md)
 
 ---
 
