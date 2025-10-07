@@ -295,19 +295,52 @@ Tailwind 默认断点（移动优先）：
 
 ## 主题和深色模式
 
-### 深色模式类名
+### 深色模式配置策略
+
+项目使用 `media` 策略，深色模式自动跟随系统偏好设置：
+
+```typescript
+// tailwind.config.ts
+export default {
+  darkMode: "media", // 跟随系统设置
+  // ...
+};
+```
+
+**两种策略对比**:
+
+| 策略    | 触发方式         | 优点                          | 缺点                              | 适用场景                          |
+| ------- | ---------------- | ----------------------------- | --------------------------------- | --------------------------------- |
+| `media` | 自动跟随系统     | 无需额外代码<br/>用户体验一致 | 无法手动切换                      | 工具类应用<br/>系统级应用         |
+| `class` | 手动添加 `.dark` | 可手动切换<br/>更灵活         | 需要实现切换逻辑<br/>存储用户偏好 | 内容型网站<br/>需要独立切换的应用 |
+
+**当前项目行为**:
+
+- ✅ 深色模式自动跟随用户的系统偏好设置
+- ✅ 无需手动切换，减少用户操作
+- ❌ 无法在应用内独立切换深色模式
+
+### 深色模式类名使用
+
+使用 `dark:` 前缀定义深色模式下的样式：
 
 ```tsx
 // ✅ 推荐：使用 dark: 前缀
 <div
   className={cn(
     "bg-white text-gray-900", // 浅色模式
-    "dark:bg-gray-900 dark:text-white" // 深色模式
+    "dark:bg-gray-900 dark:text-white" // 深色模式（自动生效）
   )}
 >
   内容
 </div>
 ```
+
+**工作原理**:
+
+- 当系统切换到深色模式时，`dark:` 前缀的样式自动生效
+- 不需要任何 JavaScript 代码
+- 响应速度快，无闪烁
 
 ### 主题颜色变量
 
@@ -324,6 +357,100 @@ Tailwind 默认断点（移动优先）：
   主要按钮
 </button>
 ```
+
+### 切换到手动控制（可选）
+
+如果产品需求需要应用内切换深色模式，可以按以下步骤修改：
+
+#### 1. 更新 Tailwind 配置
+
+```typescript
+// tailwind.config.ts
+export default {
+  darkMode: "class", // 改为 class 策略
+  // ...
+};
+```
+
+#### 2. 创建深色模式切换组件
+
+```tsx
+// components/ui/theme-toggle.tsx
+"use client";
+
+import { useState, useEffect } from "react";
+
+export function ThemeToggle() {
+  const [isDark, setIsDark] = useState(false);
+
+  // 初始化时从 localStorage 读取
+  useEffect(() => {
+    const stored = localStorage.getItem("theme");
+    const prefersDark = window.matchMedia(
+      "(prefers-color-scheme: dark)"
+    ).matches;
+    const shouldBeDark = stored === "dark" || (!stored && prefersDark);
+
+    setIsDark(shouldBeDark);
+    document.documentElement.classList.toggle("dark", shouldBeDark);
+  }, []);
+
+  const toggleTheme = () => {
+    const newTheme = !isDark;
+    setIsDark(newTheme);
+
+    // 更新 DOM 和存储
+    document.documentElement.classList.toggle("dark", newTheme);
+    localStorage.setItem("theme", newTheme ? "dark" : "light");
+  };
+
+  return (
+    <button
+      onClick={toggleTheme}
+      className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700"
+      aria-label="切换深色模式"
+    >
+      {isDark ? "🌙" : "☀️"}
+    </button>
+  );
+}
+```
+
+#### 3. 防止主题闪烁（FOUC）
+
+在页面加载前设置主题：
+
+```tsx
+// app/layout.tsx
+export default function RootLayout({ children }) {
+  return (
+    <html lang="zh-CN" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                const theme = localStorage.getItem('theme');
+                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (theme === 'dark' || (!theme && prefersDark)) {
+                  document.documentElement.classList.add('dark');
+                }
+              })();
+            `,
+          }}
+        />
+      </head>
+      <body>{children}</body>
+    </html>
+  );
+}
+```
+
+**注意事项**:
+
+- 使用 `class` 策略后，`dark:` 前缀只在 `<html class="dark">` 时生效
+- 需要处理首次加载时的主题闪烁问题（FOUC）
+- 需要在 localStorage 中存储用户偏好
 
 ## 性能优化
 
