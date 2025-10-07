@@ -13,13 +13,13 @@
 
 本节定义该设计文档引入的新概念。
 
-| 概念 | 定义 | 示例/说明 |
-|------|------|----------|
-| 双ID机制 | 同一实体使用UUID和short_id两种标识符的设计模式 | UUID内部使用，short_id对外展示 |
-| short_id | 6字符base36编码的短标识符，范围内唯一 | 如: "a1b2c3" |
-| 范围唯一性 | ID仅在特定范围内保证唯一，而非全局唯一 | mindmap.short_id在user_id范围内唯一 |
-| 用户范围 | 以user_id为边界的ID唯一性范围 | 同一用户的所有mindmap不重复 |
-| 导图范围 | 以mindmap_id为边界的ID唯一性范围 | 同一导图的所有节点不重复 |
+| 概念       | 定义                                           | 示例/说明                           |
+| ---------- | ---------------------------------------------- | ----------------------------------- |
+| 双ID机制   | 同一实体使用UUID和short_id两种标识符的设计模式 | UUID内部使用，short_id对外展示      |
+| short_id   | 6字符base36编码的短标识符，范围内唯一          | 如: "a1b2c3"                        |
+| 范围唯一性 | ID仅在特定范围内保证唯一，而非全局唯一         | mindmap.short_id在user_id范围内唯一 |
+| 用户范围   | 以user_id为边界的ID唯一性范围                  | 同一用户的所有mindmap不重复         |
+| 导图范围   | 以mindmap_id为边界的ID唯一性范围               | 同一导图的所有节点不重复            |
 
 ## 概述
 
@@ -31,10 +31,10 @@
 
 ### ID 规格速查
 
-| 实体 | UUID 主键 | Short ID | 唯一性范围 |
-|------|-----------|----------|-----------|
-| mindmap | id: uuid | short_id: 6字符 base36 | user_id 范围内 |
-| mindmap_node | id: uuid | short_id: 6字符 base36 | mindmap_id 范围内 |
+| 实体         | UUID 主键 | Short ID               | 唯一性范围        |
+| ------------ | --------- | ---------------------- | ----------------- |
+| mindmap      | id: uuid  | short_id: 6字符 base36 | user_id 范围内    |
+| mindmap_node | id: uuid  | short_id: 6字符 base36 | mindmap_id 范围内 |
 
 ### 常用 SQL
 
@@ -53,15 +53,15 @@ WHERE mindmap_id = $1 AND short_id = $2;
 ```typescript
 // lib/types/mindmap.ts
 interface Mindmap {
-  id: string;        // UUID
-  short_id: string;  // 6字符 base36
+  id: string; // UUID
+  short_id: string; // 6字符 base36
   user_id: string;
   // ...
 }
 
 interface MindmapNode {
-  id: string;        // UUID
-  short_id: string;  // 6字符 base36
+  id: string; // UUID
+  short_id: string; // 6字符 base36
   mindmap_id: string;
   parent_id: string | null;
   // ...
@@ -73,11 +73,13 @@ interface MindmapNode {
 ### 为什么需要双 ID 机制？
 
 **用户体验需求**:
+
 - URL 需要简短、易读、易分享
 - 用户希望看到友好的 ID,而不是长串的 UUID
 - 内容引用需要简洁的标识符
 
 **系统性能需求**:
+
 - 数据库需要高效的主键(UUID 性能好)
 - 需要快速的索引和 join 操作
 - 分布式系统需要全局唯一的标识符
@@ -85,16 +87,19 @@ interface MindmapNode {
 ### 为什么不使用单一 ID？
 
 **仅使用 UUID**:
+
 - ❌ URL 过长: `/@colin/550e8400-e29b-41d4-a716-446655440000`
 - ❌ 用户体验差,难以记忆和分享
 - ❌ 在 Markdown 中引用不方便
 
 **仅使用 Short ID**:
+
 - ❌ 全局唯一需要更长的 ID(冲突风险高)
 - ❌ 数据库性能可能不如 UUID
 - ❌ 分布式系统下管理复杂
 
 **双 ID 方案**:
+
 - ✅ 内部使用 UUID(性能、唯一性)
 - ✅ 对外使用 short_id(用户体验)
 - ✅ 范围唯一允许使用更短的 ID
@@ -172,34 +177,36 @@ interface MindmapNode {
 
 ### Mindmaps 表结构
 
-| 字段 | 类型 | 说明 | 约束 |
-|------|------|------|------|
-| id | uuid | 主键 | PRIMARY KEY, DEFAULT gen_random_uuid() |
-| user_id | uuid | 用户ID | NOT NULL, REFERENCES auth.users(id) |
-| short_id | text | 用户可见ID | NOT NULL, CHECK(short_id = lower(short_id)) |
-| title | text | 标题 | NOT NULL |
-| created_at | timestamptz | 创建时间 | DEFAULT now() |
-| updated_at | timestamptz | 更新时间 | DEFAULT now() |
-| deleted_at | timestamptz | 删除时间 | NULL |
+| 字段       | 类型        | 说明       | 约束                                        |
+| ---------- | ----------- | ---------- | ------------------------------------------- |
+| id         | uuid        | 主键       | PRIMARY KEY, DEFAULT gen_random_uuid()      |
+| user_id    | uuid        | 用户ID     | NOT NULL, REFERENCES auth.users(id)         |
+| short_id   | text        | 用户可见ID | NOT NULL, CHECK(short_id = lower(short_id)) |
+| title      | text        | 标题       | NOT NULL                                    |
+| created_at | timestamptz | 创建时间   | DEFAULT now()                               |
+| updated_at | timestamptz | 更新时间   | DEFAULT now()                               |
+| deleted_at | timestamptz | 删除时间   | NULL                                        |
 
 **约束**:
+
 ```sql
 CONSTRAINT unique_user_short_id UNIQUE (user_id, short_id)
 ```
 
 ### Mindmap Nodes 表结构
 
-| 字段 | 类型 | 说明 | 约束 |
-|------|------|------|------|
-| id | uuid | 主键 | PRIMARY KEY, DEFAULT gen_random_uuid() |
-| mindmap_id | uuid | 所属导图 | NOT NULL, REFERENCES mindmaps(id) ON DELETE CASCADE |
-| parent_id | uuid | 父节点 | NULL, REFERENCES mindmap_nodes(id) |
-| short_id | text | 用户可见ID | NOT NULL, CHECK(short_id = lower(short_id)) |
-| content | text | 内容 | NOT NULL |
-| created_at | timestamptz | 创建时间 | DEFAULT now() |
-| updated_at | timestamptz | 更新时间 | DEFAULT now() |
+| 字段       | 类型        | 说明       | 约束                                                |
+| ---------- | ----------- | ---------- | --------------------------------------------------- |
+| id         | uuid        | 主键       | PRIMARY KEY, DEFAULT gen_random_uuid()              |
+| mindmap_id | uuid        | 所属导图   | NOT NULL, REFERENCES mindmaps(id) ON DELETE CASCADE |
+| parent_id  | uuid        | 父节点     | NULL, REFERENCES mindmap_nodes(id)                  |
+| short_id   | text        | 用户可见ID | NOT NULL, CHECK(short_id = lower(short_id))         |
+| content    | text        | 内容       | NOT NULL                                            |
+| created_at | timestamptz | 创建时间   | DEFAULT now()                                       |
+| updated_at | timestamptz | 更新时间   | DEFAULT now()                                       |
 
 **约束**:
+
 ```sql
 CONSTRAINT unique_map_short_id UNIQUE (mindmap_id, short_id)
 ```
@@ -257,83 +264,41 @@ interface MindmapNode {
 
 ### Short ID 生成
 
-```typescript
-import { customAlphabet } from "nanoid";
+**统一方案**：
 
-// 定义字符集和长度
-const alphabet = "abcdefghijklmnopqrstuvwxyz0123456789";
-const generateShortId = customAlphabet(alphabet, 6);
+- 使用 `lib/utils/short-id.ts` 中的 `generateShortId()` 工具函数
+- 基于 nanoid 库，使用 base36 字符集 (a-z0-9)
+- 自动处理保留词检查，避免冲突
+- 生成失败时抛出异常，由调用方处理
 
-// 为 mindmap 生成唯一 short_id
-async function generateUniqueMindmapShortId(userId: string): Promise<string> {
-  const maxRetries = 3;
+**实现要点**：
 
-  for (let i = 0; i < maxRetries; i++) {
-    const shortId = generateShortId();
-
-    // 检查保留词
-    if (isReservedShortId(shortId)) {
-      continue;
-    }
-
-    // 检查是否在该用户范围内已存在
-    const { data } = await supabase
-      .from("mindmaps")
-      .select("id")
-      .eq("user_id", userId)
-      .eq("short_id", shortId)
-      .single();
-
-    if (!data) return shortId;
-  }
-
-  throw new Error("Failed to generate unique short_id after retries");
-}
-
-// 为 node 生成唯一 short_id
-async function generateUniqueNodeShortId(mindmapId: string): Promise<string> {
-  const maxRetries = 3;
-
-  for (let i = 0; i < maxRetries; i++) {
-    const shortId = generateShortId();
-
-    // 检查保留词
-    if (isReservedShortId(shortId)) {
-      continue;
-    }
-
-    // 检查是否在该 mindmap 范围内已存在
-    const { data } = await supabase
-      .from("mindmap_nodes")
-      .select("id")
-      .eq("mindmap_id", mindmapId)
-      .eq("short_id", shortId)
-      .single();
-
-    if (!data) return shortId;
-  }
-
-  throw new Error("Failed to generate unique short_id after retries");
-}
-```
+1. 生成 6 位随机字符
+2. 检查是否为保留词
+3. 如果是保留词，自动重试
+4. 超过重试次数抛出异常
 
 ### 保留词处理
 
-```typescript
-const RESERVED_SHORT_IDS = [
-  "new",
-  "create",
-  "edit",
-  "delete",
-  "api",
-  "admin",
-  "settings",
-];
+**策略**：
 
-function isReservedShortId(shortId: string): boolean {
-  return RESERVED_SHORT_IDS.includes(shortId);
-}
-```
+- 仅检查长度为 6 的保留词（与 short_id 长度匹配）
+- 保留词列表定义在 `lib/constants/reserved-words.ts`
+- 生成时自动避开，无需调用方处理
+
+**保留词类别**：
+
+- 系统路由：create, delete, system, config, update, remove
+- 常见操作：export, import, backup, upload, search
+- 用户相关：logout, signup, signin, verify
+- 权限状态：public, shared, secret, active, hidden, locked
+- 其他：folder, static 等
+
+**处理机制**：
+
+- 生成时自动检查并重试
+- 极小概率连续生成保留词时抛出异常
+- 调用方需要捕获异常并处理
 
 ### 数据库查询
 
@@ -356,12 +321,15 @@ ORDER BY created_at;
 
 ```markdown
 # 方式 1: 双方括号
+
 参考 [[xyz789]] 的内容
 
 # 方式 2: @ 符号
+
 参考 @xyz789 的分析
 
 # 方式 3: 带标题(可选)
+
 参考 [[xyz789|节点标题]] 的内容
 ```
 
@@ -370,16 +338,19 @@ ORDER BY created_at;
 ### 决策 1: Short ID 长度为什么是 6 字符？
 
 **考虑因素**:
+
 - 4字符: 36^4 = 1,679,616 (冲突风险较高)
 - 6字符: 36^6 = 2,176,782,336 (冲突风险 < 0.023% for 1000 items)
 - 8字符: 36^8 = 2.8万亿 (过于冗长)
 
 **决策**: 选择 6 字符
+
 - 平衡了简洁性和唯一性
 - 单个用户 1000 个 mindmap 时冲突概率仍然很低 (0.023%)
 - URL 简短: `/@colin/abc123` vs `/@colin/abc12345`
 
 **命名空间分析**:
+
 - 总空间: 36^6 = 2,176,782,336 (21亿+组合)
 - 100 个项目: 冲突概率 0.0002%
 - 1000 个项目: 冲突概率 0.023%
@@ -390,6 +361,7 @@ ORDER BY created_at;
 **base36**: 仅包含小写字母 + 数字 (a-z0-9)
 
 **选择 base36 的原因**:
+
 - ✅ URL 友好(避免大小写混淆)
 - ✅ 易于阅读和口述
 - ✅ 避免 O/0, l/1/I 等容易混淆的字符组合
@@ -399,10 +371,12 @@ ORDER BY created_at;
 ### 决策 3: 范围唯一 vs 全局唯一
 
 **选择**: 范围唯一
+
 - mindmap.short_id 在 user_id 范围内唯一
 - mindmap_node.short_id 在 mindmap_id 范围内唯一
 
 **理由**:
+
 - 允许使用更短的 ID
 - 符合数据隔离原则(不同用户的 ID 可以重复)
 - 降低冲突风险
@@ -413,6 +387,7 @@ ORDER BY created_at;
 **选择**: 应用层生成(使用 nanoid)
 
 **理由**:
+
 - ✅ 更好的控制和错误处理
 - ✅ 可以实现保留词过滤
 - ✅ 可以实现重试机制
@@ -424,6 +399,7 @@ ORDER BY created_at;
 **选择**: 删除的 mindmap 的 short_id 不复用
 
 **理由**:
+
 - ✅ 避免用户混淆(旧链接不会指向新内容)
 - ✅ 保持链接的稳定性
 - ✅ 简化实现(唯一约束不需要排除已删除记录)
@@ -454,6 +430,7 @@ ORDER BY created_at;
 ### Q1: Short ID 冲突了怎么办？
 
 A:
+
 1. 数据库的 UNIQUE 约束会拒绝插入
 2. 应用层实现重试机制(生成新的 short_id)
 3. 建议最多重试 3 次,仍失败则返回错误给用户
@@ -461,6 +438,7 @@ A:
 ### Q2: Short ID 可以手动指定吗？
 
 A:
+
 - 当前版本不支持手动指定
 - 未来可以考虑添加自定义 short_id 功能(参考"未来扩展"章节)
 - 如果确实需要,必须验证:
@@ -472,6 +450,7 @@ A:
 ### Q3: UUID 和 Short ID 的映射关系如何维护？
 
 A:
+
 - 存储在同一条数据库记录中
 - UUID 用于内部关联(外键,如 parent_id, mindmap_id)
 - Short ID 用于 URL 和用户可见场景
@@ -480,6 +459,7 @@ A:
 ### Q4: 为什么不使用自增 ID？
 
 A:
+
 - ❌ 自增 ID 容易被猜测(安全问题)
 - ❌ 分布式系统下自增 ID 管理复杂
 - ❌ 暴露数据规模(如 id=5 说明只有 5 个)
@@ -490,6 +470,7 @@ A:
 ### Q5: 软删除的 mindmap 的 short_id 会被复用吗？
 
 A:
+
 - 不会复用
 - 唯一约束不排除已删除的记录
 - 这样可以避免旧链接指向新内容,造成用户混淆
@@ -560,6 +541,7 @@ mindmaps:
 ```
 
 URL 结构:
+
 ```
 /@{username}/{map-short-id}              -> 公开访问
 /s/{share-token}                         -> 私密分享访问
@@ -631,7 +613,8 @@ const RESERVED_USERNAMES = [
 
 ## 修订历史
 
-| 日期 | 版本 | 修改内容 | 作者 |
-|------|------|---------|------|
-| 2024 | 1.0 | 初始版本 | Colin Han |
-| 2025-10-04 | 2.0 | 重构: 添加快速参考、背景和动机、设计决策、FAQ 章节;优化结构和格式 | Claude Code |
+| 日期       | 版本 | 修改内容                                                                        | 作者        |
+| ---------- | ---- | ------------------------------------------------------------------------------- | ----------- |
+| 2024       | 1.0  | 初始版本                                                                        | Colin Han   |
+| 2025-10-04 | 2.0  | 重构: 添加快速参考、背景和动机、设计决策、FAQ 章节;优化结构和格式               | Claude Code |
+| 2025-10-07 | 2.1  | 强调统一使用工具函数；添加保留词检查机制（仅检查 6 位保留词）；精简实现代码示例 | Claude      |
