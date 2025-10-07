@@ -11,11 +11,14 @@ spider-mind-v2/
 ├── __mocks__/                  # Jest 模拟文件
 ├── __tests__/                  # 单元测试全局测试文件
 ├── app/                        # Next.js 13+ App Router 应用目录
+├── components/                 # React 组件（按功能分组）
 ├── coverage/                   # 测试覆盖率报告
 ├── docs/                       # 项目文档
-├── lib/                        # 共享工具库和配置
+├── lib/                        # 核心业务逻辑和工具
+├── public/                     # 静态资源
 ├── playwright-report/          # Playwright 测试报告
 ├── scripts/                    # 开发和部署脚本
+├── supabase/                   # 数据库迁移和函数
 ├── test-results/              # 测试运行结果
 ├── tests/                      # 测试文件集合
 └── 配置文件...                 # 各种配置文件
@@ -29,7 +32,10 @@ spider-mind-v2/
 app/
 ├── (auth)/                     # 路由组: 认证相关页面
 │   ├── login/                  # 登录页面
-│   └── register/               # 注册页面
+│   └── signup/                 # 注册页面
+├── dashboard/                  # 仪表板页面
+├── mindmaps/                   # 思维导图相关页面
+│   └── [shortId]/             # 动态路由
 ├── api/                        # API 路由
 │   ├── auth/                   # 认证 API
 │   └── nodes/                  # 节点管理 API
@@ -53,34 +59,54 @@ app/
 - 使用路由组 `()` 来组织相关页面
 - API 路由使用 Route Handlers
 
-### `/lib` - 共享工具库
+### `/components` - React 组件
 
 ```
-lib/
-├── components/                 # 可复用组件
-│   ├── ui/                     # 基础 UI 组件
-│   ├── forms/                  # 表单组件
-│   └── charts/                 # 图表组件
-├── hooks/                      # 自定义 React Hooks
-├── services/                   # 服务层 (API 调用等)
-├── stores/                     # 状态管理 (Zustand/Redux)
-├── types/                      # TypeScript 类型定义
-├── utils/                      # 工具函数
-└── config.ts                   # 应用配置
+components/
+├── auth/                       # 认证相关组件
+├── dashboard/                  # 仪表板组件
+├── mindmap/                    # 思维导图组件
+└── ui/                        # 通用 UI 组件
 ```
 
 **职责:**
 
-- 提供可复用的组件、hooks 和工具函数
+- 放在项目根目录（不在 lib/ 下）
+- 按功能模块组织组件
+- 提供可复用的 UI 组件
+
+**规范:**
+
+- 组件使用 PascalCase 命名
+- 文件使用 kebab-case 命名（如 `mindmap-node.tsx`）
+- 每个组件目录可包含组件文件和相关样式
+
+### `/lib` - 核心业务逻辑和工具
+
+```
+lib/
+├── actions/                    # Server Actions（Next.js 服务端操作）
+├── hooks/                      # 自定义 React Hooks
+├── providers/                  # React Context Providers
+├── store/                      # Zustand 状态管理
+├── supabase/                   # Supabase 客户端配置
+├── types/                      # TypeScript 类型定义
+└── utils/                      # 工具函数
+```
+
+**职责:**
+
+- 管理应用的核心业务逻辑
+- 提供数据访问层和状态管理
 - 定义应用的类型系统
-- 管理全局状态和配置
+- 提供工具函数和自定义 hooks
 
 **规范:**
 
 - 所有导出使用命名导出，避免默认导出
-- 组件使用 PascalCase 命名
 - hooks 使用 camelCase 并以 `use` 开头
 - 工具函数使用 camelCase 命名
+- Server Actions 放在 `actions/` 目录
 
 ### `/tests` - 测试文件
 
@@ -111,6 +137,27 @@ tests/
 - E2E 测试使用 `.spec.ts` 后缀
 - 单元测试使用 `.test.ts` 后缀
 - 页面对象使用 PascalCase 命名并继承 `BasePage`
+
+### `/supabase` - 数据库和后端功能
+
+```
+supabase/
+├── migrations/                 # 数据库迁移文件
+├── functions/                  # Edge Functions（Serverless 函数）
+└── seed.sql                   # 数据库种子数据（如有）
+```
+
+**职责:**
+
+- 管理数据库 schema 和迁移
+- 定义 Edge Functions
+- 提供数据库初始化脚本
+
+**规范:**
+
+- 迁移文件按时间戳命名
+- Functions 使用 TypeScript 编写
+- 遵循 Supabase 最佳实践
 
 ### `/scripts` - 开发脚本
 
@@ -153,7 +200,10 @@ docs/
 | `tsconfig.json`      | TypeScript 编译配置 |
 | `next.config.js`     | Next.js 框架配置    |
 | `tailwind.config.ts` | Tailwind CSS 配置   |
-| `.env.local`         | 环境变量配置        |
+| `postcss.config.mjs` | PostCSS 配置        |
+| `middleware.ts`      | Next.js 中间件      |
+| `.env.local`         | 本地环境变量配置    |
+| `.env.example`       | 环境变量示例文件    |
 
 ### 代码质量配置
 
@@ -176,14 +226,16 @@ docs/
 
 ### 组件文件
 
-- **React 组件**: PascalCase (`UserProfile.tsx`)
+- **React 组件文件**: kebab-case (`user-profile.tsx`, `mindmap-node.tsx`)
+- **React 组件导出**: PascalCase (`export function UserProfile()`)
 - **页面组件**: `page.tsx` (Next.js App Router 约定)
 - **布局组件**: `layout.tsx` (Next.js App Router 约定)
 
 ### 工具和配置文件
 
-- **工具函数**: camelCase (`formatDate.ts`)
-- **常量文件**: UPPER_SNAKE_CASE (`API_CONSTANTS.ts`)
+- **工具函数文件**: kebab-case (`format-date.ts`, `cn.ts`)
+- **工具函数导出**: camelCase (`export function formatDate()`)
+- **常量文件**: kebab-case (`api-constants.ts`)
 - **配置文件**: kebab-case (`api-config.ts`)
 
 ### 测试文件
@@ -204,7 +256,7 @@ docs/
 
 ### 2. 添加新组件
 
-1. 在 `lib/components/` 相应分类下创建组件文件
+1. 在 `components/` 相应分类下创建组件文件（使用 kebab-case 命名）
 2. 编写组件的 TypeScript 类型定义
 3. 添加单元测试文件
 4. 更新相关的页面或父组件
@@ -234,12 +286,14 @@ import { NextRequest } from "next/server";
 
 // 2. 第三方库
 import { z } from "zod";
-import clsx from "clsx";
+import { clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
 
 // 3. 内部组件和工具 (按层级从高到低)
-import { Button } from "@/lib/components/ui/Button";
-import { useAuth } from "@/lib/hooks/useAuth";
-import { formatDate } from "@/lib/utils/dateUtils";
+import { Button } from "@/components/ui/button";
+import { MindmapNode } from "@/components/mindmap/mindmap-node";
+import { useAuth } from "@/lib/hooks/use-auth";
+import { cn } from "@/lib/utils/cn";
 
 // 4. 类型导入 (使用 type 关键字)
 import type { User } from "@/lib/types/auth";

@@ -1,4 +1,5 @@
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
+import { cn } from "@/lib/utils/cn";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: "primary" | "secondary" | "ghost";
@@ -7,6 +8,21 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode;
 }
 
+const buttonVariants = {
+  primary:
+    "bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200 focus:ring-black dark:focus:ring-white",
+  secondary:
+    "bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white hover:bg-gray-300 dark:hover:bg-gray-600 focus:ring-gray-500",
+  ghost:
+    "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 focus:ring-gray-500",
+};
+
+const buttonSizes = {
+  sm: "px-3 py-1.5 text-sm rounded-md",
+  md: "px-4 py-2 text-base rounded-lg",
+  lg: "px-6 py-3 text-lg rounded-lg",
+};
+
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   function Button(
     {
@@ -14,34 +30,23 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       size = "md",
       loading = false,
       disabled,
-      className = "",
+      className,
       children,
       ...props
     },
     ref
   ) {
-    const baseStyles =
-      "inline-flex items-center justify-center font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed";
-
-    const variants = {
-      primary:
-        "bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200 focus:ring-black dark:focus:ring-white",
-      secondary:
-        "bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white hover:bg-gray-300 dark:hover:bg-gray-600 focus:ring-gray-500",
-      ghost:
-        "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 focus:ring-gray-500",
-    };
-
-    const sizes = {
-      sm: "px-3 py-1.5 text-sm rounded-md",
-      md: "px-4 py-2 text-base rounded-lg",
-      lg: "px-6 py-3 text-lg rounded-lg",
-    };
-
     return (
       <button
         ref={ref}
-        className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${className}`}
+        className={cn(
+          "inline-flex items-center justify-center font-medium transition-colors",
+          "focus:outline-none focus:ring-2 focus:ring-offset-2",
+          "disabled:opacity-50 disabled:cursor-not-allowed",
+          buttonVariants[variant],
+          buttonSizes[size],
+          className
+        )}
         disabled={disabled || loading}
         {...props}
       >

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { MindmapNode as MindmapNodeType } from "@/lib/types";
 import toast from "react-hot-toast";
+import { cn } from "@/lib/utils/cn";
 
 interface MindmapNodeProps {
   node: MindmapNodeType;
@@ -157,16 +158,17 @@ export function MindmapNode({ node, hasChildren }: MindmapNodeProps) {
     return "📄";
   };
 
-  // 节点样式
-  const nodeClasses = `
-    group flex items-center gap-2 py-2 px-3 rounded-lg transition-all cursor-pointer
-    ${isSelected ? "bg-blue-50 border-2 border-blue-500" : "border-2 border-transparent hover:bg-gray-50"}
-    ${isEditing ? "bg-blue-50 border-2 border-blue-300" : ""}
-  `;
-
   return (
     <div
-      className={nodeClasses}
+      className={cn(
+        "group flex items-center gap-2 py-2 px-3 rounded-lg transition-all cursor-pointer",
+        "border-2",
+        {
+          "bg-blue-50 border-blue-500": isSelected,
+          "border-transparent hover:bg-gray-50": !isSelected && !isEditing,
+          "bg-blue-50 border-blue-300": isEditing,
+        }
+      )}
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
       data-testid={`mindmap-node-${node.short_id}`}
