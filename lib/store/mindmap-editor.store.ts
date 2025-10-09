@@ -7,7 +7,6 @@
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import { enableMapSet } from "immer";
-import { nanoid } from "nanoid";
 import { generateShortId } from "@/lib/utils/short-id";
 import type { MindmapNode } from "@/lib/types";
 import type {
@@ -15,9 +14,20 @@ import type {
   AddChildNodeParams,
   CreateFloatingNodeParams,
 } from "./mindmap-editor.types";
+import {
+  syncAddNode,
+  syncUpdateNodeContent,
+  syncUpdateNodeTitle,
+  syncDeleteNode,
+} from "./middleware/persistence.middleware";
+import { createUndoManager, type UndoManager } from "./undo-manager";
+import type { OperationHistory } from "@/lib/db/schema";
 
 // 启用 Immer 的 MapSet 插件以支持 Map 和 Set
 enableMapSet();
+
+// UndoManager 实例（延迟初始化）
+let undoManager: UndoManager | null = null;
 
 /**
  * 创建思维导图编辑器 Store
@@ -35,11 +45,14 @@ export const useMindmapEditorStore = create<MindmapEditorStore>()(
     editingNodeId: null,
     expandedNodes: new Set(),
     collapsedNodes: new Set(),
+    canUndo: false,
+    canRedo: false,
 
     // ========== 节点创建操作 ==========
     addChildNode: (params: AddChildNodeParams) => {
       const { parentId, position, title, content } = params;
       let newNode: MindmapNode | null = null;
+      let shortId: string = "";
 
       set((state) => {
         const parent = state.nodes.get(parentId);
@@ -63,9 +76,9 @@ export const useMindmapEditorStore = create<MindmapEditorStore>()(
         const insertPosition = Math.min(position, count);
 
         // 创建新节点
-        const shortId = generateShortId();
+        shortId = generateShortId();
         newNode = {
-          id: nanoid(), // UUID,仅用于数据库
+          id: crypto.randomUUID(), // UUID,用于数据库主键
           short_id: shortId,
           mindmap_id: parent.mindmap_id,
           parent_id: parent.id,
@@ -95,12 +108,20 @@ export const useMindmapEditorStore = create<MindmapEditorStore>()(
         state.isSynced = false;
       });
 
+      // 异步同步到 IndexedDB
+      if (newNode) {
+        syncAddNode(newNode).catch((error) => {
+          console.error("[Store] Failed to sync add node:", error);
+        });
+      }
+
       return newNode!;
     },
 
     createFloatingNode: (params: CreateFloatingNodeParams) => {
       const { mindmapId, position, title, content } = params;
       let newNode: MindmapNode | null = null;
+      let shortId: string = "";
 
       set((state) => {
         if (!state.currentMindmap || state.currentMindmap.id !== mindmapId) {
@@ -128,9 +149,9 @@ export const useMindmapEditorStore = create<MindmapEditorStore>()(
         const insertPosition = Math.min(position, count);
 
         // 创建新浮动节点
-        const shortId = generateShortId();
+        shortId = generateShortId();
         newNode = {
-          id: nanoid(),
+          id: crypto.randomUUID(), // UUID,用于数据库主键
           short_id: shortId,
           mindmap_id: mindmapId,
           parent_id: null,
@@ -160,17 +181,27 @@ export const useMindmapEditorStore = create<MindmapEditorStore>()(
         state.isSynced = false;
       });
 
+      // 异步同步到 IndexedDB
+      if (newNode) {
+        syncAddNode(newNode).catch((error) => {
+          console.error("[Store] Failed to sync add node:", error);
+        });
+      }
+
       return newNode!;
     },
 
     // ========== 节点编辑操作 ==========
     updateNodeTitle: (nodeId: string, newTitle: string) => {
+      let mindmapId: string | null = null;
+
       set((state) => {
         const node = state.nodes.get(nodeId);
         if (!node) {
           throw new Error(`节点不存在: ${nodeId}`);
         }
 
+        mindmapId = node.mindmap_id;
         node.title = newTitle;
         node.updated_at = new Date().toISOString();
 
@@ -183,24 +214,43 @@ export const useMindmapEditorStore = create<MindmapEditorStore>()(
         state.isDirty = true;
         state.isSynced = false;
       });
+
+      // 异步同步到 IndexedDB
+      if (mindmapId) {
+        syncUpdateNodeTitle(nodeId, newTitle, mindmapId).catch((error) => {
+          console.error("[Store] Failed to sync update node title:", error);
+        });
+      }
     },
 
     updateNodeContent: (nodeId: string, newContent: string) => {
+      let mindmapId: string | null = null;
+
       set((state) => {
         const node = state.nodes.get(nodeId);
         if (!node) {
           throw new Error(`节点不存在: ${nodeId}`);
         }
 
+        mindmapId = node.mindmap_id;
         node.content = newContent;
         node.updated_at = new Date().toISOString();
         state.isDirty = true;
         state.isSynced = false;
       });
+
+      // 异步同步到 IndexedDB
+      if (mindmapId) {
+        syncUpdateNodeContent(nodeId, newContent, mindmapId).catch((error) => {
+          console.error("[Store] Failed to sync update node content:", error);
+        });
+      }
     },
 
     // ========== 节点删除操作 ==========
     deleteNode: (nodeId: string) => {
+      const deletedNodes: MindmapNode[] = [];
+
       set((state) => {
         const node = state.nodes.get(nodeId);
         if (!node) {
@@ -218,6 +268,9 @@ export const useMindmapEditorStore = create<MindmapEditorStore>()(
           toDelete.add(currentNodeId);
           const currentNode = state.nodes.get(currentNodeId);
           if (!currentNode) return;
+
+          // 保存要删除的节点数据 (用于历史记录)
+          deletedNodes.push({ ...currentNode });
 
           // 查找子节点 (通过 parent_short_id)
           Array.from(state.nodes.values())
@@ -262,6 +315,13 @@ export const useMindmapEditorStore = create<MindmapEditorStore>()(
         state.isDirty = true;
         state.isSynced = false;
       });
+
+      // 异步同步到 IndexedDB
+      if (deletedNodes.length > 0) {
+        syncDeleteNode(deletedNodes).catch((error) => {
+          console.error("[Store] Failed to sync delete node:", error);
+        });
+      }
     },
 
     // ========== 节点查询操作 ==========
@@ -349,5 +409,252 @@ export const useMindmapEditorStore = create<MindmapEditorStore>()(
         state.selectedNodes.clear();
       });
     },
+
+    // ========== 撤销/重做操作 ==========
+    undo: async () => {
+      const state = get();
+      const mindmapId = state.currentMindmap?.short_id;
+
+      if (!mindmapId) {
+        console.warn("[Store] Cannot undo: no mindmap loaded");
+        return;
+      }
+
+      // 初始化 UndoManager
+      if (!undoManager || undoManager["mindmapId"] !== mindmapId) {
+        undoManager = createUndoManager(mindmapId);
+        await undoManager.initialize();
+      }
+
+      // 执行撤销
+      const result = await undoManager.undo();
+
+      if (!result.success) {
+        console.warn("[Store] Undo failed:", result.error);
+        return;
+      }
+
+      // 应用撤销操作
+      if (result.operation) {
+        await applyUndoOperation(result.operation, set);
+      }
+
+      // 更新撤销/重做状态
+      await get().updateUndoRedoState();
+    },
+
+    redo: async () => {
+      const state = get();
+      const mindmapId = state.currentMindmap?.short_id;
+
+      if (!mindmapId) {
+        console.warn("[Store] Cannot redo: no mindmap loaded");
+        return;
+      }
+
+      // 初始化 UndoManager
+      if (!undoManager || undoManager["mindmapId"] !== mindmapId) {
+        undoManager = createUndoManager(mindmapId);
+        await undoManager.initialize();
+      }
+
+      // 执行重做
+      const result = await undoManager.redo();
+
+      if (!result.success) {
+        console.warn("[Store] Redo failed:", result.error);
+        return;
+      }
+
+      // 应用重做操作
+      if (result.operation) {
+        await applyRedoOperation(result.operation, set);
+      }
+
+      // 更新撤销/重做状态
+      await get().updateUndoRedoState();
+    },
+
+    updateUndoRedoState: async () => {
+      const state = get();
+      const mindmapId = state.currentMindmap?.short_id;
+
+      if (!mindmapId) {
+        set((state) => {
+          state.canUndo = false;
+          state.canRedo = false;
+        });
+        return;
+      }
+
+      // 初始化 UndoManager
+      if (!undoManager || undoManager["mindmapId"] !== mindmapId) {
+        undoManager = createUndoManager(mindmapId);
+        await undoManager.initialize();
+      }
+
+      // 获取历史状态
+      const historyState = await undoManager.getHistoryState();
+
+      // 更新 Store 状态
+      set((state) => {
+        state.canUndo = historyState.canUndo;
+        state.canRedo = historyState.canRedo;
+      });
+    },
   }))
 );
+
+/**
+ * 应用撤销操作 - 恢复到 before_state
+ */
+async function applyUndoOperation(
+  operation: OperationHistory,
+  set: (fn: (state: MindmapEditorStore) => void) => void
+): Promise<void> {
+  const { operation_type, before_state } = operation;
+
+  console.log(`[Store] Applying undo for ${operation_type}`);
+
+  switch (operation_type) {
+    case "ADD_NODE": {
+      // 撤销添加节点 = 删除节点
+      const nodeData = before_state as { short_id: string };
+      set((state) => {
+        state.nodes.delete(nodeData.short_id);
+        state.isDirty = true;
+      });
+      break;
+    }
+
+    case "UPDATE_NODE_CONTENT":
+    case "UPDATE_NODE_TITLE": {
+      // 撤销更新 = 恢复旧值
+      const nodeData = before_state as MindmapNode;
+      set((state) => {
+        const node = state.nodes.get(nodeData.short_id);
+        if (node) {
+          if (operation_type === "UPDATE_NODE_CONTENT") {
+            node.content = nodeData.content;
+          } else {
+            node.title = nodeData.title;
+          }
+          state.isDirty = true;
+        }
+      });
+      break;
+    }
+
+    case "DELETE_NODE": {
+      // 撤销删除 = 恢复节点和所有子节点
+      const nodeData = before_state as {
+        node: MindmapNode;
+        children: MindmapNode[];
+      };
+      set((state) => {
+        // 恢复节点本身
+        state.nodes.set(nodeData.node.short_id, nodeData.node);
+        // 恢复所有子节点
+        for (const child of nodeData.children) {
+          state.nodes.set(child.short_id, child);
+        }
+        state.isDirty = true;
+      });
+      break;
+    }
+
+    case "UPDATE_MINDMAP_TITLE": {
+      // 撤销更新思维导图标题
+      const data = before_state as { title: string };
+      set((state) => {
+        if (state.currentMindmap) {
+          state.currentMindmap.title = data.title;
+          state.isDirty = true;
+        }
+      });
+      break;
+    }
+
+    default:
+      console.warn(
+        `[Store] Unknown operation type for undo: ${operation_type}`
+      );
+  }
+}
+
+/**
+ * 应用重做操作 - 恢复到 after_state
+ */
+async function applyRedoOperation(
+  operation: OperationHistory,
+  set: (fn: (state: MindmapEditorStore) => void) => void
+): Promise<void> {
+  const { operation_type, after_state } = operation;
+
+  console.log(`[Store] Applying redo for ${operation_type}`);
+
+  switch (operation_type) {
+    case "ADD_NODE": {
+      // 重做添加节点 = 添加节点
+      const nodeData = after_state as MindmapNode;
+      set((state) => {
+        state.nodes.set(nodeData.short_id, nodeData);
+        state.isDirty = true;
+      });
+      break;
+    }
+
+    case "UPDATE_NODE_CONTENT":
+    case "UPDATE_NODE_TITLE": {
+      // 重做更新 = 应用新值
+      const nodeData = after_state as MindmapNode;
+      set((state) => {
+        const node = state.nodes.get(nodeData.short_id);
+        if (node) {
+          if (operation_type === "UPDATE_NODE_CONTENT") {
+            node.content = nodeData.content;
+          } else {
+            node.title = nodeData.title;
+          }
+          state.isDirty = true;
+        }
+      });
+      break;
+    }
+
+    case "DELETE_NODE": {
+      // 重做删除 = 删除节点
+      const nodeData = after_state as {
+        short_id: string;
+        children_ids: string[];
+      };
+      set((state) => {
+        // 删除节点本身
+        state.nodes.delete(nodeData.short_id);
+        // 删除所有子节点
+        for (const childId of nodeData.children_ids) {
+          state.nodes.delete(childId);
+        }
+        state.isDirty = true;
+      });
+      break;
+    }
+
+    case "UPDATE_MINDMAP_TITLE": {
+      // 重做更新思维导图标题
+      const data = after_state as { title: string };
+      set((state) => {
+        if (state.currentMindmap) {
+          state.currentMindmap.title = data.title;
+          state.isDirty = true;
+        }
+      });
+      break;
+    }
+
+    default:
+      console.warn(
+        `[Store] Unknown operation type for redo: ${operation_type}`
+      );
+  }
+}

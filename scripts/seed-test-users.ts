@@ -97,7 +97,7 @@ async function seedTestUsers() {
         if (error.message.includes("already registered")) {
           console.log(`  ⚠️  用户已存在: ${user.email}`);
         } else {
-          console.error(`  ❌ 创建失败: ${error.message}`);
+          console.error(`  ❌ 创建失败: ${error.message}`, error);
         }
       } else {
         console.log(`  ✅ 创建成功 (ID: ${data.user.id})`);

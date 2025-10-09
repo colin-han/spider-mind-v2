@@ -1,4 +1,5 @@
 import { forwardRef, type InputHTMLAttributes } from "react";
+import { cn } from "@/lib/utils/cn";
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -6,7 +7,7 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ label, error, className = "", ...props }, ref) => {
+  ({ label, error, className, ...props }, ref) => {
     return (
       <div className="w-full">
         {label && (
@@ -16,16 +17,18 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         )}
         <input
           ref={ref}
-          className={`
-            w-full px-4 py-2 border rounded-lg
-            bg-white dark:bg-gray-700
-            text-gray-900 dark:text-white
-            placeholder-gray-400 dark:placeholder-gray-500
-            focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white focus:border-transparent
-            disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed
-            ${error ? "border-red-500" : "border-gray-300 dark:border-gray-600"}
-            ${className}
-          `}
+          className={cn(
+            "w-full px-4 py-2 rounded-lg",
+            "bg-white dark:bg-gray-700",
+            "text-gray-900 dark:text-white",
+            "placeholder-gray-400 dark:placeholder-gray-500",
+            "focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white focus:border-transparent",
+            "disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed",
+            error
+              ? "border-red-500"
+              : "border border-gray-300 dark:border-gray-600",
+            className
+          )}
           {...props}
         />
         {error && (
