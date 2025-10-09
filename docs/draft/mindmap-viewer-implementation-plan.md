@@ -1,8 +1,8 @@
 # MindmapViewer 组件实现计划
 
-**版本**: v1.2
+**版本**: v1.6
 **创建日期**: 2025-01-07
-**最后更新**: 2025-01-07
+**最后更新**: 2025-01-09
 **状态**: 设计完成 - 待实施
 
 ---
@@ -96,14 +96,14 @@ MindmapEditor (容器组件)
 完整目录结构:
 ```
 components/mindmap/
-├── MindmapEditor.tsx              # 容器组件 - 协调 Viewer 和 Panel
-├── MindmapViewer.tsx              # 图形化展示 + 交互
-├── NodePanel.tsx                  # 节点编辑面板
-├── ResizablePanel.tsx             # 可调整宽度面板容器
+├── mindmap-editor.tsx             # 容器组件 - 协调 Viewer 和 Panel
+├── mindmap-viewer.tsx             # 图形化展示 + 交互
+├── node-panel.tsx                 # 节点编辑面板
+├── resizable-panel.tsx            # 可调整宽度面板容器
 │
 ├── viewer/
-│   ├── CustomMindNode.tsx         # 自定义节点 (只读)
-│   ├── DropIndicator.tsx          # 拖拽指示器
+│   ├── custom-mind-node.tsx       # 自定义节点 (只读)
+│   ├── drop-indicator.tsx         # 拖拽指示器
 │   └── ...
 │
 ├── hooks/
@@ -116,6 +116,11 @@ components/mindmap/
     ├── dagre-layout.ts            # Dagre 布局
     └── drag-validator.ts          # 拖拽验证
 ```
+
+**命名规范**:
+- **文件名**: kebab-case (小写+连字符),如 `mindmap-editor.tsx`
+- **组件名**: PascalCase (大驼峰),如 `export function MindmapEditor()`
+- **保持一致**: 遵循项目统一的命名规范 (参考 `project-structure.md`)
 
 ### 3.2 数据流
 
@@ -262,10 +267,11 @@ moveNode(params: {
  *
  * @param nodeId - 要删除的节点 short_id
  *
- * **不变式保护**:
- * - 如果删除的是 currentNode,自动切换到父节点
- * - 如果父节点不存在,切换到根节点
- * - 确保删除后 currentNode 始终有效
+ * **选中状态不变式保护**:
+ * - 从 selectedNodes 中移除所有被删除的节点
+ * - 如果 currentNode 被删除且还有其他选中节点,自动切换到其中一个
+ * - 如果 currentNode 被删除且没有其他选中节点,设置为 null
+ * - 始终维护不变式 1 和 2
  */
 deleteNode(nodeId: string): void;
 ```
@@ -273,12 +279,21 @@ deleteNode(nodeId: string): void;
 **行为**:
 1. 验证节点存在
 2. 验证不是根节点
-3. **🔑 关键**: 如果 nodeId === currentNode,先切换 currentNode:
-   - 优先切换到父节点 (parent_short_id)
-   - 如果没有父节点,切换到根节点
-4. 递归收集所有子孙节点
-5. 删除所有标记的节点
-6. 清理 selectedNodes, expandedNodes, collapsedNodes
+3. 递归收集所有子孙节点(包括要删除的节点本身)
+4. 删除所有标记的节点,同时从 selectedNodes 中移除
+5. 清理 expandedNodes, collapsedNodes
+6. **🔑 关键 - 维护选中状态不变式**:
+   - 如果 currentNode 被删除:
+     - 若 selectedNodes 还有其他节点 → 选择其中一个作为新的 currentNode
+     - 若 selectedNodes 为空 → 查找被删除节点最近的存在祖先节点:
+       - 向上遍历 parent_short_id 链
+       - 找到第一个未被删除的祖先节点
+       - 设置为新的 currentNode (同时更新 selectedNodes)
+       - 如果所有祖先都被删除(理论上不可能,因为根节点受保护) → 切换到根节点
+   - 这样确保:
+     - 不变式 1: selectedNodes 包含 currentNode (当 currentNode ≠ null 时)
+     - 不变式 2: currentNode = null 时,selectedNodes 为空
+     - **UI 友好**: 删除后焦点自动移到最近的有效节点,而不是变成空选中状态
 7. 重新排序剩余兄弟节点的 order_index
 8. 标记 isDirty = true, isSynced = false
 
@@ -290,45 +305,134 @@ deleteNode: (nodeId: string) => {
     if (!node) throw new Error(`节点不存在: ${nodeId}`);
     if (node.node_type === 'root') throw new Error("不能删除根节点");
 
-    // 🔑 保护 currentNode 不变式
-    if (state.currentNode === nodeId) {
-      if (node.parent_short_id) {
-        state.currentNode = node.parent_short_id;
-        state.selectedNodes.clear();
-        state.selectedNodes.add(node.parent_short_id);
+    // 递归收集要删除的节点
+    const toDelete = new Set<string>();
+    const collectDescendants = (currentNodeId: string) => {
+      toDelete.add(currentNodeId);
+      const currentNode = state.nodes.get(currentNodeId);
+      if (!currentNode) return;
+
+      Array.from(state.nodes.values())
+        .filter((n) => n.parent_short_id === currentNodeId)
+        .forEach((child) => collectDescendants(child.short_id));
+    };
+
+    collectDescendants(nodeId);
+
+    // 删除所有标记的节点
+    toDelete.forEach((id) => {
+      state.nodes.delete(id);
+      // 从选中集合中移除被删除的节点
+      state.selectedNodes.delete(id);
+      // 清理展开/折叠状态
+      state.expandedNodes.delete(id);
+      state.collapsedNodes.delete(id);
+    });
+
+    // 🔑 维护 currentNode 和 selectedNodes 的不变式
+    if (state.currentNode && toDelete.has(state.currentNode)) {
+      // currentNode 被删除
+      if (state.selectedNodes.size > 0) {
+        // 还有其他选中节点,选择其中一个作为新的 currentNode
+        const newCurrent = state.selectedNodes.values().next().value;
+        state.currentNode = newCurrent;
       } else {
-        // 切换到根节点 (兜底逻辑)
-        const root = Array.from(state.nodes.values()).find(
-          (n) => n.node_type === 'root'
-        );
-        if (root) {
-          state.currentNode = root.short_id;
-          state.selectedNodes.clear();
-          state.selectedNodes.add(root.short_id);
+        // 没有其他选中节点,查找最近的存在祖先节点
+        let ancestorId = node.parent_short_id;
+        let newCurrentNode: string | null = null;
+
+        // 向上遍历祖先链,找到第一个未被删除的节点
+        while (ancestorId) {
+          if (!toDelete.has(ancestorId)) {
+            newCurrentNode = ancestorId;
+            break;
+          }
+          const ancestor = state.nodes.get(ancestorId);
+          ancestorId = ancestor?.parent_short_id ?? null;
+        }
+
+        // 如果找到祖先节点,设置为新的 currentNode
+        if (newCurrentNode) {
+          state.currentNode = newCurrentNode;
+          state.selectedNodes.add(newCurrentNode);
+        } else {
+          // 兜底:切换到根节点 (理论上不会发生,因为根节点受保护)
+          const root = Array.from(state.nodes.values()).find(
+            (n) => n.node_type === 'root'
+          );
+          if (root) {
+            state.currentNode = root.short_id;
+            state.selectedNodes.add(root.short_id);
+          } else {
+            // 极端情况:连根节点都没有
+            state.currentNode = null;
+          }
         }
       }
     }
 
-    // 递归删除子树...
+    // 重新排序剩余兄弟节点的 order_index
+    if (node.parent_short_id) {
+      const siblings = Array.from(state.nodes.values())
+        .filter((n) => n.parent_short_id === node.parent_short_id)
+        .sort((a, b) => a.order_index - b.order_index);
+
+      siblings.forEach((sibling, index) => {
+        const siblingNode = state.nodes.get(sibling.short_id);
+        if (siblingNode && siblingNode.order_index !== index) {
+          siblingNode.order_index = index;
+          siblingNode.updated_at = new Date().toISOString();
+        }
+      });
+    }
+
+    state.isDirty = true;
+    state.isSynced = false;
   });
 }
 ```
 
+**关键变更说明**:
+
+与之前设计的主要区别:
+- ❌ **旧设计**: 当 currentNode 被删除时,切换到父节点或根节点
+- ✅ **新设计**: 当 currentNode 被删除时,按优先级选择新的 currentNode:
+  1. 优先从剩余的 selectedNodes 中选择一个 (保持多选上下文)
+  2. 如果 selectedNodes 为空,查找最近的存在祖先节点
+  3. 兜底:切换到根节点
+
+**为什么这样设计**:
+
+**场景 1: 多选状态下删除 currentNode**
+- 用户多选了 A, B, C (currentNode = A),然后删除 A
+- 旧逻辑: 切换到 A 的父节点,但 B 和 C 仍在 selectedNodes 中 → 违反不变式
+- 新逻辑: 切换到 B 或 C,保持多选上下文 → ✅ 符合用户预期
+
+**场景 2: 单选状态下删除 currentNode**
+- 用户选中节点 A,然后删除 A
+- 旧逻辑: selectedNodes 被清空,currentNode = null → ❌ UI 变成无选中状态
+- 新逻辑: 切换到 A 的父节点(或祖先节点) → ✅ 保持 UI 始终有焦点
+
+**不变式保护**:
+- `currentNode === null` ⟺ `selectedNodes.size === 0`
+- `currentNode !== null` ⟹ `selectedNodes.has(currentNode)`
+- **额外保证**: 在正常情况下,删除后总能找到有效的 currentNode (根节点受保护)
+
 #### 组件通信接口
 
 ```typescript
-// MindmapEditor.tsx
+// components/mindmap/mindmap-editor.tsx
 interface MindmapEditorProps {
   mindmap: Mindmap;
   initialNodes: MindmapNode[];
 }
 
-// MindmapViewer.tsx
+// components/mindmap/mindmap-viewer.tsx
 interface MindmapViewerProps {
   onNodeEdit?: () => void;  // 双击节点时调用
 }
 
-// NodePanel.tsx
+// components/mindmap/node-panel.tsx
 export interface NodePanelRef {
   focusTitleInput: () => void;  // 聚焦标题输入框
 }
@@ -358,8 +462,8 @@ NodePanel 显示根节点信息
 
 **实现**:
 ```typescript
-// MindmapEditor.tsx
-function MindmapEditor({ mindmap, initialNodes }) {
+// components/mindmap/mindmap-editor.tsx
+export function MindmapEditor({ mindmap, initialNodes }: MindmapEditorProps) {
   const { currentNode, setCurrentNode, getRootNode } = useMindmapEditorStore();
 
   useEffect(() => {
@@ -393,7 +497,7 @@ NodePanel 重新渲染
 
 **实现**:
 ```typescript
-// MindmapViewer.tsx
+// components/mindmap/mindmap-viewer.tsx
 const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
   const multiSelect = event.metaKey || event.ctrlKey;
   selectNode(node.id, multiSelect);
@@ -424,8 +528,8 @@ NodePanel 聚焦标题输入框
 
 **实现**:
 ```typescript
-// MindmapEditor.tsx
-function MindmapEditor() {
+// components/mindmap/mindmap-editor.tsx
+export function MindmapEditor() {
   const panelRef = useRef<NodePanelRef>(null);
 
   const handleNodeEdit = useCallback(() => {
@@ -442,13 +546,13 @@ function MindmapEditor() {
   );
 }
 
-// MindmapViewer.tsx
+// components/mindmap/mindmap-viewer.tsx
 const onNodeDoubleClick = useCallback((event: React.MouseEvent, node: Node) => {
   selectNode(node.id, false);
   onNodeEdit?.();
 }, [selectNode, onNodeEdit]);
 
-// NodePanel.tsx
+// components/mindmap/node-panel.tsx
 export const NodePanel = forwardRef<NodePanelRef>((props, ref) => {
   const titleInputRef = useRef<HTMLInputElement>(null);
 
@@ -570,13 +674,13 @@ function getDropAction(
 #### DropIndicator 组件
 
 ```typescript
-// DropIndicator.tsx
+// components/mindmap/viewer/drop-indicator.tsx
 interface DropIndicatorProps {
   type: 'line-above' | 'line-below' | 'highlight' | 'forbidden';
   targetNodeId: string;
 }
 
-function DropIndicator({ type, targetNodeId }: DropIndicatorProps) {
+export function DropIndicator({ type, targetNodeId }: DropIndicatorProps) {
   // 根据 type 渲染不同的视觉提示
   if (type === 'line-above' || type === 'line-below') {
     // 蓝色水平插入线
@@ -673,7 +777,7 @@ onNodeDragStop={(event, node) => {
 ### 6.1 基础结构
 
 ```typescript
-// NodePanel.tsx
+// components/mindmap/node-panel.tsx
 export interface NodePanelRef {
   focusTitleInput: () => void;
 }
@@ -736,7 +840,7 @@ export const NodePanel = forwardRef<NodePanelRef>((props, ref) => {
 ### 6.2 可调整宽度的面板
 
 ```typescript
-// ResizablePanel.tsx
+// components/mindmap/resizable-panel.tsx
 interface ResizablePanelProps {
   children: React.ReactNode;
   defaultWidth: number;
@@ -819,7 +923,7 @@ export function ResizablePanel({
 由于所有编辑都在 NodePanel 中完成,CustomMindNode 只负责显示:
 
 ```typescript
-// CustomMindNode.tsx
+// components/mindmap/viewer/custom-mind-node.tsx
 interface CustomMindNodeData {
   shortId: string;
   title: string;
@@ -1093,18 +1197,47 @@ export function convertToFlowData(
 
 ### 决策 1: Panel 宽度持久化 ✅
 
-**最终决策**: 保存到 localStorage
+**最终决策**: 仅使用 localStorage,不通过 IndexedDB 持久化中间件
 
 **理由**:
-- 用户体验更好,保持个性化设置
-- 实现简单,无需后端支持
-- localStorage 足够满足单机使用场景
+
+**1. 定位为纯 UI 偏好设置**
+- ResizablePanel 的宽度是**用户的视觉偏好**,不是业务数据
+- 类似于其他 UI 设置:主题、字体大小、侧边栏折叠状态等
+- 这类设置通常只在**当前设备**生效,不需要跨设备同步
+
+**2. 不需要云端同步**
+- 不同设备的屏幕尺寸不同,同步面板宽度没有意义
+  - 桌面端: 可能设置 400px
+  - 笔记本: 可能设置 350px
+  - 不同分辨率下最佳宽度不同
+- 与 IndexedDB 中的思维导图数据不同,后者需要跨设备访问
+
+**3. 简化系统架构**
+- localStorage 是浏览器原生 API,不需要额外的持久化层
+- 避免引入不必要的中间件复杂度
+- 独立于 IndexedDB 持久化系统,不影响数据同步逻辑
+
+**4. 性能优化**
+- 面板宽度调整频繁,localStorage 读写更快
+- 避免频繁触发 IndexedDB 事务
+- 不占用 IndexedDB 存储配额
+
+**与 IndexedDB 持久化中间件的关系**:
+- IndexedDB 持久化中间件 (`indexeddb-persistence-middleware-design.md`) 负责:
+  - 思维导图数据 (`Mindmap`, `MindmapNode`)
+  - 编辑状态 (`currentNode`, `selectedNodes`, `expandedNodes`)
+- localStorage 负责:
+  - **纯 UI 偏好设置** (ResizablePanel 宽度)
+  - 不影响数据完整性的本地化配置
 
 **实现**:
 ```typescript
 // ResizablePanel.tsx
+const STORAGE_KEY = 'mindmap-panel-width';
+
 useEffect(() => {
-  const savedWidth = localStorage.getItem('mindmap-panel-width');
+  const savedWidth = localStorage.getItem(STORAGE_KEY);
   if (savedWidth) {
     setWidth(parseInt(savedWidth, 10));
   }
@@ -1112,7 +1245,7 @@ useEffect(() => {
 
 const stopResizing = useCallback(() => {
   setIsResizing(false);
-  localStorage.setItem('mindmap-panel-width', width.toString());
+  localStorage.setItem(STORAGE_KEY, width.toString());
 }, [width]);
 ```
 
@@ -1224,7 +1357,275 @@ const stopResizing = useCallback(() => {
 
 ---
 
-## 12. 关键类型定义
+## 12. E2E 测试规范
+
+### 12.1 data-testid 定义
+
+根据项目测试规范 (参考: `testing-guide.md:128-136`),所有交互元素必须添加 `data-testid` 属性以便进行 E2E 测试。
+
+#### 核心组件 test-id
+
+| 组件 | test-id | 说明 |
+|------|---------|------|
+| MindmapEditor | `mindmap-editor` | 容器组件根元素 |
+| MindmapViewer | `mindmap-viewer` | React Flow 容器 |
+| NodePanel | `node-panel` | 编辑面板容器 |
+| ResizablePanel | `resizable-panel` | 可调整宽度容器 |
+
+#### 节点相关 test-id
+
+| 元素 | test-id 格式 | 示例 |
+|------|-------------|------|
+| 单个节点元素 | `mindmap-node-{short_id}` | `mindmap-node-abc123` |
+| 节点标题 | `mindmap-node-{short_id}-title` | `mindmap-node-abc123-title` |
+| 展开/折叠按钮 | `mindmap-node-{short_id}-expand` | `mindmap-node-abc123-expand` |
+
+#### NodePanel 相关 test-id
+
+| 元素 | test-id | 说明 |
+|------|---------|------|
+| 标题输入框 | `node-panel-title-input` | 节点标题编辑输入框 |
+| 内容文本域 | `node-panel-content-textarea` | 节点内容编辑文本域 |
+| 拖拽手柄 | `resizable-panel-handle` | 面板宽度调整手柄 |
+
+#### 拖拽相关 test-id
+
+| 元素 | test-id | 说明 |
+|------|---------|------|
+| 拖拽指示器 | `drop-indicator` | 拖拽时的视觉反馈组件 |
+| 插入线 (上) | `drop-indicator-line-above` | 在节点上方插入的指示线 |
+| 插入线 (下) | `drop-indicator-line-below` | 在节点下方插入的指示线 |
+| 高亮边框 | `drop-indicator-highlight` | 成为子节点的高亮边框 |
+| 禁止拖放 | `drop-indicator-forbidden` | 不允许拖放的提示 |
+
+#### 视图控制 test-id
+
+| 元素 | test-id | 说明 |
+|------|---------|------|
+| Fit View 按钮 | `mindmap-viewer-fit-view` | 适应视图按钮 |
+| MiniMap | `mindmap-viewer-minimap` | 小地图组件 |
+| Controls 面板 | `mindmap-viewer-controls` | 缩放控制面板 |
+
+### 12.2 实现示例
+
+```typescript
+// components/mindmap/mindmap-editor.tsx
+export function MindmapEditor() {
+  return (
+    <div data-testid="mindmap-editor" className="flex h-screen">
+      <div className="flex-1">
+        <MindmapViewer onNodeEdit={handleNodeEdit} />
+      </div>
+      <NodePanel ref={panelRef} />
+    </div>
+  );
+}
+
+// components/mindmap/mindmap-viewer.tsx
+export function MindmapViewer() {
+  return (
+    <div data-testid="mindmap-viewer" className="h-full">
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        nodeTypes={nodeTypes}
+        // ...
+      />
+      <button
+        data-testid="mindmap-viewer-fit-view"
+        onClick={fitView}
+      >
+        Fit View
+      </button>
+    </div>
+  );
+}
+
+// components/mindmap/viewer/custom-mind-node.tsx
+export function CustomMindNode({ data }: NodeProps<CustomMindNodeData>) {
+  return (
+    <div
+      data-testid={`mindmap-node-${data.shortId}`}
+      className="mind-node"
+    >
+      {data.hasChildren && (
+        <button
+          data-testid={`mindmap-node-${data.shortId}-expand`}
+          onClick={toggleExpand}
+          className="expand-button"
+        >
+          {isExpanded ? '▼' : '▶'}
+        </button>
+      )}
+
+      <span
+        data-testid={`mindmap-node-${data.shortId}-title`}
+        className="title"
+      >
+        {data.title}
+      </span>
+
+      <Handle type="target" position={Position.Top} />
+      <Handle type="source" position={Position.Bottom} />
+    </div>
+  );
+}
+
+// components/mindmap/node-panel.tsx
+export const NodePanel = forwardRef<NodePanelRef>((props, ref) => {
+  return (
+    <ResizablePanel
+      data-testid="node-panel"
+      defaultWidth={384}
+      minWidth={300}
+      maxWidth={600}
+      className="border-l"
+    >
+      <div className="p-4 space-y-4">
+        <div>
+          <label className="text-sm font-medium text-gray-700">标题</label>
+          <input
+            data-testid="node-panel-title-input"
+            ref={titleInputRef}
+            value={node.title}
+            onChange={(e) => updateNodeTitle(node.short_id, e.target.value)}
+            className="w-full mt-1 p-2 border rounded"
+          />
+        </div>
+
+        <div>
+          <label className="text-sm font-medium text-gray-700">内容</label>
+          <textarea
+            data-testid="node-panel-content-textarea"
+            value={node.content || ''}
+            onChange={(e) => updateNodeContent(node.short_id, e.target.value)}
+            rows={20}
+            className="w-full mt-1 p-2 border rounded"
+          />
+        </div>
+      </div>
+    </ResizablePanel>
+  );
+});
+
+// components/mindmap/resizable-panel.tsx
+export function ResizablePanel({ children, ...props }: ResizablePanelProps) {
+  return (
+    <div
+      data-testid="resizable-panel"
+      ref={panelRef}
+      className="relative"
+      style={{ width }}
+    >
+      <div
+        data-testid="resizable-panel-handle"
+        className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize"
+        onMouseDown={startResizing}
+      />
+      <div className="h-full overflow-y-auto">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// components/mindmap/viewer/drop-indicator.tsx
+export function DropIndicator({ type, targetNodeId }: DropIndicatorProps) {
+  if (type === 'line-above') {
+    return <div data-testid="drop-indicator-line-above" className="drop-line" />;
+  }
+
+  if (type === 'line-below') {
+    return <div data-testid="drop-indicator-line-below" className="drop-line" />;
+  }
+
+  if (type === 'highlight') {
+    return <div data-testid="drop-indicator-highlight" className="drop-highlight" />;
+  }
+
+  if (type === 'forbidden') {
+    return <div data-testid="drop-indicator-forbidden" className="drop-forbidden">🚫</div>;
+  }
+
+  return null;
+}
+```
+
+### 12.3 E2E 测试用例示例
+
+```typescript
+// e2e/mindmap-viewer.spec.ts
+import { test, expect } from '@playwright/test';
+
+test.describe('MindmapViewer', () => {
+  test('应该渲染思维导图', async ({ page }) => {
+    await page.goto('/mindmap/test-id');
+
+    // 验证组件存在
+    await expect(page.getByTestId('mindmap-editor')).toBeVisible();
+    await expect(page.getByTestId('mindmap-viewer')).toBeVisible();
+    await expect(page.getByTestId('node-panel')).toBeVisible();
+  });
+
+  test('应该能单击选中节点', async ({ page }) => {
+    await page.goto('/mindmap/test-id');
+
+    // 获取根节点
+    const rootNode = page.getByTestId(/mindmap-node-/).first();
+    await rootNode.click();
+
+    // 验证节点被选中 (样式变化)
+    await expect(rootNode).toHaveClass(/selected/);
+  });
+
+  test('应该能双击编辑节点', async ({ page }) => {
+    await page.goto('/mindmap/test-id');
+
+    // 双击节点
+    const node = page.getByTestId(/mindmap-node-/).first();
+    await node.dblclick();
+
+    // 验证标题输入框获得焦点
+    const titleInput = page.getByTestId('node-panel-title-input');
+    await expect(titleInput).toBeFocused();
+  });
+
+  test('应该能展开/折叠节点', async ({ page }) => {
+    await page.goto('/mindmap/test-id');
+
+    // 点击展开按钮
+    const expandButton = page.getByTestId(/mindmap-node-.*-expand/).first();
+    await expandButton.click();
+
+    // 验证子节点显示/隐藏
+    // ...
+  });
+
+  test('应该能调整 Panel 宽度', async ({ page }) => {
+    await page.goto('/mindmap/test-id');
+
+    const handle = page.getByTestId('resizable-panel-handle');
+    const panel = page.getByTestId('resizable-panel');
+
+    // 获取初始宽度
+    const initialWidth = await panel.boundingBox();
+
+    // 拖拽手柄
+    await handle.hover();
+    await page.mouse.down();
+    await page.mouse.move(-100, 0);
+    await page.mouse.up();
+
+    // 验证宽度变化
+    const newWidth = await panel.boundingBox();
+    expect(newWidth!.width).toBeGreaterThan(initialWidth!.width);
+  });
+});
+```
+
+---
+
+## 13. 关键类型定义
 
 ```typescript
 // React Flow 相关类型
@@ -1268,15 +1669,21 @@ export interface NodePanelRef {
 
 ---
 
+## 修订历史
+
+| 修订版本 | 修订日期 | 修订作者 | 修订内容 |
+|----------|----------|----------|----------|
+| v1.0 | 2025-01-07 | Claude Code | 初始版本:定义 MindmapViewer 组件整体架构和实现计划 |
+| v1.1 | 2025-01-07 | Claude Code | 更新架构设计,明确三个核心组件的职责;添加 NodePanel 和 ResizablePanel 设计;移除双击就地编辑,改为聚焦编辑面板;添加 Store 不变式设计 |
+| v1.2 | 2025-01-07 | Claude Code | 确认所有设计决策:Panel 宽度保存到 localStorage,输入框 onChange 立即保存,ResizablePanel 保持当前设计,仅支持单节点编辑 |
+| v1.3 | 2025-01-09 | Claude Code | **重大修改**: 修复 deleteNode 的选中状态不变式违反问题。当 currentNode 被删除时,优先从剩余的 selectedNodes 中选择一个作为新的 currentNode,而不是切换到父节点。确保始终维护不变式: `currentNode === null ⟺ selectedNodes.size === 0` |
+| v1.4 | 2025-01-09 | Claude Code | **优化 deleteNode**: 当 selectedNodes 为空时,不再设置 currentNode = null,而是查找被删除节点的最近存在祖先作为新的 currentNode。这样确保删除后 UI 始终有焦点节点,避免空选中状态,提供更好的用户体验 |
+| v1.5 | 2025-01-09 | Claude Code | **明确持久化策略**: 详细说明 ResizablePanel 宽度仅使用 localStorage 的理由,不通过 IndexedDB 持久化中间件。定位为纯 UI 偏好设置,不需要跨设备同步,简化系统架构,优化性能 |
+| v1.6 | 2025-01-09 | Claude Code | **补充测试规范**: 添加 E2E 测试所需的 data-testid 定义 (包括核心组件、节点元素、编辑面板、拖拽指示器、视图控制等);提供完整实现示例和测试用例示例;统一修订历史表格格式以符合项目规范 |
+
+---
+
 **文档作者**: Claude Code
-**文档版本**: v1.2
-**最后更新**: 2025-01-07
+**文档版本**: v1.6
+**最后更新**: 2025-01-09
 **状态**: 设计完成 - 待实施
-
-## 更新历史
-
-| 版本 | 日期 | 更新内容 |
-|------|------|---------|
-| v1.0 | 2025-01-07 | 初始版本 |
-| v1.1 | 2025-01-07 | 更新架构设计,明确三个核心组件的职责;添加 NodePanel 和 ResizablePanel 设计;移除双击就地编辑,改为聚焦编辑面板;添加 Store 不变式设计 |
-| v1.2 | 2025-01-07 | 确认所有设计决策:Panel 宽度保存到 localStorage,输入框 onChange 立即保存,ResizablePanel 保持当前设计,仅支持单节点编辑 |
