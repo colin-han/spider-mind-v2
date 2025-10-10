@@ -1,7 +1,7 @@
 import { requireAuth } from "@/lib/utils/auth-helpers";
 import { createServerComponentClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
-import { MindmapEditor } from "@/components/mindmap/MindmapEditor";
+import { MindmapEditor } from "@/components/mindmap/mindmap-editor-container";
 
 interface MindmapPageProps {
   params: Promise<{
