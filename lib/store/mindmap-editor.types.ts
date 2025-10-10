@@ -147,6 +147,13 @@ export interface MindmapEditorActions {
 
   // ========== 状态操作 ==========
   /**
+   * 初始化思维导图
+   * - 如果 currentNode 为 null,自动设置为根节点
+   * - 确保 currentNode 不变式
+   */
+  initializeMindmap: (mindmapId: string) => void;
+
+  /**
    * 设置当前焦点节点
    * 约束: 保持 selectedNodes 必然包含 currentNode 的不变式
    */

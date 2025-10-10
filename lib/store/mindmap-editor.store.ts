@@ -360,6 +360,27 @@ export const useMindmapEditorStore = create<MindmapEditorStore>()(
     },
 
     // ========== 状态操作 ==========
+    initializeMindmap: (mindmapId: string) => {
+      set((state) => {
+        // 如果 currentNode 已存在,不需要初始化
+        if (state.currentNode) {
+          return;
+        }
+
+        // 查找根节点
+        const root = Array.from(state.nodes.values()).find(
+          (node) => node.mindmap_id === mindmapId && node.node_type === "root"
+        );
+
+        if (root) {
+          // 自动选中根节点
+          state.currentNode = root.short_id;
+          state.selectedNodes.clear();
+          state.selectedNodes.add(root.short_id);
+        }
+      });
+    },
+
     setCurrentNode: (nodeId: string | null) => {
       set((state) => {
         if (nodeId === null) {

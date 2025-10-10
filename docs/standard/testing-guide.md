@@ -39,12 +39,14 @@
 **目标**: 测试单个函数、类或组件的独立功能
 
 **覆盖范围**:
+
 - 工具函数和纯函数
 - React 组件的渲染和交互
 - Store actions 和 reducers
 - 自定义 Hooks
 
 **工具栈**:
+
 - Jest - 测试框架
 - React Testing Library - 组件测试
 - MSW - Mock API 请求
@@ -53,29 +55,29 @@
 
 ```typescript
 // src/utils/id.test.ts
-import { generateShortId, validateShortId } from './id';
+import { generateShortId, validateShortId } from "./id";
 
-describe('ID 工具函数', () => {
-  describe('generateShortId', () => {
-    it('应生成10个字符的短ID', () => {
+describe("ID 工具函数", () => {
+  describe("generateShortId", () => {
+    it("应生成10个字符的短ID", () => {
       const id = generateShortId();
       expect(id).toHaveLength(10);
     });
 
-    it('应只包含小写字母和数字', () => {
+    it("应只包含小写字母和数字", () => {
       const id = generateShortId();
       expect(id).toMatch(/^[a-z0-9]+$/);
     });
   });
 
-  describe('validateShortId', () => {
-    it('应接受有效的短ID', () => {
-      expect(validateShortId('abc123def0')).toBe(true);
+  describe("validateShortId", () => {
+    it("应接受有效的短ID", () => {
+      expect(validateShortId("abc123def0")).toBe(true);
     });
 
-    it('应拒绝无效的短ID', () => {
-      expect(validateShortId('ABC123')).toBe(false); // 大写字母
-      expect(validateShortId('abc')).toBe(false);    // 太短
+    it("应拒绝无效的短ID", () => {
+      expect(validateShortId("ABC123")).toBe(false); // 大写字母
+      expect(validateShortId("abc")).toBe(false); // 太短
     });
   });
 });
@@ -86,6 +88,7 @@ describe('ID 工具函数', () => {
 **目标**: 测试多个模块之间的交互
 
 **覆盖范围**:
+
 - API 端点测试
 - 数据库操作测试
 - 组件与状态管理的集成
@@ -95,22 +98,21 @@ describe('ID 工具函数', () => {
 
 ```typescript
 // src/api/mindmap.integration.test.ts
-describe('Mindmap API 集成测试', () => {
-  it('应成功创建并获取思维导图', async () => {
+describe("Mindmap API 集成测试", () => {
+  it("应成功创建并获取思维导图", async () => {
     // 创建思维导图
     const createResponse = await request(app)
-      .post('/api/mindmaps')
-      .send({ title: '测试导图' });
+      .post("/api/mindmaps")
+      .send({ title: "测试导图" });
 
     expect(createResponse.status).toBe(201);
     const { id } = createResponse.body;
 
     // 获取创建的导图
-    const getResponse = await request(app)
-      .get(`/api/mindmaps/${id}`);
+    const getResponse = await request(app).get(`/api/mindmaps/${id}`);
 
     expect(getResponse.status).toBe(200);
-    expect(getResponse.body.title).toBe('测试导图');
+    expect(getResponse.body.title).toBe("测试导图");
   });
 });
 ```
@@ -120,6 +122,7 @@ describe('Mindmap API 集成测试', () => {
 **目标**: 从用户角度测试完整的功能流程
 
 **覆盖范围**:
+
 - 关键用户路径 (登录、注册、核心功能)
 - 跨页面的工作流
 - 真实浏览器环境下的交互
@@ -127,39 +130,44 @@ describe('Mindmap API 集成测试', () => {
 **工具**: Playwright
 
 **命名规范**:
+
 - 统一使用 `data-testid` 定位元素
 - testid 命名格式:
   - 表单: `{form-name}-{field-name}-input`
   - 按钮: `{action}-button`
   - 页面元素: `{page-name}-{element}`
+  - 动态列表元素命名规范
+    - 列表项: `{component}-{id}`
+    - 列表项子元素: `{component}-{id}-{element}`
+    - 列表项按钮: `{component}-{id}-{action}-button`
 
 **示例**:
 
 ```typescript
 // e2e/mindmap-editor.spec.ts
-import { test, expect } from '@playwright/test';
+import { test, expect } from "@playwright/test";
 
-test.describe('思维导图编辑器', () => {
-  test('应能创建和编辑节点', async ({ page }) => {
+test.describe("思维导图编辑器", () => {
+  test("应能创建和编辑节点", async ({ page }) => {
     // 导航到编辑器
-    await page.goto('/editor');
+    await page.goto("/editor");
 
     // 创建新节点
-    await page.getByTestId('add-node-button').click();
-    await page.getByTestId('node-title-input').fill('新节点');
-    await page.getByTestId('save-node-button').click();
+    await page.getByTestId("add-node-button").click();
+    await page.getByTestId("node-title-input").fill("新节点");
+    await page.getByTestId("save-node-button").click();
 
     // 验证节点已创建
-    const node = page.getByTestId('mindmap-node-0');
-    await expect(node).toContainText('新节点');
+    const node = page.getByTestId("mindmap-node-0");
+    await expect(node).toContainText("新节点");
 
     // 编辑节点
     await node.dblclick();
-    await page.getByTestId('node-title-input').fill('修改后的节点');
-    await page.getByTestId('save-node-button').click();
+    await page.getByTestId("node-title-input").fill("修改后的节点");
+    await page.getByTestId("save-node-button").click();
 
     // 验证修改
-    await expect(node).toContainText('修改后的节点');
+    await expect(node).toContainText("修改后的节点");
   });
 });
 ```
@@ -168,14 +176,15 @@ test.describe('思维导图编辑器', () => {
 
 ### 4.1 测试覆盖率要求
 
-| 类型 | 最低覆盖率 | 目标覆盖率 |
-|------|-----------|-----------|
-| 语句覆盖 | 70% | 85% |
-| 分支覆盖 | 60% | 75% |
-| 函数覆盖 | 70% | 85% |
-| 行覆盖 | 70% | 85% |
+| 类型     | 最低覆盖率 | 目标覆盖率 |
+| -------- | ---------- | ---------- |
+| 语句覆盖 | 70%        | 85%        |
+| 分支覆盖 | 60%        | 75%        |
+| 函数覆盖 | 70%        | 85%        |
+| 行覆盖   | 70%        | 85%        |
 
 **关键模块要求更高覆盖率**:
+
 - ID 生成和验证: > 95%
 - 数据持久化中间件: > 90%
 - Store actions: > 85%
@@ -185,13 +194,13 @@ test.describe('思维导图编辑器', () => {
 使用描述性的测试名称，遵循 "应该...当..." 的格式:
 
 ```typescript
-describe('组件/模块名', () => {
-  describe('方法/功能名', () => {
-    it('应该返回正确结果当输入有效时', () => {
+describe("组件/模块名", () => {
+  describe("方法/功能名", () => {
+    it("应该返回正确结果当输入有效时", () => {
       // 测试实现
     });
 
-    it('应该抛出错误当输入无效时', () => {
+    it("应该抛出错误当输入无效时", () => {
       // 测试实现
     });
   });
@@ -234,13 +243,13 @@ export const mockSupabase = {
     select: jest.fn().mockResolvedValue({ data: [], error: null }),
     insert: jest.fn().mockResolvedValue({ data: {}, error: null }),
     update: jest.fn().mockResolvedValue({ data: {}, error: null }),
-    delete: jest.fn().mockResolvedValue({ data: {}, error: null })
-  }))
+    delete: jest.fn().mockResolvedValue({ data: {}, error: null }),
+  })),
 };
 
 // 测试中使用
-jest.mock('@/lib/supabase', () => ({
-  supabase: mockSupabase
+jest.mock("@/lib/supabase", () => ({
+  supabase: mockSupabase,
 }));
 ```
 
@@ -256,7 +265,7 @@ jest.mock('@/lib/supabase', () => ({
 
 ```typescript
 // src/__fixtures__/factories.ts
-import { faker } from '@faker-js/faker';
+import { faker } from "@faker-js/faker";
 
 export function createMindmap(overrides = {}) {
   return {
@@ -265,7 +274,7 @@ export function createMindmap(overrides = {}) {
     title: faker.lorem.words(3),
     created_at: faker.date.recent(),
     updated_at: faker.date.recent(),
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -274,9 +283,9 @@ export function createNode(overrides = {}) {
     id: faker.string.uuid(),
     short_id: faker.string.alphanumeric(10).toLowerCase(),
     content: faker.lorem.sentence(),
-    node_type: 'normal',
+    node_type: "normal",
     order_index: 0,
-    ...overrides
+    ...overrides,
   };
 }
 ```
@@ -330,11 +339,13 @@ jobs:
 ### 8.1 DO - 应该做的
 
 ✅ **编写可读的测试**
+
 - 使用描述性的测试名称
 - 遵循 Arrange-Act-Assert 模式
 - 保持测试简洁明了
 
 ✅ **测试行为而非实现**
+
 ```typescript
 // 好的做法 - 测试行为
 it('应该在点击时切换展开状态', () => {
@@ -350,10 +361,11 @@ it('应该调用 setState', () => {
 ```
 
 ✅ **使用合适的断言**
+
 ```typescript
 // 具体的断言
 expect(result).toBe(42);
-expect(array).toContain('item');
+expect(array).toContain("item");
 
 // 避免模糊断言
 expect(result).toBeTruthy();
@@ -362,17 +374,20 @@ expect(result).toBeTruthy();
 ### 8.2 DON'T - 不应该做的
 
 ❌ **避免测试依赖**
+
 - 测试不应依赖执行顺序
 - 不共享测试状态
 
 ❌ **避免过度 Mock**
+
 - 只 Mock 外部依赖
 - 不 Mock 被测试的代码
 
 ❌ **避免睡眠等待**
+
 ```typescript
 // 不好的做法
-await new Promise(resolve => setTimeout(resolve, 1000));
+await new Promise((resolve) => setTimeout(resolve, 1000));
 
 // 好的做法
 await waitFor(() => expect(element).toBeVisible());
@@ -395,7 +410,7 @@ await waitFor(() => expect(element).toBeVisible());
 
 ```typescript
 // 使用 debug 输出
-import { debug } from '@testing-library/react';
+import { debug } from "@testing-library/react";
 debug(); // 输出当前 DOM
 
 // Playwright 调试
