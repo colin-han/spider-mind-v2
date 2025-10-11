@@ -118,11 +118,7 @@ export const NodePanel = forwardRef<NodePanelRef>((_props, ref) => {
           <div className="text-xs text-gray-500 space-y-1">
             <div>
               <span className="font-medium">类型:</span>{" "}
-              {node.node_type === "root"
-                ? "根节点"
-                : node.node_type === "floating"
-                  ? "浮动节点"
-                  : "普通节点"}
+              {node.parent_id === null ? "根节点" : "普通节点"}
             </div>
             <div>
               <span className="font-medium">ID:</span> {node.short_id}

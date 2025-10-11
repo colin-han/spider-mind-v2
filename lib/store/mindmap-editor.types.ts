@@ -47,13 +47,6 @@ export interface AddChildNodeParams {
   content?: string;
 }
 
-export interface CreateFloatingNodeParams {
-  mindmapId: string; // 思维导图 ID
-  position: number; // 在浮动节点列表中的位置
-  title: string;
-  content?: string;
-}
-
 /**
  * 节点移动操作参数
  */
@@ -81,7 +74,6 @@ export interface NodeWithDepth {
   parentId: string | null;
   shortId: string;
   title: string;
-  nodeType: string;
   depth: number;
 }
 
@@ -94,11 +86,6 @@ export interface MindmapEditorActions {
    * 在指定父节点下添加子节点
    */
   addChildNode: (params: AddChildNodeParams) => MindmapNode;
-
-  /**
-   * 创建浮动节点
-   */
-  createFloatingNode: (params: CreateFloatingNodeParams) => MindmapNode;
 
   // ========== 节点编辑操作 ==========
   /**
@@ -144,11 +131,6 @@ export interface MindmapEditorActions {
    * 获取根节点
    */
   getRootNode: (mindmapId: string) => MindmapNode | undefined;
-
-  /**
-   * 获取所有浮动节点
-   */
-  getFloatingNodes: (mindmapId: string) => MindmapNode[];
 
   /**
    * 获取节点的子节点 (按 order_index 排序)
