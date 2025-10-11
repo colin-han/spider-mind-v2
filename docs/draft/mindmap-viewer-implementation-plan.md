@@ -201,53 +201,29 @@ ReactFlow (nodes[], edges[])
 
 #### Store 不变式
 
-**关键不变式**: `currentNode` 永远指向一个存在的节点
+**关键不变式**: `currentNode` 永远指向一个存在的节点(或为 null)
 
 Store 在以下情况自动维护这个不变式:
 
-1. **初始化时**: 如果 `currentNode === null`,自动设置为根节点
-2. **节点删除时**: 如果删除的是 `currentNode`,自动切换到父节点
+1. **初始化时**: 如果 `currentNode === null`,组件层自动设置为根节点
+2. **节点删除时**: 如果删除的是 `currentNode`,自动切换到最近的祖先节点
 
 #### Store 新增方法
 
-##### initializeMindmap
+##### initializeMindmap (已删除)
+
+**注**: 此方法已被删除。初始化逻辑现在由组件层(MindmapEditor)处理:
 
 ```typescript
-/**
- * 初始化思维导图
- * - 如果 currentNode 为 null,自动设置为根节点
- * - 确保 currentNode 不变式
- *
- * @param mindmapId - 思维导图 ID
- */
-initializeMindmap(mindmapId: string): void;
-```
-
-**行为**:
-
-1. 检查 currentNode 是否为 null
-2. 如果是 null,查找根节点
-3. 设置 currentNode = 根节点 short_id
-4. 更新 selectedNodes
-
-**实现**:
-
-```typescript
-initializeMindmap: (mindmapId: string) => {
-  set((state) => {
-    if (!state.currentNode) {
-      const root = Array.from(state.nodes.values()).find(
-        (node) => node.mindmap_id === mindmapId && node.node_type === "root"
-      );
-
-      if (root) {
-        state.currentNode = root.short_id;
-        state.selectedNodes.clear();
-        state.selectedNodes.add(root.short_id);
-      }
+// components/mindmap/mindmap-editor.tsx
+useEffect(() => {
+  if (!currentNode) {
+    const root = getRootNode(mindmap.id);
+    if (root) {
+      setCurrentNode(root.short_id);
     }
-  });
-};
+  }
+}, [currentNode, mindmap.id]);
 ```
 
 ##### moveNode
@@ -277,7 +253,9 @@ moveNode(params: {
 7. 标记 isDirty = true, isSynced = false
 8. **不改变 currentNode** (保持用户焦点)
 
-##### deleteNode (修改)
+##### deleteNode (已重新设计)
+
+**注**: 已在 v1.2 版本中重新设计,删除了所有 `selectedNodes` 相关逻辑。当前实现只维护 `currentNode`:
 
 ```typescript
 /**
@@ -286,161 +264,13 @@ moveNode(params: {
  * @param nodeId - 要删除的节点 short_id
  *
  * **选中状态不变式保护**:
- * - 从 selectedNodes 中移除所有被删除的节点
- * - 如果 currentNode 被删除且还有其他选中节点,自动切换到其中一个
- * - 如果 currentNode 被删除且没有其他选中节点,设置为 null
- * - 始终维护不变式 1 和 2
+ * - 如果 currentNode 被删除,自动切换到最近的祖先节点
+ * - 清理 collapsedNodes 中的相关节点
  */
 deleteNode(nodeId: string): void;
 ```
 
-**行为**:
-
-1. 验证节点存在
-2. 验证不是根节点
-3. 递归收集所有子孙节点(包括要删除的节点本身)
-4. 删除所有标记的节点,同时从 selectedNodes 中移除
-5. 清理 expandedNodes, collapsedNodes
-6. **🔑 关键 - 维护选中状态不变式**:
-   - 如果 currentNode 被删除:
-     - 若 selectedNodes 还有其他节点 → 选择其中一个作为新的 currentNode
-     - 若 selectedNodes 为空 → 查找被删除节点最近的存在祖先节点:
-       - 向上遍历 parent_short_id 链
-       - 找到第一个未被删除的祖先节点
-       - 设置为新的 currentNode (同时更新 selectedNodes)
-       - 如果所有祖先都被删除(理论上不可能,因为根节点受保护) → 切换到根节点
-   - 这样确保:
-     - 不变式 1: selectedNodes 包含 currentNode (当 currentNode ≠ null 时)
-     - 不变式 2: currentNode = null 时,selectedNodes 为空
-     - **UI 友好**: 删除后焦点自动移到最近的有效节点,而不是变成空选中状态
-7. 重新排序剩余兄弟节点的 order_index
-8. 标记 isDirty = true, isSynced = false
-
-**实现**:
-
-```typescript
-deleteNode: (nodeId: string) => {
-  set((state) => {
-    const node = state.nodes.get(nodeId);
-    if (!node) throw new Error(`节点不存在: ${nodeId}`);
-    if (node.node_type === "root") throw new Error("不能删除根节点");
-
-    // 递归收集要删除的节点
-    const toDelete = new Set<string>();
-    const collectDescendants = (currentNodeId: string) => {
-      toDelete.add(currentNodeId);
-      const currentNode = state.nodes.get(currentNodeId);
-      if (!currentNode) return;
-
-      Array.from(state.nodes.values())
-        .filter((n) => n.parent_short_id === currentNodeId)
-        .forEach((child) => collectDescendants(child.short_id));
-    };
-
-    collectDescendants(nodeId);
-
-    // 删除所有标记的节点
-    toDelete.forEach((id) => {
-      state.nodes.delete(id);
-      // 从选中集合中移除被删除的节点
-      state.selectedNodes.delete(id);
-      // 清理展开/折叠状态
-      state.expandedNodes.delete(id);
-      state.collapsedNodes.delete(id);
-    });
-
-    // 🔑 维护 currentNode 和 selectedNodes 的不变式
-    if (state.currentNode && toDelete.has(state.currentNode)) {
-      // currentNode 被删除
-      if (state.selectedNodes.size > 0) {
-        // 还有其他选中节点,选择其中一个作为新的 currentNode
-        const newCurrent = state.selectedNodes.values().next().value;
-        state.currentNode = newCurrent;
-      } else {
-        // 没有其他选中节点,查找最近的存在祖先节点
-        let ancestorId = node.parent_short_id;
-        let newCurrentNode: string | null = null;
-
-        // 向上遍历祖先链,找到第一个未被删除的节点
-        while (ancestorId) {
-          if (!toDelete.has(ancestorId)) {
-            newCurrentNode = ancestorId;
-            break;
-          }
-          const ancestor = state.nodes.get(ancestorId);
-          ancestorId = ancestor?.parent_short_id ?? null;
-        }
-
-        // 如果找到祖先节点,设置为新的 currentNode
-        if (newCurrentNode) {
-          state.currentNode = newCurrentNode;
-          state.selectedNodes.add(newCurrentNode);
-        } else {
-          // 兜底:切换到根节点 (理论上不会发生,因为根节点受保护)
-          const root = Array.from(state.nodes.values()).find(
-            (n) => n.node_type === "root"
-          );
-          if (root) {
-            state.currentNode = root.short_id;
-            state.selectedNodes.add(root.short_id);
-          } else {
-            // 极端情况:连根节点都没有
-            state.currentNode = null;
-          }
-        }
-      }
-    }
-
-    // 重新排序剩余兄弟节点的 order_index
-    if (node.parent_short_id) {
-      const siblings = Array.from(state.nodes.values())
-        .filter((n) => n.parent_short_id === node.parent_short_id)
-        .sort((a, b) => a.order_index - b.order_index);
-
-      siblings.forEach((sibling, index) => {
-        const siblingNode = state.nodes.get(sibling.short_id);
-        if (siblingNode && siblingNode.order_index !== index) {
-          siblingNode.order_index = index;
-          siblingNode.updated_at = new Date().toISOString();
-        }
-      });
-    }
-
-    state.isDirty = true;
-    state.isSynced = false;
-  });
-};
-```
-
-**关键变更说明**:
-
-与之前设计的主要区别:
-
-- ❌ **旧设计**: 当 currentNode 被删除时,切换到父节点或根节点
-- ✅ **新设计**: 当 currentNode 被删除时,按优先级选择新的 currentNode:
-  1. 优先从剩余的 selectedNodes 中选择一个 (保持多选上下文)
-  2. 如果 selectedNodes 为空,查找最近的存在祖先节点
-  3. 兜底:切换到根节点
-
-**为什么这样设计**:
-
-**场景 1: 多选状态下删除 currentNode**
-
-- 用户多选了 A, B, C (currentNode = A),然后删除 A
-- 旧逻辑: 切换到 A 的父节点,但 B 和 C 仍在 selectedNodes 中 → 违反不变式
-- 新逻辑: 切换到 B 或 C,保持多选上下文 → ✅ 符合用户预期
-
-**场景 2: 单选状态下删除 currentNode**
-
-- 用户选中节点 A,然后删除 A
-- 旧逻辑: selectedNodes 被清空,currentNode = null → ❌ UI 变成无选中状态
-- 新逻辑: 切换到 A 的父节点(或祖先节点) → ✅ 保持 UI 始终有焦点
-
-**不变式保护**:
-
-- `currentNode === null` ⟺ `selectedNodes.size === 0`
-- `currentNode !== null` ⟹ `selectedNodes.has(currentNode)`
-- **额外保证**: 在正常情况下,删除后总能找到有效的 currentNode (根节点受保护)
+详见 `mindmap-editor-store-design.md` 中的完整实现
 
 #### 组件通信接口
 
@@ -511,7 +341,7 @@ export function MindmapEditor({ mindmap, initialNodes }: MindmapEditorProps) {
   ↓
 MindmapViewer.onNodeClick
   ↓
-selectNode(A, multiSelect)
+setCurrentNode(A)
   ↓
 Store.currentNode = A
   ↓
@@ -526,10 +356,9 @@ NodePanel 重新渲染
 // components/mindmap/mindmap-viewer.tsx
 const onNodeClick = useCallback(
   (event: React.MouseEvent, node: Node) => {
-    const multiSelect = event.metaKey || event.ctrlKey;
-    selectNode(node.id, multiSelect);
+    setCurrentNode(node.id);
   },
-  [selectNode]
+  [setCurrentNode]
 );
 ```
 
@@ -540,7 +369,7 @@ const onNodeClick = useCallback(
   ↓
 MindmapViewer.onNodeDoubleClick
   ↓
-selectNode(B)
+setCurrentNode(B)
   ↓
 onNodeEdit() 回调
   ↓
@@ -578,9 +407,9 @@ export function MindmapEditor() {
 
 // components/mindmap/mindmap-viewer.tsx
 const onNodeDoubleClick = useCallback((event: React.MouseEvent, node: Node) => {
-  selectNode(node.id, false);
+  setCurrentNode(node.id);
   onNodeEdit?.();
-}, [selectNode, onNodeEdit]);
+}, [setCurrentNode, onNodeEdit]);
 
 // components/mindmap/node-panel.tsx
 export const NodePanel = forwardRef<NodePanelRef>((props, ref) => {
@@ -964,10 +793,10 @@ interface CustomMindNodeData {
 }
 
 export function CustomMindNode({ data }: NodeProps<CustomMindNodeData>) {
-  const { selectedNodes, expandedNodes } = useMindmapEditorStore();
+  const { currentNode, collapsedNodes } = useMindmapEditorStore();
 
-  const isSelected = selectedNodes.has(data.shortId);
-  const isExpanded = expandedNodes.has(data.shortId);
+  const isSelected = currentNode === data.shortId;
+  const isExpanded = !collapsedNodes.has(data.shortId);
   const isRoot = data.nodeType === 'root';
 
   // 展开/折叠
@@ -976,11 +805,9 @@ export function CustomMindNode({ data }: NodeProps<CustomMindNodeData>) {
 
     useMindmapEditorStore.setState((state) => {
       if (isExpanded) {
-        state.expandedNodes.delete(data.shortId);
         state.collapsedNodes.add(data.shortId);
       } else {
         state.collapsedNodes.delete(data.shortId);
-        state.expandedNodes.add(data.shortId);
       }
     });
   };
@@ -1164,7 +991,7 @@ import type { MindmapNode } from "@/lib/types";
 export function convertToFlowData(
   rootNodeId: string,
   nodesMap: Map<string, MindmapNode>,
-  expandedNodes: Set<string>
+  collapsedNodes: Set<string>
 ): { nodes: Node[]; edges: Edge[] } {
   const flowNodes: Node[] = [];
   const flowEdges: Edge[] = [];
@@ -1208,8 +1035,8 @@ export function convertToFlowData(
       });
     }
 
-    // 如果节点已展开,递归处理子节点
-    if (expandedNodes.has(nodeId)) {
+    // 如果节点未折叠,递归处理子节点
+    if (!collapsedNodes.has(nodeId)) {
       children.forEach((child) => traverse(child.short_id));
     }
   }
@@ -1260,7 +1087,7 @@ export function convertToFlowData(
 
 - IndexedDB 持久化中间件 (`indexeddb-persistence-middleware-design.md`) 负责:
   - 思维导图数据 (`Mindmap`, `MindmapNode`)
-  - 编辑状态 (`currentNode`, `selectedNodes`, `expandedNodes`)
+  - **注**: `currentNode` 和 `collapsedNodes` 等编辑器临时状态不持久化
 - localStorage 负责:
   - **纯 UI 偏好设置** (ResizablePanel 宽度)
   - 不影响数据完整性的本地化配置
@@ -1335,8 +1162,7 @@ const stopResizing = useCallback(() => {
 **当前行为**:
 
 - Panel 始终显示 `currentNode` 的内容
-- 即使 `selectedNodes.size > 1`,也只编辑 `currentNode`
-- 多选状态仅用于批量操作 (如批量删除),不用于编辑
+- 只支持单节点编辑
 
 ---
 
