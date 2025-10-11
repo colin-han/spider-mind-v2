@@ -77,10 +77,11 @@ function CustomMindNodeComponent({ data }: NodeProps) {
             "expand-button",
             "w-5 h-5 flex items-center justify-center",
             "border-none bg-transparent cursor-pointer",
-            "text-gray-600 hover:text-gray-900",
             "transition-colors duration-150",
             {
               "text-white/70 hover:text-white": isRoot,
+              "text-gray-600 hover:text-gray-900 dark:text-gray-900 dark:hover:text-gray-700":
+                !isRoot,
             }
           )}
           aria-label={isExpanded ? "折叠子节点" : "展开子节点"}
@@ -97,7 +98,10 @@ function CustomMindNodeComponent({ data }: NodeProps) {
       {/* 节点标题 (只读) */}
       <span
         data-testid={`mindmap-node-${nodeData.shortId}-title`}
-        className="title flex-1 text-sm select-none"
+        className={cn("title flex-1 text-sm select-none", {
+          "text-white": isRoot,
+          "text-gray-900 dark:text-gray-900": !isRoot,
+        })}
       >
         {nodeData.title}
       </span>
