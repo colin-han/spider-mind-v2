@@ -13,7 +13,7 @@ import type { CustomNodeData } from "@/lib/types/react-flow";
  *
  * @param rootNodeId - 根节点 short_id
  * @param nodesMap - 节点 Map (short_id -> MindmapNode)
- * @param expandedNodes - 已展开的节点集合
+ * @param collapsedNodes - 已折叠的节点集合
  * @returns React Flow 的 nodes 和 edges 数组
  *
  * @example
@@ -21,14 +21,14 @@ import type { CustomNodeData } from "@/lib/types/react-flow";
  * const { nodes, edges } = convertToFlowData(
  *   rootNode.short_id,
  *   store.nodes,
- *   store.expandedNodes
+ *   store.collapsedNodes
  * );
  * ```
  */
 export function convertToFlowData(
   rootNodeId: string,
   nodesMap: Map<string, MindmapNode>,
-  expandedNodes: Set<string>
+  collapsedNodes: Set<string>
 ): { nodes: Node<CustomNodeData>[]; edges: Edge[] } {
   const flowNodes: Node<CustomNodeData>[] = [];
   const flowEdges: Edge[] = [];
@@ -77,8 +77,8 @@ export function convertToFlowData(
       });
     }
 
-    // 如果节点已展开,递归处理子节点
-    if (expandedNodes.has(nodeId)) {
+    // 如果节点未折叠,递归处理子节点
+    if (!collapsedNodes.has(nodeId)) {
       children.forEach((child) => traverse(child.short_id));
     }
   }

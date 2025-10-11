@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { useMindmapEditorStore } from "@/lib/store/mindmap-editor.store";
@@ -18,27 +17,9 @@ interface MindmapEditorProps {
 
 export function MindmapEditor({ mindmap, initialNodes }: MindmapEditorProps) {
   const { isInitialized } = useMindmapData(mindmap, initialNodes);
-  const { getRootNode, isDirty, isSynced, clearSelection } =
-    useMindmapEditorStore();
+  const { getRootNode, isDirty, isSynced } = useMindmapEditorStore();
 
   const rootNode = getRootNode(mindmap.id);
-
-  // 点击空白区域清空选中
-  const handleBackgroundClick = () => {
-    clearSelection();
-  };
-
-  // Escape 键清空选中
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        clearSelection();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [clearSelection]);
 
   if (!isInitialized) {
     return (
@@ -61,11 +42,7 @@ export function MindmapEditor({ mindmap, initialNodes }: MindmapEditorProps) {
       {/* 离线提示横幅 */}
       <OfflineBanner mindmapId={mindmap.short_id} />
 
-      <div
-        className="min-h-screen bg-gray-50 p-8"
-        onClick={handleBackgroundClick}
-        data-testid="mindmap-editor"
-      >
+      <div className="min-h-screen bg-gray-50 p-8" data-testid="mindmap-editor">
         <div className="max-w-7xl mx-auto">
           {/* 工具栏 */}
           <div className="bg-white rounded-lg shadow p-4 mb-6">

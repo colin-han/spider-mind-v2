@@ -89,9 +89,7 @@ export function useMindmapData(mindmap: Mindmap, initialNodes: MindmapNode[]) {
         useMindmapEditorStore.setState((state) => {
           // 清空现有数据
           state.nodes.clear();
-          state.selectedNodes.clear();
           state.currentNode = null;
-          state.expandedNodes.clear();
           state.collapsedNodes.clear();
 
           // 设置当前思维导图
@@ -101,14 +99,6 @@ export function useMindmapData(mindmap: Mindmap, initialNodes: MindmapNode[]) {
           nodesToLoad.forEach((node) => {
             state.nodes.set(node.short_id, node);
           });
-
-          // 默认展开根节点
-          const rootNode = Array.from(state.nodes.values()).find(
-            (node) => node.mindmap_id === mindmap.id && node.parent_id === null
-          );
-          if (rootNode) {
-            state.expandedNodes.add(rootNode.short_id);
-          }
 
           // 重置状态
           state.isDirty = false;
@@ -125,22 +115,13 @@ export function useMindmapData(mindmap: Mindmap, initialNodes: MindmapNode[]) {
         // 出错时使用服务器数据
         useMindmapEditorStore.setState((state) => {
           state.nodes.clear();
-          state.selectedNodes.clear();
           state.currentNode = null;
-          state.expandedNodes.clear();
           state.collapsedNodes.clear();
           state.currentMindmap = mindmap;
 
           initialNodes.forEach((node) => {
             state.nodes.set(node.short_id, node);
           });
-
-          const rootNode = Array.from(state.nodes.values()).find(
-            (node) => node.mindmap_id === mindmap.id && node.parent_id === null
-          );
-          if (rootNode) {
-            state.expandedNodes.add(rootNode.short_id);
-          }
         });
 
         setIsInitialized(true);

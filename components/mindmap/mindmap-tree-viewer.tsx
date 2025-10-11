@@ -13,7 +13,6 @@
 
 "use client";
 
-import { useEffect } from "react";
 import { useMindmapEditorStore } from "@/lib/store/mindmap-editor.store";
 import { NodeTree } from "./NodeTree";
 
@@ -21,27 +20,9 @@ import { NodeTree } from "./NodeTree";
  * MindmapTreeViewer 组件
  */
 export function MindmapTreeViewer() {
-  const { currentMindmap, getRootNode, clearSelection } =
-    useMindmapEditorStore();
+  const { currentMindmap, getRootNode } = useMindmapEditorStore();
 
   const rootNode = currentMindmap ? getRootNode(currentMindmap.id) : null;
-
-  // 点击空白区域清空选中
-  const handleBackgroundClick = () => {
-    clearSelection();
-  };
-
-  // Escape 键清空选中
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        clearSelection();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [clearSelection]);
 
   if (!currentMindmap) {
     return (
@@ -60,11 +41,7 @@ export function MindmapTreeViewer() {
   }
 
   return (
-    <div
-      className="h-full bg-gray-50 p-8"
-      onClick={handleBackgroundClick}
-      data-testid="mindmap-tree-viewer"
-    >
+    <div className="h-full bg-gray-50 p-8" data-testid="mindmap-tree-viewer">
       <div className="max-w-7xl mx-auto">
         {/* 编辑区域 */}
         <div className="bg-white rounded-lg shadow p-6">

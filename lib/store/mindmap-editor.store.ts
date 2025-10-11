@@ -37,12 +37,10 @@ export const useMindmapEditorStore = create<MindmapEditorStore>()(
     currentMindmap: null,
     nodes: new Map(),
     currentNode: null,
-    selectedNodes: new Set(),
     isDirty: false,
     isSynced: true,
     isEditing: false,
     editingNodeId: null,
-    expandedNodes: new Set(),
     collapsedNodes: new Set(),
     canUndo: false,
     canRedo: false,
@@ -209,16 +207,12 @@ export const useMindmapEditorStore = create<MindmapEditorStore>()(
         toDelete.forEach((id) => {
           state.nodes.delete(id);
 
-          // 如果删除的是当前节点或选中的节点,清空选中状态
+          // 如果删除的是当前节点,清空选中状态
           if (state.currentNode === id) {
             state.currentNode = null;
-            state.selectedNodes.clear();
-          } else {
-            state.selectedNodes.delete(id);
           }
 
-          // 清理展开/折叠状态
-          state.expandedNodes.delete(id);
+          // 清理折叠状态
           state.collapsedNodes.delete(id);
         });
 
@@ -421,8 +415,6 @@ export const useMindmapEditorStore = create<MindmapEditorStore>()(
         if (root) {
           // 自动选中根节点
           state.currentNode = root.short_id;
-          state.selectedNodes.clear();
-          state.selectedNodes.add(root.short_id);
         }
       });
     },
@@ -430,9 +422,8 @@ export const useMindmapEditorStore = create<MindmapEditorStore>()(
     setCurrentNode: (nodeId: string | null) => {
       set((state) => {
         if (nodeId === null) {
-          // 清空焦点和选中
+          // 清空焦点
           state.currentNode = null;
-          state.selectedNodes.clear();
         } else {
           // 验证节点存在
           const node = state.nodes.get(nodeId);
@@ -440,40 +431,9 @@ export const useMindmapEditorStore = create<MindmapEditorStore>()(
             throw new Error(`节点不存在: ${nodeId}`);
           }
 
-          // 设置焦点并清空选中集合,然后添加该节点
+          // 设置焦点
           state.currentNode = nodeId;
-          state.selectedNodes.clear();
-          state.selectedNodes.add(nodeId);
         }
-      });
-    },
-
-    selectNode: (nodeId: string, multiSelect = false) => {
-      set((state) => {
-        // 验证节点存在
-        const node = state.nodes.get(nodeId);
-        if (!node) {
-          throw new Error(`节点不存在: ${nodeId}`);
-        }
-
-        if (multiSelect) {
-          // 多选模式: 添加到选中集合
-          state.selectedNodes.add(nodeId);
-        } else {
-          // 单选模式: 清空后添加
-          state.selectedNodes.clear();
-          state.selectedNodes.add(nodeId);
-        }
-
-        // 更新焦点
-        state.currentNode = nodeId;
-      });
-    },
-
-    clearSelection: () => {
-      set((state) => {
-        state.currentNode = null;
-        state.selectedNodes.clear();
       });
     },
 
