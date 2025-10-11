@@ -119,6 +119,16 @@ export interface MindmapEditorActions {
    */
   deleteNode: (nodeId: string) => void;
 
+  // ========== 节点移动操作 ==========
+  /**
+   * 移动节点到新位置
+   * 约束:
+   * - 不能移动根节点
+   * - 不能移动到自己的子孙节点下 (循环引用)
+   * - 不改变 currentNode (保持用户焦点)
+   */
+  moveNode: (params: MoveNodeParams) => void;
+
   // ========== 节点查询操作 ==========
   /**
    * 获取单个节点

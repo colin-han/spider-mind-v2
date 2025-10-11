@@ -324,6 +324,136 @@ export const useMindmapEditorStore = create<MindmapEditorStore>()(
       }
     },
 
+    // ========== 节点移动操作 ==========
+    moveNode: (params) => {
+      const { nodeId, newParentId, position } = params;
+
+      set((state) => {
+        const node = state.nodes.get(nodeId);
+        if (!node) {
+          throw new Error(`节点不存在: ${nodeId}`);
+        }
+
+        // 约束 1: 不能移动根节点
+        if (node.node_type === "root") {
+          throw new Error("不能移动根节点");
+        }
+
+        // 约束 2: newParentId 必须存在
+        if (newParentId !== null) {
+          const newParent = state.nodes.get(newParentId);
+          if (!newParent) {
+            throw new Error(`目标父节点不存在: ${newParentId}`);
+          }
+
+          // 约束 3: 不能移动到自己的子孙节点下 (循环引用检查)
+          if (isDescendant(nodeId, newParentId, state.nodes)) {
+            throw new Error("不能移动到自己的子孙节点下");
+          }
+        }
+
+        const oldParentId = node.parent_short_id;
+
+        // 情况 1: 同级重排序 (newParentId === oldParentId)
+        if (newParentId === oldParentId) {
+          // 获取所有兄弟节点
+          const siblings = Array.from(state.nodes.values())
+            .filter((n) => n.parent_short_id === oldParentId)
+            .sort((a, b) => a.order_index - b.order_index);
+
+          const oldIndex = siblings.findIndex((n) => n.short_id === nodeId);
+          if (oldIndex === -1) return;
+
+          const targetPosition =
+            position !== undefined
+              ? Math.min(position, siblings.length - 1)
+              : siblings.length - 1;
+
+          // 如果位置没变,不做任何操作
+          if (oldIndex === targetPosition) return;
+
+          // 从列表中移除节点
+          const removed = siblings.splice(oldIndex, 1);
+          if (removed.length === 0) return;
+
+          const movedNode = removed[0];
+          if (!movedNode) return;
+
+          // 插入到新位置
+          siblings.splice(targetPosition, 0, movedNode);
+
+          // 更新所有兄弟节点的 order_index
+          siblings.forEach((sibling, index) => {
+            const siblingNode = state.nodes.get(sibling.short_id);
+            if (siblingNode) {
+              siblingNode.order_index = index;
+              siblingNode.updated_at = new Date().toISOString();
+            }
+          });
+        }
+        // 情况 2: 改变父节点 (newParentId !== oldParentId)
+        else {
+          // 获取旧父节点的所有子节点 (用于重新排序)
+          const oldSiblings = Array.from(state.nodes.values())
+            .filter((n) => n.parent_short_id === oldParentId)
+            .sort((a, b) => a.order_index - b.order_index);
+
+          // 从旧父节点中移除
+          oldSiblings.forEach((sibling, index) => {
+            if (sibling.short_id === nodeId) return;
+            const siblingNode = state.nodes.get(sibling.short_id);
+            if (siblingNode) {
+              siblingNode.order_index = index;
+              siblingNode.updated_at = new Date().toISOString();
+            }
+          });
+
+          // 获取新父节点的所有子节点
+          const newSiblings = Array.from(state.nodes.values())
+            .filter((n) => n.parent_short_id === newParentId)
+            .sort((a, b) => a.order_index - b.order_index);
+
+          // 确定插入位置
+          const targetPosition =
+            position !== undefined
+              ? Math.min(position, newSiblings.length)
+              : newSiblings.length;
+
+          // 更新移动节点的父节点信息
+          node.parent_short_id = newParentId;
+          node.parent_id = newParentId
+            ? (state.nodes.get(newParentId)?.id ?? null)
+            : null;
+          node.order_index = targetPosition;
+          node.updated_at = new Date().toISOString();
+
+          // 如果转为浮动节点,需要更新 node_type
+          if (newParentId === null) {
+            node.node_type = "floating";
+          } else if (node.node_type === "floating") {
+            node.node_type = "normal";
+          }
+
+          // 更新新父节点下后续兄弟节点的 order_index
+          newSiblings.forEach((sibling) => {
+            if (sibling.order_index >= targetPosition) {
+              const siblingNode = state.nodes.get(sibling.short_id);
+              if (siblingNode) {
+                siblingNode.order_index += 1;
+                siblingNode.updated_at = new Date().toISOString();
+              }
+            }
+          });
+        }
+
+        // 标记为脏数据
+        state.isDirty = true;
+        state.isSynced = false;
+
+        // 注意: 不改变 currentNode (保持用户焦点)
+      });
+    },
+
     // ========== 节点查询操作 ==========
     getNode: (nodeId: string) => {
       return get().nodes.get(nodeId);
@@ -678,4 +808,39 @@ async function applyRedoOperation(
         `[Store] Unknown operation type for redo: ${operation_type}`
       );
   }
+}
+
+/**
+ * 检查 ancestorId 是否是 descendantId 的祖先
+ * 用于防止循环引用
+ *
+ * @param ancestorId - 潜在祖先节点的 short_id
+ * @param descendantId - 潜在后代节点的 short_id
+ * @param nodesMap - 节点 Map
+ * @returns true 如果 ancestorId 是 descendantId 的祖先
+ */
+function isDescendant(
+  ancestorId: string,
+  descendantId: string,
+  nodesMap: Map<string, MindmapNode>
+): boolean {
+  // 向上遍历 descendantId 的祖先链
+  let current = nodesMap.get(descendantId);
+
+  while (current) {
+    // 如果找到了 ancestorId,说明确实是祖先
+    if (current.short_id === ancestorId) {
+      return true;
+    }
+
+    // 继续向上查找父节点
+    if (current.parent_short_id) {
+      current = nodesMap.get(current.parent_short_id);
+    } else {
+      // 已到达根节点或浮动节点,停止
+      break;
+    }
+  }
+
+  return false;
 }
