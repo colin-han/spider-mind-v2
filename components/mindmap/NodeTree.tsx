@@ -9,11 +9,11 @@ interface NodeTreeProps {
 }
 
 export function NodeTree({ nodeId, depth = 0 }: NodeTreeProps) {
-  const { getNode, getChildren, expandedNodes } = useMindmapEditorStore();
+  const { getNode, getChildren, collapsedNodes } = useMindmapEditorStore();
 
   const node = getNode(nodeId);
   const children = getChildren(nodeId);
-  const isExpanded = expandedNodes.has(nodeId);
+  const isExpanded = !collapsedNodes.has(nodeId);
 
   if (!node) {
     return null;

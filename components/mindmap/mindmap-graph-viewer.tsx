@@ -55,8 +55,8 @@ export function MindmapGraphViewer({ onNodeEdit }: MindmapGraphViewerProps) {
   const {
     currentMindmap,
     nodes: nodesMap,
-    expandedNodes,
-    selectNode,
+    collapsedNodes,
+    setCurrentNode,
     getRootNode,
   } = useMindmapEditorStore();
 
@@ -72,7 +72,7 @@ export function MindmapGraphViewer({ onNodeEdit }: MindmapGraphViewerProps) {
     }
 
     // 步骤 1: 转换数据
-    const flowData = convertToFlowData(root.short_id, nodesMap, expandedNodes);
+    const flowData = convertToFlowData(root.short_id, nodesMap, collapsedNodes);
 
     // 步骤 2: 计算布局
     const layoutedNodes = calculateDagreLayout(flowData.nodes, flowData.edges);
@@ -81,24 +81,23 @@ export function MindmapGraphViewer({ onNodeEdit }: MindmapGraphViewerProps) {
       nodes: layoutedNodes,
       edges: flowData.edges,
     };
-  }, [currentMindmap, nodesMap, expandedNodes, getRootNode]);
+  }, [currentMindmap, nodesMap, collapsedNodes, getRootNode]);
 
   // 单击节点 - 选中
   const onNodeClick = useCallback(
     (_event: React.MouseEvent, node: Node) => {
-      const multiSelect = _event.metaKey || _event.ctrlKey;
-      selectNode(node.id, multiSelect);
+      setCurrentNode(node.id);
     },
-    [selectNode]
+    [setCurrentNode]
   );
 
   // 双击节点 - 触发编辑
   const onNodeDoubleClick = useCallback(
     (_event: React.MouseEvent, node: Node) => {
-      selectNode(node.id, false);
+      setCurrentNode(node.id);
       onNodeEdit?.();
     },
-    [selectNode, onNodeEdit]
+    [setCurrentNode, onNodeEdit]
   );
 
   // 初始化时自动适应视图

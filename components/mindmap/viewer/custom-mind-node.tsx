@@ -21,13 +21,13 @@ import { cn } from "@/lib/utils/cn";
  * CustomMindNode 组件
  */
 function CustomMindNodeComponent({ data }: NodeProps) {
-  const { selectedNodes, expandedNodes } = useMindmapEditorStore();
+  const { currentNode, collapsedNodes } = useMindmapEditorStore();
 
   // 将 data 断言为 CustomNodeData 类型
   const nodeData = data as CustomNodeData;
 
-  const isSelected = selectedNodes.has(nodeData.shortId);
-  const isExpanded = expandedNodes.has(nodeData.shortId);
+  const isSelected = currentNode === nodeData.shortId;
+  const isExpanded = !collapsedNodes.has(nodeData.shortId);
   const isRoot = !nodeData.parentId;
 
   // 展开/折叠切换
@@ -37,11 +37,9 @@ function CustomMindNodeComponent({ data }: NodeProps) {
 
       useMindmapEditorStore.setState((state) => {
         if (isExpanded) {
-          state.expandedNodes.delete(nodeData.shortId);
           state.collapsedNodes.add(nodeData.shortId);
         } else {
           state.collapsedNodes.delete(nodeData.shortId);
-          state.expandedNodes.add(nodeData.shortId);
         }
       });
     },

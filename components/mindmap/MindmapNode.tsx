@@ -22,16 +22,16 @@ export function MindmapNode({ node, hasChildren }: MindmapNodeProps) {
   const confirm = useConfirm();
 
   const {
-    selectedNodes,
-    expandedNodes,
-    selectNode,
+    currentNode,
+    collapsedNodes,
+    setCurrentNode,
     updateNodeTitle,
     addChildNode,
     deleteNode,
   } = useMindmapEditorStore();
 
-  const isSelected = selectedNodes.has(node.short_id);
-  const isExpanded = expandedNodes.has(node.short_id);
+  const isSelected = currentNode === node.short_id;
+  const isExpanded = !collapsedNodes.has(node.short_id);
   const isRoot = node.parent_id === null;
 
   // 自动 focus 输入框
@@ -83,8 +83,7 @@ export function MindmapNode({ node, hasChildren }: MindmapNodeProps) {
   // 单击选中
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const multiSelect = e.metaKey || e.ctrlKey;
-    selectNode(node.short_id, multiSelect);
+    setCurrentNode(node.short_id);
   };
 
   // 切换展开/折叠
@@ -93,16 +92,14 @@ export function MindmapNode({ node, hasChildren }: MindmapNodeProps) {
 
     useMindmapEditorStore.setState((state) => {
       if (isExpanded) {
-        state.expandedNodes.delete(node.short_id);
         state.collapsedNodes.add(node.short_id);
       } else {
         state.collapsedNodes.delete(node.short_id);
-        state.expandedNodes.add(node.short_id);
       }
     });
 
     // 触发重新渲染
-    selectNode(node.short_id, false);
+    setCurrentNode(node.short_id);
   };
 
   // 添加子节点
@@ -118,12 +115,11 @@ export function MindmapNode({ node, hasChildren }: MindmapNodeProps) {
 
       // 展开父节点
       useMindmapEditorStore.setState((state) => {
-        state.expandedNodes.add(node.short_id);
         state.collapsedNodes.delete(node.short_id);
       });
 
       // 选中新节点
-      selectNode(newNode.short_id);
+      setCurrentNode(newNode.short_id);
       toast.success("子节点已创建");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "创建失败");

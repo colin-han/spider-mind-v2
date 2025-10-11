@@ -16,11 +16,8 @@ export interface EditorState {
   currentMindmap: Mindmap | null;
   nodes: Map<string, MindmapNode>; // key 是 short_id
 
-  // 焦点和选中状态
-  // 不变式: selectedNodes 必然包含 currentNode (当 currentNode 不为 null 时)
-  // 如果 currentNode 为 null,则 selectedNodes 必为空集
+  // 焦点状态
   currentNode: string | null; // short_id
-  selectedNodes: Set<string>; // short_id 集合
 
   // 编辑状态
   isDirty: boolean; // 是否有未保存的修改
@@ -28,8 +25,7 @@ export interface EditorState {
   isEditing: boolean; // 是否正在编辑节点
   editingNodeId: string | null; // 正在编辑的节点 short_id
 
-  // UI 状态
-  expandedNodes: Set<string>; // 展开的节点 short_id 集合
+  // UI 状态 (默认展开,仅记录折叠状态)
   collapsedNodes: Set<string>; // 折叠的节点 short_id 集合
 
   // 撤销/重做状态
@@ -137,20 +133,8 @@ export interface MindmapEditorActions {
 
   /**
    * 设置当前焦点节点
-   * 约束: 保持 selectedNodes 必然包含 currentNode 的不变式
    */
   setCurrentNode: (nodeId: string | null) => void;
-
-  /**
-   * 选中节点
-   * 约束: currentNode 必然在 selectedNodes 中
-   */
-  selectNode: (nodeId: string, multiSelect?: boolean) => void;
-
-  /**
-   * 清空所有选中
-   */
-  clearSelection: () => void;
 
   // ========== 撤销/重做操作 ==========
   /**
