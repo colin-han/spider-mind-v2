@@ -32,7 +32,7 @@ export function MindmapNode({ node, hasChildren }: MindmapNodeProps) {
 
   const isSelected = selectedNodes.has(node.short_id);
   const isExpanded = expandedNodes.has(node.short_id);
-  const isRoot = node.node_type === "root";
+  const isRoot = node.parent_id === null;
 
   // 自动 focus 输入框
   useEffect(() => {
@@ -154,7 +154,6 @@ export function MindmapNode({ node, hasChildren }: MindmapNodeProps) {
   // 节点类型图标
   const getNodeIcon = () => {
     if (isRoot) return "👑";
-    if (node.node_type === "floating") return "📌";
     return "📄";
   };
 

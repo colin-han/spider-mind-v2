@@ -28,7 +28,7 @@ function CustomMindNodeComponent({ data }: NodeProps) {
 
   const isSelected = selectedNodes.has(nodeData.shortId);
   const isExpanded = expandedNodes.has(nodeData.shortId);
-  const isRoot = nodeData.nodeType === "root";
+  const isRoot = !nodeData.parentId;
 
   // 展开/折叠切换
   const toggleExpand = useCallback(

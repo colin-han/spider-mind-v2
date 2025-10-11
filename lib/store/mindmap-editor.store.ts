@@ -12,7 +12,6 @@ import type { MindmapNode } from "@/lib/types";
 import type {
   MindmapEditorStore,
   AddChildNodeParams,
-  CreateFloatingNodeParams,
 } from "./mindmap-editor.types";
 import {
   syncAddNode,
@@ -85,7 +84,6 @@ export const useMindmapEditorStore = create<MindmapEditorStore>()(
           parent_short_id: parentId, // 使用 parent 的 short_id
           title,
           content: content || null,
-          node_type: "normal",
           order_index: insertPosition,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -95,79 +93,6 @@ export const useMindmapEditorStore = create<MindmapEditorStore>()(
         siblings.forEach((sibling) => {
           if (sibling.order_index >= insertPosition) {
             const node = state.nodes.get(sibling.short_id);
-            if (node) {
-              node.order_index += 1;
-              node.updated_at = new Date().toISOString();
-            }
-          }
-        });
-
-        // 添加新节点
-        state.nodes.set(shortId, newNode);
-        state.isDirty = true;
-        state.isSynced = false;
-      });
-
-      // 异步同步到 IndexedDB
-      if (newNode) {
-        syncAddNode(newNode).catch((error) => {
-          console.error("[Store] Failed to sync add node:", error);
-        });
-      }
-
-      return newNode!;
-    },
-
-    createFloatingNode: (params: CreateFloatingNodeParams) => {
-      const { mindmapId, position, title, content } = params;
-      let newNode: MindmapNode | null = null;
-      let shortId: string = "";
-
-      set((state) => {
-        if (!state.currentMindmap || state.currentMindmap.id !== mindmapId) {
-          throw new Error(`思维导图不存在或不匹配: ${mindmapId}`);
-        }
-
-        // 获取当前所有浮动节点
-        const floatingNodes = Array.from(state.nodes.values())
-          .filter(
-            (node) =>
-              node.mindmap_id === mindmapId &&
-              node.parent_id === null &&
-              node.node_type === "floating"
-          )
-          .sort((a, b) => a.order_index - b.order_index);
-
-        const count = floatingNodes.length;
-
-        // 验证 position
-        if (position < 0) {
-          throw new Error(`position 不能为负数: ${position}`);
-        }
-
-        // 计算插入位置
-        const insertPosition = Math.min(position, count);
-
-        // 创建新浮动节点
-        shortId = generateShortId();
-        newNode = {
-          id: crypto.randomUUID(), // UUID,用于数据库主键
-          short_id: shortId,
-          mindmap_id: mindmapId,
-          parent_id: null,
-          parent_short_id: null, // 浮动节点没有父节点
-          title,
-          content: content || null,
-          node_type: "floating",
-          order_index: insertPosition,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
-
-        // 更新后续浮动节点的 order_index
-        floatingNodes.forEach((floatingNode) => {
-          if (floatingNode.order_index >= insertPosition) {
-            const node = state.nodes.get(floatingNode.short_id);
             if (node) {
               node.order_index += 1;
               node.updated_at = new Date().toISOString();
@@ -206,7 +131,7 @@ export const useMindmapEditorStore = create<MindmapEditorStore>()(
         node.updated_at = new Date().toISOString();
 
         // 如果是根节点,同步更新 Mindmap.title
-        if (node.node_type === "root" && state.currentMindmap) {
+        if (node.parent_id === null && state.currentMindmap) {
           state.currentMindmap.title = newTitle;
           state.currentMindmap.updated_at = new Date().toISOString();
         }
@@ -258,7 +183,7 @@ export const useMindmapEditorStore = create<MindmapEditorStore>()(
         }
 
         // 不能删除根节点
-        if (node.node_type === "root") {
+        if (node.parent_id === null) {
           throw new Error("不能删除根节点");
         }
 
@@ -337,17 +262,8 @@ export const useMindmapEditorStore = create<MindmapEditorStore>()(
 
     getRootNode: (mindmapId: string) => {
       return Array.from(get().nodes.values()).find(
-        (node) => node.mindmap_id === mindmapId && node.node_type === "root"
+        (node) => node.mindmap_id === mindmapId && node.parent_id === null
       );
-    },
-
-    getFloatingNodes: (mindmapId: string) => {
-      return Array.from(get().nodes.values())
-        .filter(
-          (node) =>
-            node.mindmap_id === mindmapId && node.node_type === "floating"
-        )
-        .sort((a, b) => a.order_index - b.order_index);
     },
 
     getChildren: (nodeId: string) => {
@@ -369,7 +285,7 @@ export const useMindmapEditorStore = create<MindmapEditorStore>()(
 
         // 查找根节点
         const root = Array.from(state.nodes.values()).find(
-          (node) => node.mindmap_id === mindmapId && node.node_type === "root"
+          (node) => node.mindmap_id === mindmapId && node.parent_id === null
         );
 
         if (root) {

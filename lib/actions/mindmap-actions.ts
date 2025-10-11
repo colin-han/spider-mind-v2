@@ -87,7 +87,6 @@ export async function createMindmap(): Promise<CreateMindmapResult> {
     const rootNodeInsert: MindmapNodeInsert = {
       mindmap_id: mindmapData.id,
       short_id: rootNodeShortId,
-      node_type: "root",
       title,
       content: null,
       parent_id: null,

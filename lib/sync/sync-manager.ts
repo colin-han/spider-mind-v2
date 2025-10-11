@@ -293,7 +293,6 @@ export class SyncManager {
           parent_short_id: node.parent_short_id,
           title: node.title,
           content: node.content,
-          node_type: node.node_type,
           order_index: node.order_index,
           created_at: node.created_at,
           updated_at: new Date().toISOString(), // 使用当前时间

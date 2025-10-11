@@ -6,7 +6,6 @@ import { ArrowLeft } from "lucide-react";
 import { useMindmapEditorStore } from "@/lib/store/mindmap-editor.store";
 import { useMindmapData } from "@/lib/hooks/use-mindmap-data";
 import { NodeTree } from "./NodeTree";
-import { FloatingNodeList } from "./FloatingNodeList";
 import { SaveButton } from "./save-button";
 import { UndoRedoButtons } from "./undo-redo-buttons";
 import { OfflineBanner } from "./offline-banner";
@@ -117,20 +116,12 @@ export function MindmapEditor({ mindmap, initialNodes }: MindmapEditorProps) {
           </div>
 
           {/* 编辑区域 */}
-          <div className="flex flex-col md:flex-row gap-6">
-            {/* 主树区域 */}
-            <div className="flex-1 bg-white rounded-lg shadow p-6 min-w-0">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                思维导图
-              </h2>
-              <div data-testid="main-tree">
-                <NodeTree nodeId={rootNode.short_id} depth={0} />
-              </div>
-            </div>
-
-            {/* 浮动节点区域 */}
-            <div className="w-full md:w-80 flex-shrink-0">
-              <FloatingNodeList mindmapId={mindmap.id} />
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              思维导图
+            </h2>
+            <div data-testid="main-tree">
+              <NodeTree nodeId={rootNode.short_id} depth={0} />
             </div>
           </div>
         </div>

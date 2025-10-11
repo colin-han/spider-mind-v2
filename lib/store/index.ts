@@ -8,7 +8,6 @@ export type {
   MindmapEditorActions,
   MindmapEditorStore,
   AddChildNodeParams,
-  CreateFloatingNodeParams,
   MoveNodeParams,
   CloneNodeParams,
   NodeWithDepth,

@@ -4,7 +4,6 @@
  * 职责:
  * - 以树状列表形式展示思维导图
  * - 提供节点的增删改操作
- * - 展示浮动节点列表
  *
  * 不负责:
  * - Store 初始化 (由 MindmapEditor 管理)
@@ -17,7 +16,6 @@
 import { useEffect } from "react";
 import { useMindmapEditorStore } from "@/lib/store/mindmap-editor.store";
 import { NodeTree } from "./NodeTree";
-import { FloatingNodeList } from "./FloatingNodeList";
 
 /**
  * MindmapTreeViewer 组件
@@ -69,20 +67,10 @@ export function MindmapTreeViewer() {
     >
       <div className="max-w-7xl mx-auto">
         {/* 编辑区域 */}
-        <div className="flex flex-col md:flex-row gap-6">
-          {/* 主树区域 */}
-          <div className="flex-1 bg-white rounded-lg shadow p-6 min-w-0">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              思维导图
-            </h2>
-            <div data-testid="main-tree">
-              <NodeTree nodeId={rootNode.short_id} depth={0} />
-            </div>
-          </div>
-
-          {/* 浮动节点区域 */}
-          <div className="w-full md:w-80 flex-shrink-0">
-            <FloatingNodeList mindmapId={currentMindmap.id} />
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">思维导图</h2>
+          <div data-testid="main-tree">
+            <NodeTree nodeId={rootNode.short_id} depth={0} />
           </div>
         </div>
       </div>

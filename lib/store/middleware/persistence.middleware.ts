@@ -165,7 +165,7 @@ export async function syncUpdateNodeTitle(
   await db.put("mindmap_nodes", updatedNode);
 
   // 如果是根节点,同时更新思维导图标题
-  if (oldNode.node_type === "root") {
+  if (oldNode.parent_id === null) {
     await syncUpdateMindmapTitle(mindmapId, newTitle, opts);
   }
 

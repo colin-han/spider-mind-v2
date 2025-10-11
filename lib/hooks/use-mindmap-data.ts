@@ -104,8 +104,7 @@ export function useMindmapData(mindmap: Mindmap, initialNodes: MindmapNode[]) {
 
           // 默认展开根节点
           const rootNode = Array.from(state.nodes.values()).find(
-            (node) =>
-              node.mindmap_id === mindmap.id && node.node_type === "root"
+            (node) => node.mindmap_id === mindmap.id && node.parent_id === null
           );
           if (rootNode) {
             state.expandedNodes.add(rootNode.short_id);
@@ -137,8 +136,7 @@ export function useMindmapData(mindmap: Mindmap, initialNodes: MindmapNode[]) {
           });
 
           const rootNode = Array.from(state.nodes.values()).find(
-            (node) =>
-              node.mindmap_id === mindmap.id && node.node_type === "root"
+            (node) => node.mindmap_id === mindmap.id && node.parent_id === null
           );
           if (rootNode) {
             state.expandedNodes.add(rootNode.short_id);

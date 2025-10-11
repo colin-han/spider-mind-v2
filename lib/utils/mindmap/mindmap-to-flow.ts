@@ -61,7 +61,6 @@ export function convertToFlowData(
         shortId: node.short_id,
         title: node.title,
         content: node.content,
-        nodeType: node.node_type as "root" | "normal" | "floating",
         orderIndex: node.order_index,
         parentId: node.parent_short_id,
         hasChildren: children.length > 0,
