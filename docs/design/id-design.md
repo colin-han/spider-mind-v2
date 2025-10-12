@@ -4,7 +4,7 @@
 
 - **作者**: Colin Han
 - **创建日期**: 2024
-- **最后更新**: 2025-10-04
+- **最后更新**: 2025-10-11
 - **相关文档**:
   - ../standard/coding-standards.md
   - database-schema.md
@@ -175,65 +175,42 @@ interface MindmapNode {
 
 ## 数据库设计
 
-### Mindmaps 表结构
+### 核心字段说明
 
-| 字段       | 类型        | 说明       | 约束                                        |
-| ---------- | ----------- | ---------- | ------------------------------------------- |
-| id         | uuid        | 主键       | PRIMARY KEY, DEFAULT gen_random_uuid()      |
-| user_id    | uuid        | 用户ID     | NOT NULL, REFERENCES auth.users(id)         |
-| short_id   | text        | 用户可见ID | NOT NULL, CHECK(short_id = lower(short_id)) |
-| title      | text        | 标题       | NOT NULL                                    |
-| created_at | timestamptz | 创建时间   | DEFAULT now()                               |
-| updated_at | timestamptz | 更新时间   | DEFAULT now()                               |
-| deleted_at | timestamptz | 删除时间   | NULL                                        |
+双 ID 机制的核心字段：
 
-**约束**:
+**mindmaps 表**:
 
-```sql
-CONSTRAINT unique_user_short_id UNIQUE (user_id, short_id)
-```
+- `id` (uuid) - 内部主键，用于关联查询和外键引用
+- `user_id` (uuid) - 用户 ID，定义 short_id 的唯一性范围
+- `short_id` (text) - 6 字符用户可见 ID，在 user_id 范围内唯一
 
-### Mindmap Nodes 表结构
+**mindmap_nodes 表**:
 
-| 字段       | 类型        | 说明       | 约束                                                |
-| ---------- | ----------- | ---------- | --------------------------------------------------- |
-| id         | uuid        | 主键       | PRIMARY KEY, DEFAULT gen_random_uuid()              |
-| mindmap_id | uuid        | 所属导图   | NOT NULL, REFERENCES mindmaps(id) ON DELETE CASCADE |
-| parent_id  | uuid        | 父节点     | NULL, REFERENCES mindmap_nodes(id)                  |
-| short_id   | text        | 用户可见ID | NOT NULL, CHECK(short_id = lower(short_id))         |
-| content    | text        | 内容       | NOT NULL                                            |
-| created_at | timestamptz | 创建时间   | DEFAULT now()                                       |
-| updated_at | timestamptz | 更新时间   | DEFAULT now()                                       |
+- `id` (uuid) - 内部主键，用于关联查询和外键引用
+- `mindmap_id` (uuid) - 所属导图 ID，定义 short_id 的唯一性范围
+- `parent_id` (uuid) - 父节点 ID，用于构建树形结构
+- `short_id` (text) - 6 字符用户可见 ID，在 mindmap_id 范围内唯一
 
-**约束**:
+> 📖 **完整表结构请参考**: [database-schema.md](./database-schema.md)
+>
+> 包括所有字段定义、约束、索引、触发器等详细信息
 
-```sql
-CONSTRAINT unique_map_short_id UNIQUE (mindmap_id, short_id)
-```
+### ID 相关索引
 
-### 索引设计
+**唯一性保障**:
 
-```sql
--- Mindmaps 索引
-CREATE UNIQUE INDEX idx_mindmaps_user_short_id
-  ON mindmaps(user_id, short_id);
+- mindmaps 表：复合唯一索引 `(user_id, short_id)` 确保 short_id 在用户范围内唯一
+- mindmap_nodes 表：复合唯一索引 `(mindmap_id, short_id)` 确保 short_id 在思维导图范围内唯一
 
-CREATE INDEX idx_mindmaps_user_id
-  ON mindmaps(user_id);
+**查询性能**:
 
-CREATE INDEX idx_mindmaps_user_id_active
-  ON mindmaps(user_id) WHERE deleted_at IS NULL;
+- 支持通过 `(user_id, short_id)` 或 `(mindmap_id, short_id)` 的高效组合查询
+- 索引已显式命名，便于运维监控和管理
 
--- Mindmap Nodes 索引
-CREATE UNIQUE INDEX idx_nodes_map_short_id
-  ON mindmap_nodes(mindmap_id, short_id);
-
-CREATE INDEX idx_nodes_map_id
-  ON mindmap_nodes(mindmap_id);
-
-CREATE INDEX idx_nodes_parent_id
-  ON mindmap_nodes(parent_id);
-```
+> 📖 **完整索引策略请参考**: [database-schema.md](./database-schema.md#索引策略)
+>
+> 包括所有索引定义、性能优化索引、部分索引等详细信息
 
 ## TypeScript 类型定义
 
@@ -303,15 +280,13 @@ interface MindmapNode {
 ### 数据库查询
 
 ```sql
--- 通过 username 和 short_id 查询 mindmap
-SELECT m.*
-FROM mindmaps m
-JOIN profiles p ON m.user_id = p.id
-WHERE p.username = 'colin' AND m.short_id = 'abc123';
+-- 通过 user_id 和 short_id 查询 mindmap
+SELECT * FROM mindmaps
+WHERE user_id = $1 AND short_id = $2;
 
 -- 获取 mindmap 的所有节点
 SELECT * FROM mindmap_nodes
-WHERE mindmap_id = '550e8400-e29b-41d4-a716-446655440000'
+WHERE mindmap_id = $1
 ORDER BY created_at;
 ```
 
@@ -506,20 +481,27 @@ username text CHECK (username = lower(username))
 
 ### 1. 索引策略
 
-- 复合唯一索引: `(user_id, short_id)` 和 `(mindmap_id, short_id)`
-- 单字段索引: `user_id`, `mindmap_id`, `parent_id`
-- 部分索引: `WHERE deleted_at IS NULL` 用于活跃记录查询
+**核心 ID 索引**:
+
+- 复合唯一索引: `(user_id, short_id)` 和 `(mindmap_id, short_id)` 支持高效的 ID 查询
+
+**完整索引策略**: 参见 [database-schema.md](./database-schema.md#索引策略)
 
 ### 2. 查询优化
 
 ```sql
--- 高效: 使用复合索引
+-- 高效: 使用复合索引查询 (user_id + short_id)
 SELECT * FROM mindmaps
-WHERE user_id = ? AND short_id = ?;
+WHERE user_id = $1 AND short_id = $2;
 
--- 低效: 仅使用 short_id (需要全表扫描)
+-- 低效: 仅使用 short_id (需要全表扫描,因为 short_id 不是索引第一列)
 SELECT * FROM mindmaps
-WHERE short_id = ?;
+WHERE short_id = $1;
+
+-- 注意: 实际应用中通常已知 user_id (从会话或路由参数获取)
+-- 如果确实需要通过 username 查询,需要先查询 user_id:
+-- 1. 先获取 user_id: SELECT id FROM user_profiles WHERE username = $1
+-- 2. 再查询 mindmap: SELECT * FROM mindmaps WHERE user_id = $1 AND short_id = $2
 ```
 
 ### 3. 批量操作
@@ -618,3 +600,8 @@ const RESERVED_USERNAMES = [
 | 2024       | 1.0  | 初始版本                                                                        | Colin Han   |
 | 2025-10-04 | 2.0  | 重构: 添加快速参考、背景和动机、设计决策、FAQ 章节;优化结构和格式               | Claude Code |
 | 2025-10-07 | 2.1  | 强调统一使用工具函数；添加保留词检查机制（仅检查 6 位保留词）；精简实现代码示例 | Claude      |
+| 2025-10-11 | 2.2  | 添加显式命名索引的实现说明；澄清索引与约束共存机制                              | Claude      |
+| 2025-10-11 | 2.3  | 完善查询示例,添加通过 username 查询的 JOIN 示例；修正表名为 user_profiles       | Claude      |
+| 2025-10-11 | 2.4  | 重构数据库设计章节,改为引用 database-schema.md，消除重复内容                    | Claude      |
+| 2025-10-11 | 2.5  | 简化索引说明,删除 SQL DDL 细节,改为引用 database-schema.md                      | Claude      |
+| 2025-10-11 | 2.6  | 统一查询示例使用 user_id，删除 username JOIN 查询                               | Claude      |
