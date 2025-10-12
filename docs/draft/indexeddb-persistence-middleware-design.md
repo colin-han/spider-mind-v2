@@ -100,8 +100,8 @@ interface MindmapDB extends DBSchema {
       updated_at: string;
       user_id: string;
       deleted_at: string | null;
-      // 编辑器状态
-      currentNode: string | null; // 当前选中节点的 short_id
+      // 编辑器状态(不持久化到 IndexedDB)
+      // currentNode 等编辑器临时状态由组件本地管理
     };
     indexes: {
       "by-id": string;
@@ -175,16 +175,14 @@ export type OperationType =
   | "MOVE_NODE"
   | "REORDER_NODES"
 
-  // 编辑器状态(仅影响 mindmap 表)
-  | "TOGGLE_EXPAND"
-  | "SELECT_NODE";
+  // 编辑器状态(仅影响内存,不持久化)
+  | "TOGGLE_COLLAPSE";
 
 export interface OperationMetadata {
   [OPERATION_TYPE]: OperationType;
   mindmapId?: string;
   nodeId?: string;
   nodeIds?: string[];
-  currentNode?: string | null;
   // 其他操作特定数据
   [key: string]: unknown;
 }
@@ -293,18 +291,8 @@ async function executeSync(meta: OperationMetadata): Promise<void> {
         break;
       }
 
-      case "UPDATE_CURRENT_NODE": {
-        const { mindmapId, currentNode } = meta;
-        const existing = await db.get("mindmaps", mindmapId);
-        if (existing) {
-          await db.put("mindmaps", {
-            ...existing,
-            currentNode,
-            updated_at: new Date().toISOString(),
-          });
-        }
-        break;
-      }
+      // UPDATE_CURRENT_NODE 操作已删除
+      // currentNode 是临时的 UI 状态,不需要持久化
 
       case "UPDATE_MINDMAP_TITLE": {
         const { mindmapId, title, updated_at } = meta;
@@ -353,9 +341,8 @@ async function executeSync(meta: OperationMetadata): Promise<void> {
       }
 
       // 仅影响内存状态,不需要持久化到 IndexedDB
-      case "TOGGLE_EXPAND":
-      case "SELECT_NODE":
-        // 这些操作不需要持久化
+      case "TOGGLE_COLLAPSE":
+        // collapsedNodes 是临时 UI 状态,不需要持久化
         break;
 
       default:
@@ -432,17 +419,9 @@ export const useMindmapEditorStore = create<MindmapEditorStore>()(
       },
 
       setCurrentNode: (nodeId: string | null) => {
-        set(
-          (state) => {
-            state.currentNode = nodeId;
-          },
-          false,
-          {
-            [OPERATION_TYPE]: "UPDATE_CURRENT_NODE",
-            mindmapId: get().mindmap?.short_id,
-            currentNode: nodeId,
-          }
-        );
+        set((state) => {
+          state.currentNode = nodeId;
+        });
       },
 
       // ... 其他 actions
@@ -489,26 +468,19 @@ export function useMindmapData(
       // 3. 初始化 Store
       useMindmapEditorStore.setState((state) => {
         state.mindmap = mindmap;
-        state.currentNode = mindmap.currentNode || null;
+        state.currentNode = null;
 
         state.nodes.clear();
-        state.expandedNodes.clear();
-        state.selectedNodes.clear();
+        state.collapsedNodes.clear();
 
         nodes.forEach((node) => {
           state.nodes.set(node.short_id, node);
-          if (!node.parent_id) {
-            state.expandedNodes.add(node.short_id);
-          }
         });
       });
 
       // 4. 如果使用了服务器数据,同步到 IndexedDB
       if (!useCache) {
-        await db.put("mindmaps", {
-          ...serverMindmap,
-          currentNode: null,
-        });
+        await db.put("mindmaps", serverMindmap);
 
         const tx = db.transaction("mindmap_nodes", "readwrite");
         await Promise.all(serverNodes.map((node) => tx.store.put(node)));
@@ -610,7 +582,7 @@ describe("Persistence Middleware", () => {
     expect(persisted).toEqual(testNode);
   });
 
-  it("should not persist TOGGLE_EXPAND operation", async () => {
+  it("should not persist TOGGLE_COLLAPSE operation", async () => {
     // 测试内存状态操作不会触发持久化
   });
 });
@@ -754,8 +726,7 @@ export const useMindmapEditorStore = create<MindmapEditorStore>()(
       // State
       mindmap: null,
       nodes: new Map(),
-      expandedNodes: new Set(),
-      selectedNodes: new Set(),
+      collapsedNodes: new Set(),
       currentNode: null,
 
       // Actions with metadata
@@ -776,11 +747,6 @@ export const useMindmapEditorStore = create<MindmapEditorStore>()(
               deleted_at: null,
             };
             state.nodes.set(newNode.short_id, newNode);
-
-            // 如果是根节点,自动展开
-            if (!newNode.parent_id) {
-              state.expandedNodes.add(newNode.short_id);
-            }
           },
           false,
           {
@@ -814,8 +780,7 @@ export const useMindmapEditorStore = create<MindmapEditorStore>()(
         set(
           (state) => {
             state.nodes.delete(nodeId);
-            state.expandedNodes.delete(nodeId);
-            state.selectedNodes.delete(nodeId);
+            state.collapsedNodes.delete(nodeId);
             if (state.currentNode === nodeId) {
               state.currentNode = null;
             }
@@ -908,30 +873,17 @@ export const useMindmapEditorStore = create<MindmapEditorStore>()(
       },
 
       // 纯内存操作,无需持久化
-      toggleExpand: (nodeId: string) => {
+      toggleCollapse: (nodeId: string) => {
         set(
           (state) => {
-            if (state.expandedNodes.has(nodeId)) {
-              state.expandedNodes.delete(nodeId);
+            if (state.collapsedNodes.has(nodeId)) {
+              state.collapsedNodes.delete(nodeId);
             } else {
-              state.expandedNodes.add(nodeId);
+              state.collapsedNodes.add(nodeId);
             }
           },
           false,
-          { [OPERATION_TYPE]: "TOGGLE_EXPAND", nodeId }
-        );
-      },
-
-      selectNode: (nodeId: string, multi = false) => {
-        set(
-          (state) => {
-            if (!multi) {
-              state.selectedNodes.clear();
-            }
-            state.selectedNodes.add(nodeId);
-          },
-          false,
-          { [OPERATION_TYPE]: "SELECT_NODE", nodeId }
+          { [OPERATION_TYPE]: "TOGGLE_COLLAPSE", nodeId }
         );
       },
     }))

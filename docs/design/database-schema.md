@@ -4,7 +4,8 @@
 
 - 作者：Claude
 - 创建日期：2025-10-07
-- 最后更新：2025-10-07
+- 最后更新：2025-10-11
+- 版本：1.3.0
 - 相关文档：
   - [ID 设计文档](./id-design.md)
   - [思维导图编辑器状态管理设计](./mindmap-editor-store-design.md)
@@ -134,39 +135,64 @@ SELECT * FROM get_node_descendants($node_id);
 
 存储思维导图节点内容和层级关系。
 
-| 字段        | 类型        | 约束                          | 说明                           |
-| ----------- | ----------- | ----------------------------- | ------------------------------ |
-| id          | UUID        | PRIMARY KEY                   | 主键                           |
-| mindmap_id  | UUID        | NOT NULL, REFERENCES mindmaps | 所属思维导图                   |
-| parent_id   | UUID        | REFERENCES mindmap_nodes      | 父节点ID（自引用）             |
-| short_id    | TEXT        | NOT NULL                      | 短ID（6位base36）              |
-| node_type   | TEXT        | NOT NULL                      | 节点类型：root/floating/normal |
-| title       | TEXT        | NOT NULL                      | 节点标题                       |
-| content     | TEXT        |                               | 节点内容（Markdown）           |
-| order_index | INTEGER     | NOT NULL, DEFAULT 0           | 排序索引                       |
-| created_at  | TIMESTAMPTZ | NOT NULL, DEFAULT NOW()       | 创建时间                       |
-| updated_at  | TIMESTAMPTZ | NOT NULL, DEFAULT NOW()       | 更新时间                       |
+| 字段            | 类型        | 约束                          | 说明                                    |
+| --------------- | ----------- | ----------------------------- | --------------------------------------- |
+| id              | UUID        | PRIMARY KEY                   | 主键                                    |
+| mindmap_id      | UUID        | NOT NULL, REFERENCES mindmaps | 所属思维导图                            |
+| parent_id       | UUID        | REFERENCES mindmap_nodes      | 父节点ID（自引用）                      |
+| parent_short_id | TEXT        |                               | 父节点的 short_id（冗余字段，自动维护） |
+| short_id        | TEXT        | NOT NULL                      | 短ID（6位base36）                       |
+| title           | TEXT        | NOT NULL                      | 节点标题                                |
+| content         | TEXT        |                               | 节点内容（Markdown）                    |
+| order_index     | INTEGER     | NOT NULL, DEFAULT 0           | 排序索引                                |
+| created_at      | TIMESTAMPTZ | NOT NULL, DEFAULT NOW()       | 创建时间                                |
+| updated_at      | TIMESTAMPTZ | NOT NULL, DEFAULT NOW()       | 更新时间                                |
 
 唯一约束：
 
 - `(mindmap_id, short_id)` - 确保短ID在思维导图范围内唯一
-- 每个mindmap只能有一个root节点（通过部分唯一索引实现）
+- **每个mindmap只能有一个根节点** - 通过部分唯一索引 `idx_one_root_per_map` 实现，条件为 `WHERE parent_id IS NULL`
+
+**parent_short_id 字段说明**:
+
+- 这是一个冗余字段，与 `parent_id` 保持同步
+- 目的：优化 Store 层的父子节点查询，无需通过 UUID 进行 ID 转换
+- 约束：
+  - 长度必须为 6 字符（当非 NULL 时）
+  - 格式：`^[a-z0-9]{6}$`
+  - 当 `parent_id` 为 NULL 时，`parent_short_id` 也必须为 NULL
+- 自动维护：通过触发器自动填充和验证一致性（见"触发器"章节）
 
 #### 索引策略
 
 ##### mindmaps 表索引
 
-- `idx_mindmaps_user_id` - 支持按用户查询
-- `idx_mindmaps_user_active` - 支持查询用户的活跃文档（未删除）
+**唯一索引**:
+
+- **`idx_mindmaps_user_short_id`** - 复合唯一索引 (user_id, short_id)，确保 short_id 在用户范围内唯一
+
+**性能优化索引**:
+
+- `idx_mindmaps_user_id` - 支持按用户查询所有思维导图
+- `idx_mindmaps_user_active` - 部分索引，支持查询用户的活跃文档（WHERE deleted_at IS NULL）
 - `idx_mindmaps_created_at` - 支持按创建时间排序
 - `idx_mindmaps_updated_at` - 支持按更新时间排序
 
 ##### mindmap_nodes 表索引
 
+**唯一索引**:
+
+- **`idx_nodes_map_short_id`** - 复合唯一索引 (mindmap_id, short_id)，确保 short_id 在思维导图范围内唯一
+- **`idx_one_root_per_map`** - 部分唯一索引 (mindmap_id) WHERE parent_id IS NULL，确保每个思维导图只有一个根节点
+
+**性能优化索引**:
+
 - `idx_nodes_map_id` - 支持获取思维导图的所有节点
-- `idx_nodes_parent_id` - 支持获取子节点
-- `idx_nodes_map_parent` - 复合索引优化层级查询
-- `idx_nodes_parent_order` - 支持有序获取同级节点
+- `idx_nodes_parent_id` - 支持通过 parent_id (UUID) 获取子节点
+- `idx_nodes_parent_short_id` - 支持通过 parent_short_id (TEXT) 快速查找子节点
+- `idx_nodes_map_parent` - 复合索引 (mindmap_id, parent_id)，优化层级查询
+- `idx_nodes_map_parent_short` - 复合索引 (mindmap_id, parent_short_id)，优化同思维导图下的子节点查询
+- `idx_nodes_parent_order` - 复合索引 (parent_id, order_index)，支持有序获取同级节点
 
 #### 数据完整性保障
 
@@ -176,21 +202,36 @@ SELECT * FROM get_node_descendants($node_id);
    - `set_mindmaps_updated_at`
    - `set_mindmap_nodes_updated_at`
 
-2. **循环引用检查**
-   - `check_node_circular_reference_trigger`
-   - 防止节点成为自己的祖先
+2. **循环引用检查和 parent_short_id 自动维护**
+   - 触发器：`check_node_circular_reference_trigger`
+   - 函数：`check_node_circular_reference()`
+   - 触发时机：`BEFORE INSERT OR UPDATE OF parent_id, parent_short_id`
+
+   **功能**：
+   - 防止节点成为自己的祖先（循环引用检查）
+   - 防止节点直接引用自己
+   - 限制节点层级深度（最大 100 层）
+   - **自动填充 parent_short_id**：当 INSERT/UPDATE 时，如果 parent_short_id 为 NULL 但 parent_id 非 NULL，自动从父节点查询并填充 short_id
+   - **一致性验证**：如果 parent_short_id 已提供，验证其与 parent_id 对应的节点 short_id 是否一致
+   - **约束检查**：当 parent_id 为 NULL 时，parent_short_id 也必须为 NULL
 
 ##### 约束检查
 
 1. **short_id 格式**
-   - 长度必须为6
+   - 长度必须为 6
    - 只能包含小写字母和数字
    - 格式：`^[a-z0-9]{6}$`
 
-2. **节点类型约束**
-   - root和floating节点的parent_id必须为NULL
-   - normal节点必须有parent_id
-   - 每个mindmap只能有一个root节点
+2. **parent_short_id 格式**
+   - 长度必须为 6（当非 NULL 时）
+   - 只能包含小写字母和数字
+   - 格式：`^[a-z0-9]{6}$`
+   - 约束：`parent_short_id_length`, `parent_short_id_format`
+
+3. **节点层级约束**
+   - **每个 mindmap 只能有一个根节点** - 通过部分唯一索引 `idx_one_root_per_map` 实现
+   - 索引定义: `CREATE UNIQUE INDEX idx_one_root_per_map ON mindmap_nodes(mindmap_id) WHERE parent_id IS NULL`
+   - 根节点判断: `parent_id IS NULL` (不再使用已删除的 node_type 字段)
 
 ## 实现要点
 
@@ -232,16 +273,41 @@ const rootNode = await supabase
   .insert({
     mindmap_id: mindmap.id,
     short_id: generateShortId(),
-    node_type: "root",
     title: "中心主题",
+    // parent_id 和 parent_short_id 都为 NULL（根节点）
+  })
+  .select()
+  .single();
+
+// 3. 创建子节点
+const childNode = await supabase
+  .from("mindmap_nodes")
+  .insert({
+    mindmap_id: mindmap.id,
+    parent_id: rootNode.id,
+    parent_short_id: rootNode.short_id, // 可选，触发器会自动填充
+    short_id: generateShortId(),
+    title: "子主题",
   })
   .select()
   .single();
 ```
 
+### 通过 parent_short_id 查询子节点
+
+```typescript
+// 使用 parent_short_id 查询，无需 UUID 转换
+const children = await supabase
+  .from("mindmap_nodes")
+  .select("*")
+  .eq("mindmap_id", mindmapId)
+  .eq("parent_short_id", parentShortId)
+  .order("order_index");
+```
+
 ## 设计决策
 
-1. **为什么使用软删除？**
+1. **为什么mindmap使用软删除？**
    - 支持数据恢复
    - 保留审计历史
    - 避免级联删除的复杂性
@@ -255,6 +321,13 @@ const rootNode = await supabase
    - 确保时间戳的一致性
    - 减少应用层的重复代码
    - 自动化维护
+
+4. **为什么添加 parent_short_id 冗余字段？**
+   - **性能优化**：Store 层通常使用 short_id 作为节点标识符，通过 parent_short_id 可以直接查询子节点，避免 UUID 到 short_id 的转换查询
+   - **简化查询**：前端代码无需维护 UUID，统一使用 short_id 进行节点引用
+   - **数据一致性**：通过触发器自动维护，确保 parent_id 和 parent_short_id 始终同步
+   - **索引优化**：TEXT 类型的 parent_short_id 配合 mindmap_id 建立的复合索引，在特定查询场景下可能比 UUID 更高效
+   - **权衡**：接受少量存储开销（每条记录 6 字节）换取查询性能提升
 
 ## 替代方案
 
@@ -272,6 +345,9 @@ const rootNode = await supabase
 
 ## 修订历史
 
-| 日期       | 版本  | 修改内容 | 作者   |
-| ---------- | ----- | -------- | ------ |
-| 2025-10-07 | 1.0.0 | 初始版本 | Claude |
+| 日期       | 版本  | 修改内容                                                                                      | 作者   |
+| ---------- | ----- | --------------------------------------------------------------------------------------------- | ------ |
+| 2025-10-07 | 1.0.0 | 初始版本                                                                                      | Claude |
+| 2025-10-11 | 1.1.0 | 补充 parent_short_id 字段文档（字段定义、索引、触发器、使用示例、设计决策）                   | Claude |
+| 2025-10-11 | 1.2.0 | 更新 idx_one_root_per_map 索引说明 (从 WHERE node_type = 'root' 改为 WHERE parent_id IS NULL) | Claude |
+| 2025-10-11 | 1.3.0 | 完善索引策略文档，添加显式唯一索引说明，区分唯一索引和性能优化索引                            | Claude |
