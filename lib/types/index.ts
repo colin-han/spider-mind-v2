@@ -75,3 +75,19 @@ export interface MindmapListItem {
   created_at: string;
   updated_at: string;
 }
+
+// 持久化相关类型（从 persistence.ts 导出）
+export type {
+  NodeOperationState,
+  OperationType,
+  OperationHistory,
+  SaveStatus,
+  DetailedSaveStatus,
+  SyncResult,
+  ConflictInfo,
+  ConflictAction,
+  IndexedDBExtendedFields,
+  OperationMetadata,
+} from "./persistence";
+
+export { OPERATION_TYPE } from "./persistence";

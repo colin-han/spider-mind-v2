@@ -539,16 +539,20 @@ async function applyUndoOperation(
   operation: OperationHistory,
   set: (fn: (state: MindmapEditorStore) => void) => void
 ): Promise<void> {
-  const { operation_type, before_state } = operation;
+  const { operation_type, before_state, after_state } = operation;
 
   console.log(`[Store] Applying undo for ${operation_type}`);
 
   switch (operation_type) {
     case "ADD_NODE": {
       // 撤销添加节点 = 删除节点
-      const nodeData = before_state as { short_id: string };
+      // after_state 包含节点信息，before_state 为 null
+      if (!after_state) {
+        console.error("[Store] ADD_NODE undo: after_state is null");
+        break;
+      }
       set((state) => {
-        state.nodes.delete(nodeData.short_id);
+        state.nodes.delete(after_state.nodeId);
         state.isDirty = true;
       });
       break;
@@ -557,14 +561,23 @@ async function applyUndoOperation(
     case "UPDATE_NODE_CONTENT":
     case "UPDATE_NODE_TITLE": {
       // 撤销更新 = 恢复旧值
-      const nodeData = before_state as MindmapNode;
+      if (!before_state) {
+        console.error(`[Store] ${operation_type} undo: before_state is null`);
+        break;
+      }
       set((state) => {
-        const node = state.nodes.get(nodeData.short_id);
+        const node = state.nodes.get(before_state.nodeId);
         if (node) {
-          if (operation_type === "UPDATE_NODE_CONTENT") {
-            node.content = nodeData.content;
-          } else {
-            node.title = nodeData.title;
+          if (
+            operation_type === "UPDATE_NODE_CONTENT" &&
+            before_state.content !== undefined
+          ) {
+            node.content = before_state.content;
+          } else if (
+            operation_type === "UPDATE_NODE_TITLE" &&
+            before_state.title !== undefined
+          ) {
+            node.title = before_state.title;
           }
           state.isDirty = true;
         }
@@ -573,29 +586,32 @@ async function applyUndoOperation(
     }
 
     case "DELETE_NODE": {
-      // 撤销删除 = 恢复节点和所有子节点
-      const nodeData = before_state as {
-        node: MindmapNode;
-        children: MindmapNode[];
-      };
-      set((state) => {
-        // 恢复节点本身
-        state.nodes.set(nodeData.node.short_id, nodeData.node);
-        // 恢复所有子节点
-        for (const child of nodeData.children) {
-          state.nodes.set(child.short_id, child);
-        }
-        state.isDirty = true;
-      });
+      // 撤销删除 = 恢复节点
+      // 注意：当前的 NodeOperationState 只记录单个节点信息，不包含子节点
+      // 完整的撤销删除功能需要从 IndexedDB 获取被删除的节点数据
+      if (!before_state) {
+        console.error("[Store] DELETE_NODE undo: before_state is null");
+        break;
+      }
+      console.warn(
+        "[Store] DELETE_NODE undo: 当前实现仅支持恢复节点基本信息，完整恢复需要从 IndexedDB 读取"
+      );
+      // TODO: 从 IndexedDB 恢复完整的节点数据和子节点
       break;
     }
 
     case "UPDATE_MINDMAP_TITLE": {
       // 撤销更新思维导图标题
-      const data = before_state as { title: string };
+      if (!before_state || before_state.title === undefined) {
+        console.error(
+          "[Store] UPDATE_MINDMAP_TITLE undo: before_state or title is missing"
+        );
+        break;
+      }
+      const newTitle = before_state.title;
       set((state) => {
         if (state.currentMindmap) {
-          state.currentMindmap.title = data.title;
+          state.currentMindmap.title = newTitle;
           state.isDirty = true;
         }
       });
@@ -616,32 +632,45 @@ async function applyRedoOperation(
   operation: OperationHistory,
   set: (fn: (state: MindmapEditorStore) => void) => void
 ): Promise<void> {
-  const { operation_type, after_state } = operation;
+  const { operation_type, before_state, after_state } = operation;
 
   console.log(`[Store] Applying redo for ${operation_type}`);
 
   switch (operation_type) {
     case "ADD_NODE": {
       // 重做添加节点 = 添加节点
-      const nodeData = after_state as MindmapNode;
-      set((state) => {
-        state.nodes.set(nodeData.short_id, nodeData);
-        state.isDirty = true;
-      });
+      // 注意：当前的 NodeOperationState 只包含部分字段，完整添加节点需要从 IndexedDB 读取
+      if (!after_state) {
+        console.error("[Store] ADD_NODE redo: after_state is null");
+        break;
+      }
+      console.warn(
+        "[Store] ADD_NODE redo: 当前实现仅支持基本信息，完整恢复需要从 IndexedDB 读取"
+      );
+      // TODO: 从 IndexedDB 恢复完整的节点数据
       break;
     }
 
     case "UPDATE_NODE_CONTENT":
     case "UPDATE_NODE_TITLE": {
       // 重做更新 = 应用新值
-      const nodeData = after_state as MindmapNode;
+      if (!after_state) {
+        console.error(`[Store] ${operation_type} redo: after_state is null`);
+        break;
+      }
       set((state) => {
-        const node = state.nodes.get(nodeData.short_id);
+        const node = state.nodes.get(after_state.nodeId);
         if (node) {
-          if (operation_type === "UPDATE_NODE_CONTENT") {
-            node.content = nodeData.content;
-          } else {
-            node.title = nodeData.title;
+          if (
+            operation_type === "UPDATE_NODE_CONTENT" &&
+            after_state.content !== undefined
+          ) {
+            node.content = after_state.content;
+          } else if (
+            operation_type === "UPDATE_NODE_TITLE" &&
+            after_state.title !== undefined
+          ) {
+            node.title = after_state.title;
           }
           state.isDirty = true;
         }
@@ -651,17 +680,16 @@ async function applyRedoOperation(
 
     case "DELETE_NODE": {
       // 重做删除 = 删除节点
-      const nodeData = after_state as {
-        short_id: string;
-        children_ids: string[];
-      };
+      // before_state 包含节点信息，after_state 为 null
+      if (!before_state) {
+        console.error("[Store] DELETE_NODE redo: before_state is null");
+        break;
+      }
       set((state) => {
         // 删除节点本身
-        state.nodes.delete(nodeData.short_id);
-        // 删除所有子节点
-        for (const childId of nodeData.children_ids) {
-          state.nodes.delete(childId);
-        }
+        state.nodes.delete(before_state.nodeId);
+        // 注意：当前实现不支持自动删除子节点
+        // TODO: 实现级联删除子节点的逻辑
         state.isDirty = true;
       });
       break;
@@ -669,10 +697,16 @@ async function applyRedoOperation(
 
     case "UPDATE_MINDMAP_TITLE": {
       // 重做更新思维导图标题
-      const data = after_state as { title: string };
+      if (!after_state || after_state.title === undefined) {
+        console.error(
+          "[Store] UPDATE_MINDMAP_TITLE redo: after_state or title is missing"
+        );
+        break;
+      }
+      const newTitle = after_state.title;
       set((state) => {
         if (state.currentMindmap) {
-          state.currentMindmap.title = data.title;
+          state.currentMindmap.title = newTitle;
           state.isDirty = true;
         }
       });
