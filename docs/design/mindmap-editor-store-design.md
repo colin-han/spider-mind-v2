@@ -116,10 +116,6 @@ interface EditorState {
 
   // UI 状态 (默认展开,仅记录折叠状态)
   collapsedNodes: Set<string>; // 折叠的节点集合
-
-  // 撤销/重做状态
-  canUndo: boolean;
-  canRedo: boolean;
 }
 ```
 
@@ -561,7 +557,7 @@ lib/store/
 - [x] 根节点与 MindMap.title 同步
 - [x] 完整的约束验证
 - [x] 递归删除子树
-- [x] 撤销/重做支持
+- [ ] ~~撤销/重做支持~~ (已移除，作为未来新功能重新设计)
 
 ### 10.3 更新历史
 
@@ -570,6 +566,7 @@ lib/store/
 | 2025-10-02 | v1.0 | 初始版本                                                                                                                                                                             | -           |
 | 2025-01-06 | v1.1 | 添加名词解释章节，调整章节结构，精简示例代码                                                                                                                                         | -           |
 | 2025-01-11 | v1.2 | **重大更新**: 移除多选功能(`selectedNodes`, `selectNode`, `clearSelection`)和浮动节点(`floating`),移除`expandedNodes`(改用`collapsedNodes`默认展开),移除`node_type`字段,简化状态管理 | Claude Code |
+| 2025-01-11 | v1.3 | 移除撤销/重做功能 (`canUndo`, `canRedo`, `undo()`, `redo()`, `updateUndoRedoState()`), 将作为未来新功能重新设计和实现                                                                | Claude Code |
 
 ### 10.4 参考资料
 

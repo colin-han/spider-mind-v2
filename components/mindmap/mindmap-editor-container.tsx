@@ -13,6 +13,7 @@
 
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { useMindmapData } from "@/lib/hooks/use-mindmap-data";
@@ -20,7 +21,9 @@ import { useMindmapEditorStore } from "@/lib/store/mindmap-editor.store";
 import { MindmapEditorTabs } from "./mindmap-editor-tabs";
 import { SaveButton } from "./save-button";
 import { OfflineBanner } from "./offline-banner";
+import { ConflictDialog } from "./conflict-dialog";
 import type { Mindmap, MindmapNode } from "@/lib/types";
+import type { ConflictResolution } from "@/lib/sync/sync-manager";
 
 /**
  * MindmapEditor Props
@@ -36,6 +39,41 @@ export interface MindmapEditorProps {
 export function MindmapEditor({ mindmap, initialNodes }: MindmapEditorProps) {
   const { isInitialized } = useMindmapData(mindmap, initialNodes);
   const { isDirty, isSynced, clearSyncStatus } = useMindmapEditorStore();
+
+  // 冲突对话框状态
+  const [showConflictDialog, setShowConflictDialog] = useState(false);
+  const [conflictInfo, setConflictInfo] = useState<{
+    serverUpdatedAt: string;
+    localUpdatedAt: string;
+    resolve: (resolution: ConflictResolution) => void;
+  } | null>(null);
+
+  /**
+   * 处理冲突
+   */
+  const handleConflict = async (info: {
+    serverUpdatedAt: string;
+    localUpdatedAt: string;
+  }): Promise<ConflictResolution> => {
+    return new Promise<ConflictResolution>((resolve) => {
+      setConflictInfo({
+        ...info,
+        resolve,
+      });
+      setShowConflictDialog(true);
+    });
+  };
+
+  /**
+   * 处理冲突解决
+   */
+  const handleConflictResolve = (resolution: ConflictResolution) => {
+    if (conflictInfo?.resolve) {
+      conflictInfo.resolve(resolution);
+    }
+    setShowConflictDialog(false);
+    setConflictInfo(null);
+  };
 
   if (!isInitialized) {
     return (
@@ -80,6 +118,7 @@ export function MindmapEditor({ mindmap, initialNodes }: MindmapEditorProps) {
                   onSaveError={(error) => {
                     console.error("[MindmapEditor] 保存失败:", error);
                   }}
+                  onConflict={handleConflict}
                 />
 
                 {/* 状态指示器 */}
@@ -104,6 +143,14 @@ export function MindmapEditor({ mindmap, initialNodes }: MindmapEditorProps) {
           <MindmapEditorTabs />
         </div>
       </div>
+
+      {/* 冲突对话框 */}
+      <ConflictDialog
+        open={showConflictDialog}
+        localVersion={conflictInfo?.localUpdatedAt || ""}
+        serverVersion={conflictInfo?.serverUpdatedAt || ""}
+        onResolve={handleConflictResolve}
+      />
     </>
   );
 }
