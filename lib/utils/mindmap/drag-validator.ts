@@ -31,7 +31,7 @@ export function validateDrop(
   }
 
   // 约束 2: 不能拖拽根节点
-  if (draggedNode.node_type === "root") {
+  if (draggedNode.parent_id === null) {
     return false;
   }
 

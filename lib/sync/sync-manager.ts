@@ -246,6 +246,63 @@ export class SyncManager {
   }
 
   /**
+   * 拓扑排序节点：确保父节点总是在子节点之前
+   * 这样可以避免批量插入时触发 "Parent node does not exist" 错误
+   */
+  private topologicalSortNodes<
+    T extends { id: string; parent_id: string | null },
+  >(nodes: T[]): T[] {
+    if (nodes.length === 0) return [];
+
+    // 构建节点 ID 映射
+    const nodeMap = new Map<string, T>();
+    nodes.forEach((node) => nodeMap.set(node.id, node));
+
+    // 已排序的节点列表
+    const sorted: T[] = [];
+    const visited = new Set<string>();
+    const visiting = new Set<string>(); // 用于检测循环引用
+
+    // 深度优先搜索
+    const visit = (nodeId: string): void => {
+      if (visited.has(nodeId)) return;
+
+      const node = nodeMap.get(nodeId);
+      if (!node) return; // 节点不在当前批次中
+
+      // 检测循环引用
+      if (visiting.has(nodeId)) {
+        console.warn(
+          `[SyncManager] Circular reference detected at node ${nodeId}`
+        );
+        return;
+      }
+
+      visiting.add(nodeId);
+
+      // 先访问父节点
+      if (node.parent_id) {
+        visit(node.parent_id);
+      }
+
+      visiting.delete(nodeId);
+      visited.add(nodeId);
+      sorted.push(node);
+    };
+
+    // 访问所有节点
+    nodes.forEach((node) => visit(node.id));
+
+    if (this.options.debug) {
+      console.log(
+        `[SyncManager] Topological sort: ${nodes.length} nodes -> ${sorted.length} sorted`
+      );
+    }
+
+    return sorted;
+  }
+
+  /**
    * 批量上传数据到 Supabase
    */
   private async uploadData(
@@ -284,8 +341,11 @@ export class SyncManager {
 
       // 2. 批量上传节点
       if (nodes.length > 0) {
+        // ✅ 拓扑排序：确保父节点总是在子节点之前
+        const sortedNodes = this.topologicalSortNodes(nodes);
+
         // 准备节点数据 (移除持久化相关字段)
-        const nodesToUpload = nodes.map((node) => ({
+        const nodesToUpload = sortedNodes.map((node) => ({
           id: node.id,
           short_id: node.short_id,
           mindmap_id: node.mindmap_id,

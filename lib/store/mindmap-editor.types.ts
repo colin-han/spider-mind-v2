@@ -161,6 +161,13 @@ export interface MindmapEditorActions {
    * 更新撤销/重做状态
    */
   updateUndoRedoState: () => Promise<void>;
+
+  // ========== 同步状态操作 ==========
+  /**
+   * 清除脏标记和同步状态
+   * 应在成功保存到云端后调用
+   */
+  clearSyncStatus: () => void;
 }
 
 /**

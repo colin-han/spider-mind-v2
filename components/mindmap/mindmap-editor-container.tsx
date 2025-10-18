@@ -36,7 +36,7 @@ export interface MindmapEditorProps {
  */
 export function MindmapEditor({ mindmap, initialNodes }: MindmapEditorProps) {
   const { isInitialized } = useMindmapData(mindmap, initialNodes);
-  const { isDirty, isSynced } = useMindmapEditorStore();
+  const { isDirty, isSynced, clearSyncStatus } = useMindmapEditorStore();
 
   if (!isInitialized) {
     return (
@@ -78,10 +78,11 @@ export function MindmapEditor({ mindmap, initialNodes }: MindmapEditorProps) {
                 <SaveButton
                   mindmapId={mindmap.short_id}
                   onSaveSuccess={() => {
-                    console.log("保存成功");
+                    console.log("[MindmapEditor] 保存成功，清除同步状态");
+                    clearSyncStatus();
                   }}
                   onSaveError={(error) => {
-                    console.error("保存失败:", error);
+                    console.error("[MindmapEditor] 保存失败:", error);
                   }}
                 />
 

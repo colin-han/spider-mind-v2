@@ -254,7 +254,7 @@ export const useMindmapEditorStore = create<MindmapEditorStore>()(
         }
 
         // 约束 1: 不能移动根节点
-        if (node.node_type === "root") {
+        if (node.parent_id === null) {
           throw new Error("不能移动根节点");
         }
 
@@ -345,13 +345,6 @@ export const useMindmapEditorStore = create<MindmapEditorStore>()(
             : null;
           node.order_index = targetPosition;
           node.updated_at = new Date().toISOString();
-
-          // 如果转为浮动节点,需要更新 node_type
-          if (newParentId === null) {
-            node.node_type = "floating";
-          } else if (node.node_type === "floating") {
-            node.node_type = "normal";
-          }
 
           // 更新新父节点下后续兄弟节点的 order_index
           newSiblings.forEach((sibling) => {
@@ -527,6 +520,14 @@ export const useMindmapEditorStore = create<MindmapEditorStore>()(
       set((state) => {
         state.canUndo = historyState.canUndo;
         state.canRedo = historyState.canRedo;
+      });
+    },
+
+    // ========== 同步状态操作 ==========
+    clearSyncStatus: () => {
+      set((state) => {
+        state.isDirty = false;
+        state.isSynced = true;
       });
     },
   }))

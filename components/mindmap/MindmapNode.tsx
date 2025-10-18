@@ -120,7 +120,6 @@ export function MindmapNode({ node, hasChildren }: MindmapNodeProps) {
 
       // 选中新节点
       setCurrentNode(newNode.short_id);
-      toast.success("子节点已创建");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "创建失败");
     }
