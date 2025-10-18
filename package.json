@@ -6,8 +6,8 @@
   "author": "Colin <biz@colinhan.info>",
   "license": "MIT",
   "scripts": {
-    "dev": "next dev",
-    "dev:turbo": "next dev --turbo",
+    "dev": "node scripts/dev.js",
+    "dev:turbo": "node scripts/dev.js --turbo",
     "build": "next build",
     "build:analyze": "ANALYZE=true next build",
     "start": "next start",

@@ -36,7 +36,7 @@ export default defineConfig({
   // 全局测试配置
   use: {
     // 基础 URL，开发环境默认端口
-    baseURL: process.env["PLAYWRIGHT_BASE_URL"] || "http://localhost:3000",
+    baseURL: process.env["NEXT_PUBLIC_SITE_URL"] || "http://localhost:13000",
 
     // 失败时收集 trace 信息
     trace: "on-first-retry",
