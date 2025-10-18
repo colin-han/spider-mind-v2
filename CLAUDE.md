@@ -21,7 +21,6 @@
 - `lib/db/schema.ts` - IndexedDB 数据库模式
 - `lib/store/middleware/persistence.middleware.ts` - 持久化中间件
 - `lib/sync/sync-manager.ts` - 云端同步管理器
-- `lib/store/undo-manager.ts` - 撤销/重做管理器
 
 # 常用命令
 

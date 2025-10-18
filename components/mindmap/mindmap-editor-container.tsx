@@ -19,7 +19,6 @@ import { useMindmapData } from "@/lib/hooks/use-mindmap-data";
 import { useMindmapEditorStore } from "@/lib/store/mindmap-editor.store";
 import { MindmapEditorTabs } from "./mindmap-editor-tabs";
 import { SaveButton } from "./save-button";
-import { UndoRedoButtons } from "./undo-redo-buttons";
 import { OfflineBanner } from "./offline-banner";
 import type { Mindmap, MindmapNode } from "@/lib/types";
 
@@ -71,9 +70,6 @@ export function MindmapEditor({ mindmap, initialNodes }: MindmapEditorProps) {
                 </h1>
               </div>
               <div className="flex items-center gap-4">
-                {/* 撤销/重做按钮 */}
-                <UndoRedoButtons />
-
                 {/* 保存按钮 */}
                 <SaveButton
                   mindmapId={mindmap.short_id}

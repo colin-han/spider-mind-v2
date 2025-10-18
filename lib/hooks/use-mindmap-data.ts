@@ -105,9 +105,6 @@ export function useMindmapData(mindmap: Mindmap, initialNodes: MindmapNode[]) {
           state.isSynced = true;
         });
 
-        // 4. 初始化撤销/重做状态
-        await useMindmapEditorStore.getState().updateUndoRedoState();
-
         setIsInitialized(true);
       } catch (error) {
         console.error("[useMindmapData] Failed to initialize:", error);

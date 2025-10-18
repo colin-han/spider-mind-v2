@@ -27,10 +27,6 @@ export interface EditorState {
 
   // UI 状态 (默认展开,仅记录折叠状态)
   collapsedNodes: Set<string>; // 折叠的节点 short_id 集合
-
-  // 撤销/重做状态
-  canUndo: boolean; // 是否可以撤销
-  canRedo: boolean; // 是否可以重做
 }
 
 /**
@@ -145,22 +141,6 @@ export interface MindmapEditorActions {
    * 设置当前焦点节点
    */
   setCurrentNode: (nodeId: string | null) => void;
-
-  // ========== 撤销/重做操作 ==========
-  /**
-   * 撤销上一个操作
-   */
-  undo: () => Promise<void>;
-
-  /**
-   * 重做上一个被撤销的操作
-   */
-  redo: () => Promise<void>;
-
-  /**
-   * 更新撤销/重做状态
-   */
-  updateUndoRedoState: () => Promise<void>;
 
   // ========== 同步状态操作 ==========
   /**
