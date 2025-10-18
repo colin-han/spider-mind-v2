@@ -11,7 +11,7 @@
  */
 
 import { getDB, type OperationType } from "@/lib/db/schema";
-import type { MindmapNode } from "@/lib/types";
+import type { MindmapNode, NodeOperationState } from "@/lib/types";
 import { generateShortId } from "@/lib/utils/short-id";
 
 /**
@@ -76,7 +76,13 @@ export async function syncAddNode(
       operation_type: "ADD_NODE",
       timestamp,
       before_state: null,
-      after_state: node,
+      after_state: {
+        nodeId: node.short_id,
+        title: node.title,
+        content: node.content,
+        parent_id: node.parent_id,
+        order_index: node.order_index,
+      },
       is_undone: false,
     });
   }
@@ -123,8 +129,14 @@ export async function syncUpdateNodeContent(
       mindmap_id: mindmapId,
       operation_type: "UPDATE_NODE_CONTENT",
       timestamp,
-      before_state: { content: oldNode.content },
-      after_state: { content: newContent },
+      before_state: {
+        nodeId: nodeId,
+        content: oldNode.content,
+      },
+      after_state: {
+        nodeId: nodeId,
+        content: newContent,
+      },
       is_undone: false,
     });
   }
@@ -176,8 +188,14 @@ export async function syncUpdateNodeTitle(
       mindmap_id: mindmapId,
       operation_type: "UPDATE_NODE_TITLE",
       timestamp,
-      before_state: { title: oldNode.title },
-      after_state: { title: newTitle },
+      before_state: {
+        nodeId: nodeId,
+        title: oldNode.title,
+      },
+      after_state: {
+        nodeId: nodeId,
+        title: newTitle,
+      },
       is_undone: false,
     });
   }
@@ -212,7 +230,13 @@ export async function syncDeleteNode(
       mindmap_id: deletedNodes[0].mindmap_id,
       operation_type: "DELETE_NODE",
       timestamp,
-      before_state: deletedNodes,
+      before_state: {
+        nodeId: deletedNodes[0].short_id,
+        title: deletedNodes[0].title,
+        content: deletedNodes[0].content,
+        parent_id: deletedNodes[0].parent_id,
+        order_index: deletedNodes[0].order_index,
+      },
       after_state: null,
       is_undone: false,
     });
@@ -262,8 +286,14 @@ export async function syncUpdateMindmapTitle(
       mindmap_id: mindmapId,
       operation_type: "UPDATE_MINDMAP_TITLE",
       timestamp,
-      before_state: { title: oldMindmap.title },
-      after_state: { title: newTitle },
+      before_state: {
+        nodeId: mindmapId, // 对于 mindmap 操作，使用 mindmap_id 作为 nodeId
+        title: oldMindmap.title,
+      },
+      after_state: {
+        nodeId: mindmapId,
+        title: newTitle,
+      },
       is_undone: false,
     });
   }
@@ -283,8 +313,8 @@ async function recordHistory(
     mindmap_id: string;
     operation_type: OperationType;
     timestamp: string;
-    before_state: unknown;
-    after_state: unknown;
+    before_state: NodeOperationState | null;
+    after_state: NodeOperationState | null;
     is_undone: boolean;
   }
 ): Promise<void> {

@@ -228,12 +228,16 @@ async function saveToSupabase() {
 interface MindmapDB extends DBSchema {
   mindmap_nodes: {
     value: {
-      // ... 原有字段
+      // ... 原有字段（id, short_id, mindmap_id, parent_id, parent_short_id, title, content, order_index, created_at, updated_at, deleted_at）
+
+      // 新增字段用于脏数据追踪
       dirty: boolean; // 是否有未保存的修改
       local_updated_at: string; // 本地最后修改时间
     };
   };
 }
+
+// 注：完整的 IndexedDB Schema 定义请参见 Section 4.1
 ```
 
 **脏数据标记逻辑**:
@@ -485,6 +489,22 @@ function detectMultipleTabs() {
 - ✅ 易于调试和审计
 - ✅ 支持未来的操作合并优化
 
+**操作状态类型定义**:
+
+```typescript
+/**
+ * 节点操作状态类型
+ * 用于记录操作历史中的 before_state 和 after_state
+ */
+type NodeOperationState = {
+  nodeId: string;
+  title?: string;
+  content?: string;
+  parent_id?: string | null;
+  order_index?: number;
+};
+```
+
 **IndexedDB Schema 扩展**:
 
 ```typescript
@@ -499,8 +519,8 @@ interface MindmapDB extends DBSchema {
       timestamp: string;
 
       // 操作数据快照
-      before_state: unknown; // 操作前的状态
-      after_state: unknown; // 操作后的状态
+      before_state: NodeOperationState; // 操作前的状态
+      after_state: NodeOperationState; // 操作后的状态
 
       // 用于撤销/重做
       is_undone: boolean; // 是否已被撤销
@@ -777,20 +797,27 @@ interface MindmapDB extends DBSchema {
   mindmap_nodes: {
     key: string; // short_id
     value: {
-      // 原有字段
+      // === 核心字段（与 Supabase 一致）===
       id: string;
       short_id: string;
       mindmap_id: string;
-      content: string;
       parent_id: string | null;
+      parent_short_id: string | null; // 父节点的 short_id（用于优化查询）
+      title: string; // 节点标题（NOT NULL 字段）
+      content: string;
       order_index: number;
       created_at: string;
       updated_at: string;
       deleted_at: string | null;
 
-      // 新增字段
+      // === 本地扩展字段（仅 IndexedDB）===
       dirty: boolean; // 是否有未保存的修改
       local_updated_at: string; // 本地最后修改时间
+    };
+    indexes: {
+      "by-mindmap": string; // mindmap_id
+      "by-parent": string; // parent_id
+      "by-parent-short": string; // parent_short_id（用于优化查询）
     };
   };
 
@@ -802,9 +829,9 @@ interface MindmapDB extends DBSchema {
       operation_type: OperationType;
       timestamp: string;
 
-      // 操作数据
-      before_state: unknown;
-      after_state: unknown;
+      // 操作数据（使用明确的类型定义）
+      before_state: NodeOperationState;
+      after_state: NodeOperationState;
 
       // 撤销/重做状态
       is_undone: boolean;

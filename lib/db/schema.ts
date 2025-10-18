@@ -8,7 +8,7 @@
  */
 
 import { DBSchema, IDBPDatabase, openDB } from "idb";
-import type { Mindmap, MindmapNode } from "@/lib/types";
+import type { Mindmap, MindmapNode, NodeOperationState } from "@/lib/types";
 
 /**
  * 操作类型定义
@@ -31,9 +31,11 @@ export interface OperationHistory {
   operation_type: OperationType;
   timestamp: string;
 
-  // 操作前后的状态
-  before_state: unknown;
-  after_state: unknown;
+  // 操作前后的状态（使用明确的类型定义）
+  // ADD_NODE: before_state 为 null
+  // DELETE_NODE: after_state 为 null
+  before_state: NodeOperationState | null;
+  after_state: NodeOperationState | null;
 
   // 撤销/重做状态
   is_undone: boolean;
@@ -73,6 +75,7 @@ export interface MindmapDB extends DBSchema {
     indexes: {
       "by-mindmap": string; // mindmap_id
       "by-parent": string; // parent_id
+      "by-parent-short": string; // parent_short_id（用于优化查询）
       "by-updated": string; // updated_at
     };
   };
@@ -99,7 +102,7 @@ let dbInstance: IDBPDatabase<MindmapDB> | null = null;
  * 数据库配置
  */
 const DB_NAME = "spider-mark-mindmap";
-const DB_VERSION = 1;
+const DB_VERSION = 2; // 版本 2: 添加 by-parent-short 索引，修复 unknown 类型
 
 /**
  * 初始化并打开数据库
@@ -114,6 +117,20 @@ export async function initDB(): Promise<IDBPDatabase<MindmapDB>> {
       console.log(
         `Upgrading database from version ${oldVersion} to ${newVersion}`
       );
+
+      // 简化的迁移策略：版本不一致时清空所有数据
+      if (oldVersion > 0 && newVersion && oldVersion < newVersion) {
+        console.warn(
+          `Database schema changed from version ${oldVersion} to ${newVersion}. Clearing all data.`
+        );
+
+        // 删除所有已存在的 object stores
+        const storeNames = Array.from(db.objectStoreNames);
+        storeNames.forEach((storeName) => {
+          db.deleteObjectStore(storeName);
+          console.log(`Deleted object store: ${storeName}`);
+        });
+      }
 
       // 创建 mindmaps 表
       if (!db.objectStoreNames.contains("mindmaps")) {
@@ -135,6 +152,9 @@ export async function initDB(): Promise<IDBPDatabase<MindmapDB>> {
 
         nodesStore.createIndex("by-mindmap", "mindmap_id", { unique: false });
         nodesStore.createIndex("by-parent", "parent_id", { unique: false });
+        nodesStore.createIndex("by-parent-short", "parent_short_id", {
+          unique: false,
+        });
         nodesStore.createIndex("by-updated", "updated_at", { unique: false });
 
         console.log("Created mindmap_nodes object store");
