@@ -848,6 +848,333 @@ interface MindmapDB extends DBSchema {
 
 现有的 `mindmaps` 和 `mindmap_nodes` 表已经满足需求,无需新增字段。
 
+### 4.3 时间戳字段说明
+
+为了准确实现数据同步和冲突检测，需要明确各时间戳字段的语义和更新时机。
+
+#### 4.3.1 字段定义
+
+**mindmaps 表时间戳字段**:
+
+| 字段名              | 类型   | 语义                                    | 更新时机                     |
+| ------------------- | ------ | --------------------------------------- | ---------------------------- |
+| `created_at`        | string | 思维导图创建时间（服务器时间）          | 创建时设置，永不修改         |
+| `updated_at`        | string | 思维导图最后修改时间（服务器时间）      | 每次在服务器端修改数据时更新 |
+| `local_updated_at`  | string | 本地最后修改时间（本地时间）            | 每次在本地修改数据时更新     |
+| `server_updated_at` | string | 上次同步成功时从服务器读取的 updated_at | 见下方"更新时机"             |
+
+**mindmap_nodes 表时间戳字段**:
+
+| 字段名             | 类型   | 语义                           | 更新时机                     |
+| ------------------ | ------ | ------------------------------ | ---------------------------- |
+| `created_at`       | string | 节点创建时间（服务器时间）     | 创建时设置，永不修改         |
+| `updated_at`       | string | 节点最后修改时间（服务器时间） | 每次在服务器端修改数据时更新 |
+| `local_updated_at` | string | 本地最后修改时间（本地时间）   | 每次在本地修改数据时更新     |
+
+#### 4.3.2 server_updated_at 详解
+
+**定义**: `server_updated_at` 存储"上次同步成功时，从服务器读取的 updated_at 值"
+
+**用途**: 用于检测服务器数据是否在本地修改后被其他设备/用户更新
+
+**更新时机**:
+
+1. **首次从服务器加载数据时**
+
+   ```typescript
+   async loadFromServer(mindmapId: string) {
+     const { data: serverMindmap } = await this.supabase
+       .from('mindmaps')
+       .select('*')
+       .eq('short_id', mindmapId)
+       .single();
+
+     if (serverMindmap) {
+       await this.db.put('mindmaps', {
+         ...serverMindmap,
+         dirty: false,
+         local_updated_at: new Date().toISOString(),
+         server_updated_at: serverMindmap.updated_at,  // ✅ 记录服务器版本
+       });
+     }
+   }
+   ```
+
+2. **成功同步到服务器后**
+
+   ```typescript
+   async saveToServer(mindmapId: string): Promise<SyncResult> {
+     // ... 上传数据到服务器
+
+     const { data: updatedMindmap } = await this.supabase
+       .from('mindmaps')
+       .update({ /* ... */ })
+       .select()
+       .single();
+
+     // ✅ 同步成功后更新 server_updated_at
+     const localMindmap = await this.db.get('mindmaps', mindmapId);
+     await this.db.put('mindmaps', {
+       ...localMindmap,
+       dirty: false,
+       server_updated_at: updatedMindmap.updated_at,  // 更新为服务器最新版本
+     });
+   }
+   ```
+
+3. **从服务器拉取最新数据后**
+
+   ```typescript
+   async pullFromServer(mindmapId: string) {
+     const { data: serverMindmap } = await this.supabase
+       .from('mindmaps')
+       .select('*')
+       .eq('short_id', mindmapId)
+       .single();
+
+     if (serverMindmap) {
+       await this.db.put('mindmaps', {
+         ...serverMindmap,
+         dirty: false,
+         local_updated_at: new Date().toISOString(),
+         server_updated_at: serverMindmap.updated_at,  // ✅ 更新为服务器最新版本
+       });
+     }
+   }
+   ```
+
+**不应更新的情况**:
+
+- ❌ 本地修改数据时（此时应更新 `local_updated_at` 和设置 `dirty = true`）
+- ❌ 检测到冲突时（应保持原值，用于冲突解决）
+
+#### 4.3.3 冲突检测逻辑
+
+使用 `server_updated_at` 进行冲突检测的正确逻辑：
+
+```typescript
+private async detectConflict(): Promise<ConflictInfo | null> {
+  // 1. 获取本地数据（包含上次同步时的服务器版本）
+  const localMindmap = await this.db.get("mindmaps", this.mindmapId);
+
+  // 2. 从服务器获取最新版本
+  const { data: serverMindmap } = await this.supabase
+    .from("mindmaps")
+    .select("updated_at")
+    .eq("short_id", this.mindmapId)
+    .single();
+
+  if (!serverMindmap) {
+    throw new Error("Mindmap not found on server");
+  }
+
+  // 3. 比较：服务器当前版本 vs 本地存储的服务器版本
+  // 如果服务器版本更新，说明有其他设备/用户修改了数据
+  if (
+    new Date(serverMindmap.updated_at) >
+    new Date(localMindmap.server_updated_at)  // 上次同步时的服务器版本
+  ) {
+    return {
+      localVersion: localMindmap.server_updated_at,  // 本地知道的服务器版本
+      serverVersion: serverMindmap.updated_at,       // 服务器当前版本
+    };
+  }
+
+  return null; // 无冲突
+}
+```
+
+**冲突判定逻辑说明**:
+
+- 如果 `serverMindmap.updated_at > localMindmap.server_updated_at`：
+  - 说明在本地上次同步后，服务器数据被其他设备/用户更新了
+  - 此时如果本地也有修改（`dirty = true`），则存在冲突
+- 如果 `serverMindmap.updated_at == localMindmap.server_updated_at`：
+  - 说明服务器数据未变化
+  - 可以安全地上传本地修改
+
+### 4.4 命名约定
+
+为了确保代码的一致性和可维护性，项目采用以下命名约定：
+
+#### 4.4.1 基本规则
+
+**数据库层 (Supabase & IndexedDB)**:
+
+- 使用 `snake_case` 命名
+- 所有表名、列名、索引名使用小写字母和下划线
+- 示例：`mindmap_nodes`, `parent_id`, `by-parent-short`
+
+**TypeScript 应用层**:
+
+- 使用 `camelCase` 命名
+- 变量、函数、参数、对象属性使用驼峰命名
+- 示例：`mindmapNodes`, `parentId`, `byParentShort`
+
+**类型和接口**:
+
+- 使用 `PascalCase` 命名
+- 接口、类型、枚举、类名使用大驼峰命名
+- 示例：`MindmapNode`, `OperationType`, `SyncManager`
+
+#### 4.4.2 字段名称对照表
+
+| 数据库字段 (snake_case) | TypeScript 属性 (camelCase) |
+| ----------------------- | --------------------------- |
+| `short_id`              | `shortId`                   |
+| `mindmap_id`            | `mindmapId`                 |
+| `parent_id`             | `parentId`                  |
+| `parent_short_id`       | `parentShortId`             |
+| `order_index`           | `orderIndex`                |
+| `created_at`            | `createdAt`                 |
+| `updated_at`            | `updatedAt`                 |
+| `deleted_at`            | `deletedAt`                 |
+| `local_updated_at`      | `localUpdatedAt`            |
+| `server_updated_at`     | `serverUpdatedAt`           |
+| `user_id`               | `userId`                    |
+| `operation_type`        | `operationType`             |
+| `is_undone`             | `isUndone`                  |
+
+#### 4.4.3 数据转换规范
+
+**在数据库和应用层之间传递数据时，应遵循以下规则**:
+
+**从数据库读取 → 应用层**: 保持数据库原始命名（不转换）
+
+```typescript
+// ✅ 正确 - 保持数据库命名
+const mindmap = await db.get("mindmaps", shortId);
+console.log(mindmap.short_id); // 使用 snake_case
+
+// ❌ 错误 - 不要在读取时转换
+const mindmap = toCamelCase(await db.get("mindmaps", shortId));
+```
+
+**应用层 → 数据库写入**: 保持数据库原始命名（不转换）
+
+```typescript
+// ✅ 正确 - 直接使用 snake_case
+await db.put("mindmaps", {
+  short_id: "abc123",
+  mindmap_id: "xyz789",
+  parent_id: null,
+});
+
+// ❌ 错误 - 不要在写入时转换
+await db.put(
+  "mindmaps",
+  toSnakeCase({
+    shortId: "abc123",
+    mindmapId: "xyz789",
+    parentId: null,
+  })
+);
+```
+
+**理由**:
+
+1. **类型安全**: IndexedDB 和 Supabase 的类型定义都使用 `snake_case`，转换会导致类型不匹配
+2. **性能**: 避免不必要的对象转换开销
+3. **一致性**: 数据库字段名与代码中的字段名保持一致，减少混淆
+
+#### 4.4.4 代码示例
+
+**IndexedDB 操作示例**:
+
+```typescript
+// ✅ 正确的命名使用
+async function saveNode(node: MindmapNode): Promise<void> {
+  const tx = db.transaction("mindmap_nodes", "readwrite");
+  await tx.objectStore("mindmap_nodes").put({
+    short_id: node.short_id,
+    mindmap_id: node.mindmap_id,
+    parent_id: node.parent_id,
+    parent_short_id: node.parent_short_id,
+    title: node.title,
+    order_index: node.order_index,
+    created_at: node.created_at,
+    updated_at: node.updated_at,
+    dirty: true,
+    local_updated_at: new Date().toISOString(),
+  });
+}
+```
+
+**Supabase 操作示例**:
+
+```typescript
+// ✅ 正确的命名使用
+async function uploadNode(node: MindmapNode): Promise<void> {
+  const { error } = await supabase.from("mindmap_nodes").insert({
+    short_id: node.short_id,
+    mindmap_id: node.mindmap_id,
+    parent_id: node.parent_id,
+    parent_short_id: node.parent_short_id,
+    title: node.title,
+    order_index: node.order_index,
+  });
+}
+```
+
+**Zustand Store 示例**:
+
+```typescript
+// ✅ 正确的命名使用
+interface MindmapEditorStore {
+  nodes: Map<string, MindmapNode>; // 使用 camelCase 作为变量名
+  currentMindmap: Mindmap | null;
+
+  addNode: (node: MindmapNode) => void;
+  updateNodeTitle: (shortId: string, title: string) => void; // 函数名使用 camelCase
+}
+
+// 在 Store 中操作数据时，仍然使���数据库的 snake_case 字段名
+const addNode = (node: MindmapNode) => {
+  set((state) => {
+    state.nodes.set(node.short_id, {
+      // ✅ 使用 snake_case
+      ...node,
+      dirty: true,
+      local_updated_at: new Date().toISOString(),
+    });
+  });
+};
+```
+
+#### 4.4.5 特殊情况说明
+
+**索引名称**: IndexedDB 索引名称使用连字符分隔
+
+```typescript
+// ✅ 正确
+indexes: {
+  'by-mindmap': 'mindmap_id',
+  'by-parent': 'parent_id',
+  'by-parent-short': 'parent_short_id',
+  'by-timestamp': 'timestamp',
+}
+```
+
+**计数变量**: 统计类变量使用 camelCase
+
+```typescript
+// ✅ 正确
+const dirtyCount = dirtyNodes.length;
+const pendingOperationCount = operations.filter((op) => !op.is_undone).length;
+
+// ❌ 错误
+const dirty_count = dirtyNodes.length;
+```
+
+**常量**: 全局常量使用 SCREAMING_SNAKE_CASE
+
+```typescript
+// ✅ 正确
+const DB_VERSION = 3;
+const MAX_OPERATION_HISTORY = 100;
+const DEFAULT_RETRY_COUNT = 3;
+```
+
 ## 5. 核心模块设计
 
 ### 5.1 Sync Manager (同步管理器)
@@ -877,73 +1204,88 @@ export class SyncManager {
     // 3. 上传数据
     const result = await this.uploadData(dirtyNodes, dirtyMindmap);
 
-    // 4. 清除脏标记
+    // 4. 清除脏标记（传入服务器更新后的数据）
     if (result.success) {
-      await this.clearDirtyFlags();
+      await this.clearDirtyFlags(result.updatedMindmap);
     }
 
     return result;
   }
 
   private async detectConflict(): Promise<ConflictInfo | null> {
+    // 1. 获取本地数据（包含上次同步时的服务器版本）
     const localMindmap = await this.db.get("mindmaps", this.mindmapId);
 
+    // 2. 从服务器获取最新版本
     const { data: serverMindmap } = await this.supabase
       .from("mindmaps")
       .select("updated_at")
       .eq("short_id", this.mindmapId)
       .single();
 
+    if (!serverMindmap) {
+      throw new Error("Mindmap not found on server");
+    }
+
+    // 3. 比较：服务器当前版本 vs 本地存储的服务器版本
+    // 如果服务器版本更新，说明有其他设备/用户修改了数据
     if (
       new Date(serverMindmap.updated_at) >
-      new Date(localMindmap.server_updated_at)
+      new Date(localMindmap.server_updated_at) // 上次同步时的服务器版本
     ) {
       return {
-        localVersion: localMindmap.updated_at,
-        serverVersion: serverMindmap.updated_at,
+        localVersion: localMindmap.server_updated_at, // 本地知道的服务器版本
+        serverVersion: serverMindmap.updated_at, // 服务器当前版本
       };
     }
 
-    return null;
+    return null; // 无冲突
   }
 
   private async uploadData(nodes: MindmapNode[], mindmap?: Mindmap) {
-    // 使用 Supabase 事务
-    const updates = [];
+    let updatedMindmap = null;
 
+    // 1. 更新思维导图元数据
     if (mindmap) {
-      updates.push(
-        this.supabase
-          .from("mindmaps")
-          .update({
-            title: mindmap.title,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("short_id", this.mindmapId)
-      );
+      const { data, error } = await this.supabase
+        .from("mindmaps")
+        .update({
+          title: mindmap.title,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("short_id", this.mindmapId)
+        .select() // ✅ 获取服务器更新后的数据
+        .single();
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+      updatedMindmap = data;
     }
 
+    // 2. 批量更新节点
     if (nodes.length > 0) {
-      updates.push(
-        this.supabase.from("mindmap_nodes").upsert(
-          nodes.map((node) => ({
-            id: node.id,
-            short_id: node.short_id,
-            mindmap_id: node.mindmap_id,
-            content: node.content,
-            parent_id: node.parent_id,
-            order_index: node.order_index,
-            updated_at: node.updated_at,
-          }))
-        )
+      const { error } = await this.supabase.from("mindmap_nodes").upsert(
+        nodes.map((node) => ({
+          id: node.id,
+          short_id: node.short_id,
+          mindmap_id: node.mindmap_id,
+          content: node.content,
+          parent_id: node.parent_id,
+          order_index: node.order_index,
+          updated_at: node.updated_at,
+        }))
       );
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
     }
 
-    const results = await Promise.all(updates);
-    return { success: results.every((r) => !r.error) };
+    return { success: true, updatedMindmap };
   }
 
-  private async clearDirtyFlags() {
+  private async clearDirtyFlags(updatedMindmap?: any) {
     const tx = this.db.transaction(["mindmaps", "mindmap_nodes"], "readwrite");
 
     // 清除 mindmap 的 dirty 标记
@@ -952,7 +1294,9 @@ export class SyncManager {
       await tx.objectStore("mindmaps").put({
         ...mindmap,
         dirty: false,
-        server_updated_at: new Date().toISOString(),
+        // ✅ 使用服务器返回的 updated_at（如果有）
+        server_updated_at:
+          updatedMindmap?.updated_at || mindmap.server_updated_at,
       });
     }
 
