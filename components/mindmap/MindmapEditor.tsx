@@ -83,9 +83,6 @@ export function MindmapEditor({ mindmap, initialNodes }: MindmapEditorProps) {
                 </div>
               </div>
             </div>
-            {mindmap.description && (
-              <p className="text-gray-600 mt-2">{mindmap.description}</p>
-            )}
           </div>
 
           {/* 编辑区域 */}

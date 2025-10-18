@@ -10,7 +10,7 @@ export default async function DashboardPage() {
   // 获取用户的所有思维导图（排除软删除的）
   const { data: mindmaps } = await supabase
     .from("mindmaps")
-    .select("id, short_id, title, description, created_at, updated_at")
+    .select("id, short_id, title, created_at, updated_at")
     .eq("user_id", user.id)
     .is("deleted_at", null)
     .order("updated_at", { ascending: false });

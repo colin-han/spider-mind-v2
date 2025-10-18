@@ -317,7 +317,6 @@ export class SyncManager {
           short_id: mindmap.short_id,
           user_id: mindmap.user_id,
           title: mindmap.title,
-          description: mindmap.description,
           created_at: mindmap.created_at,
           updated_at: new Date().toISOString(), // 使用当前时间
         });

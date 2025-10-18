@@ -47,7 +47,6 @@ export async function createMindmap(): Promise<CreateMindmapResult> {
         user_id: user.id,
         short_id: mindmapShortId,
         title,
-        description: null,
       };
 
       const { data, error } = await supabase

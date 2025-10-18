@@ -18,7 +18,6 @@ export function MindmapCard({
   id,
   short_id,
   title,
-  description,
   created_at,
   updated_at,
 }: MindmapCardProps) {
@@ -131,13 +130,6 @@ export function MindmapCard({
           </button>
         )}
       </div>
-
-      {/* 描述（如果有） */}
-      {description && (
-        <p className="text-gray-600 dark:text-gray-400 text-sm mb-4 line-clamp-2">
-          {description}
-        </p>
-      )}
 
       {/* 时间信息 */}
       <div className="space-y-1 text-xs text-gray-500 dark:text-gray-500">

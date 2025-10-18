@@ -118,16 +118,15 @@ SELECT * FROM get_node_descendants($node_id);
 
 存储思维导图文档的元数据。
 
-| 字段        | 类型        | 约束                               | 说明              |
-| ----------- | ----------- | ---------------------------------- | ----------------- |
-| id          | UUID        | PRIMARY KEY                        | 主键              |
-| user_id     | UUID        | NOT NULL, REFERENCES user_profiles | 所属用户          |
-| short_id    | TEXT        | NOT NULL                           | 短ID（6位base36） |
-| title       | TEXT        | NOT NULL                           | 标题              |
-| description | TEXT        |                                    | 描述              |
-| created_at  | TIMESTAMPTZ | NOT NULL, DEFAULT NOW()            | 创建时间          |
-| updated_at  | TIMESTAMPTZ | NOT NULL, DEFAULT NOW()            | 更新时间          |
-| deleted_at  | TIMESTAMPTZ |                                    | 软删除时间戳      |
+| 字段       | 类型        | 约束                               | 说明              |
+| ---------- | ----------- | ---------------------------------- | ----------------- |
+| id         | UUID        | PRIMARY KEY                        | 主键              |
+| user_id    | UUID        | NOT NULL, REFERENCES user_profiles | 所属用户          |
+| short_id   | TEXT        | NOT NULL                           | 短ID（6位base36） |
+| title      | TEXT        | NOT NULL                           | 标题              |
+| created_at | TIMESTAMPTZ | NOT NULL, DEFAULT NOW()            | 创建时间          |
+| updated_at | TIMESTAMPTZ | NOT NULL, DEFAULT NOW()            | 更新时间          |
+| deleted_at | TIMESTAMPTZ |                                    | 软删除时间戳      |
 
 唯一约束：`(user_id, short_id)` - 确保短ID在用户范围内唯一
 
