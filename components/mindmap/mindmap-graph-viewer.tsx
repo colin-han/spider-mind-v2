@@ -88,6 +88,23 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
     targetRect: null,
   });
 
+  // Dark mode 检测
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  useEffect(() => {
+    // 检测初始 dark mode 状态
+    const darkModeMediaQuery = window.matchMedia(
+      "(prefers-color-scheme: dark)"
+    );
+    setIsDarkMode(darkModeMediaQuery.matches);
+
+    // 监听 dark mode 变化
+    const handler = (e: MediaQueryListEvent) => setIsDarkMode(e.matches);
+    darkModeMediaQuery.addEventListener("change", handler);
+
+    return () => darkModeMediaQuery.removeEventListener("change", handler);
+  }, []);
+
   // 转换数据为 React Flow 格式
   const { nodes, edges } = useMemo(() => {
     if (!currentMindmap) {
@@ -310,7 +327,7 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
   return (
     <div
       data-testid="mindmap-graph-viewer"
-      className="h-full w-full bg-gray-50 relative"
+      className="h-full w-full bg-gray-50 dark:bg-gray-900 relative"
     >
       <ReactFlow
         nodes={nodes}
@@ -329,11 +346,14 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
         defaultEdgeOptions={{
           type: "smoothstep",
           animated: false,
-          style: { stroke: "#94a3b8", strokeWidth: 2 },
+          style: {
+            stroke: isDarkMode ? "#6b7280" : "#94a3b8",
+            strokeWidth: 2,
+          },
         }}
         proOptions={{ hideAttribution: true }}
       >
-        <Background color="#e2e8f0" gap={16} />
+        <Background color={isDarkMode ? "#374151" : "#e2e8f0"} gap={16} />
         <Controls
           data-testid="mindmap-graph-viewer-controls"
           showInteractive={false}

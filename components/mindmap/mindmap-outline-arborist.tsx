@@ -88,9 +88,11 @@ function Node({ node, style, dragHandle }: NodeRendererProps<TreeNode>) {
       onClick={handleClick}
       className={cn(
         "flex items-center gap-2 px-2 py-1 cursor-pointer text-sm transition-colors",
+        "text-gray-900 dark:text-gray-100",
         {
-          "bg-blue-100 text-blue-900 font-medium": isSelected,
-          "hover:bg-gray-100": !isSelected,
+          "bg-blue-100 text-blue-900 font-medium dark:bg-blue-900 dark:text-blue-100":
+            isSelected,
+          "hover:bg-gray-100 dark:hover:bg-gray-800": !isSelected,
         }
       )}
       data-testid={`mindmap-node-${node.id}`}
@@ -98,7 +100,7 @@ function Node({ node, style, dragHandle }: NodeRendererProps<TreeNode>) {
       {/* 展开/折叠图标 */}
       {node.children && node.children.length > 0 && (
         <span
-          className="w-4 h-4 flex items-center justify-center text-gray-400 flex-shrink-0 hover:text-gray-600 cursor-pointer transition-colors"
+          className="w-4 h-4 flex items-center justify-center text-gray-400 dark:text-gray-500 flex-shrink-0 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer transition-colors"
           onClick={handleToggle}
         >
           <svg
@@ -207,17 +209,17 @@ export const MindmapOutlineArborist = memo(function MindmapOutlineArborist({
   // 收起状态：只显示展开按钮
   if (isCollapsed) {
     return (
-      <div className="h-full flex flex-col items-center py-4">
+      <div className="h-full flex flex-col items-center py-4 bg-white dark:bg-gray-900">
         <button
           onClick={onToggleCollapse}
-          className="p-2 hover:bg-gray-100 rounded transition-colors"
+          className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
           aria-label="展开大纲"
           data-testid="outline-expand-button"
         >
-          <ChevronRight className="w-5 h-5 text-gray-600" />
+          <ChevronRight className="w-5 h-5 text-gray-600 dark:text-gray-400" />
         </button>
         <div className="mt-4">
-          <BookOpen className="w-5 h-5 text-gray-400" />
+          <BookOpen className="w-5 h-5 text-gray-400 dark:text-gray-500" />
         </div>
       </div>
     );
@@ -225,37 +227,42 @@ export const MindmapOutlineArborist = memo(function MindmapOutlineArborist({
 
   // 展开状态：显示 Tree
   return (
-    <div className="h-full flex flex-col" data-testid="mindmap-outline">
+    <div
+      className="h-full flex flex-col bg-white dark:bg-gray-900"
+      data-testid="mindmap-outline"
+    >
       {/* 标题栏 */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 flex-shrink-0">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0 bg-white dark:bg-gray-900">
         <div className="flex items-center gap-2">
-          <BookOpen className="w-5 h-5 text-gray-600" />
-          <h3 className="text-sm font-semibold text-gray-900">大纲</h3>
+          <BookOpen className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+            大纲
+          </h3>
         </div>
         <button
           onClick={onToggleCollapse}
-          className="p-1 hover:bg-gray-100 rounded transition-colors"
+          className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
           aria-label="收起大纲"
           data-testid="outline-collapse-button"
         >
-          <ChevronLeft className="w-4 h-4 text-gray-600" />
+          <ChevronLeft className="w-4 h-4 text-gray-600 dark:text-gray-400" />
         </button>
       </div>
 
       {/* Tree 内容 */}
       <div
         ref={containerRef}
-        className="flex-1 min-h-0 overflow-hidden [&_*:focus-visible]:outline-none"
+        className="flex-1 min-h-0 overflow-hidden [&_*:focus-visible]:outline-none bg-white dark:bg-gray-900 custom-scrollbar [&_*]:custom-scrollbar"
         data-testid="outline-tree"
       >
         {!currentMindmap && (
-          <div className="text-sm text-gray-500 text-center py-8">
+          <div className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">
             未加载思维导图
           </div>
         )}
 
         {currentMindmap && !rootNode && (
-          <div className="text-sm text-red-500 text-center py-8">
+          <div className="text-sm text-red-500 dark:text-red-400 text-center py-8">
             错误: 未找到根节点
           </div>
         )}

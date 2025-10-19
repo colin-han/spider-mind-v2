@@ -36,8 +36,10 @@ export default async function MindmapPage({ params }: MindmapPageProps) {
 
   if (!nodes) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-red-500">错误: 无法加载节点数据</div>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-red-500 dark:text-red-400">
+          错误: 无法加载节点数据
+        </div>
       </div>
     );
   }

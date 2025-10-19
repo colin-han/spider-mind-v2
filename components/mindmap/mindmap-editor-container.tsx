@@ -78,8 +78,8 @@ export function MindmapEditor({ mindmap, initialNodes }: MindmapEditorProps) {
 
   if (!isInitialized) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-500">加载中...</div>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-gray-500 dark:text-gray-400">加载中...</div>
       </div>
     );
   }
@@ -89,22 +89,25 @@ export function MindmapEditor({ mindmap, initialNodes }: MindmapEditorProps) {
       {/* 离线提示横幅 */}
       <OfflineBanner mindmapId={mindmap.short_id} />
 
-      <div className="min-h-screen bg-gray-50" data-testid="mindmap-editor">
+      <div
+        className="min-h-screen bg-gray-50 dark:bg-gray-900"
+        data-testid="mindmap-editor"
+      >
         {/* 工具栏 */}
-        <div className="bg-white border-b border-gray-200 shadow-sm">
+        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
           <div className="max-w-7xl mx-auto px-8 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 {/* 返回 Dashboard 链接 */}
                 <Link
                   href="/dashboard"
-                  className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+                  className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
                 >
                   <ArrowLeft className="w-5 h-5" />
                   <span className="text-sm font-medium">返回</span>
                 </Link>
 
-                <h1 className="text-2xl font-bold text-gray-900">
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
                   {mindmap.title}
                 </h1>
               </div>

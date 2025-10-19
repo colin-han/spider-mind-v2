@@ -31,3 +31,96 @@ body {
     text-wrap: balance;
   }
 }
+
+/* Custom scrollbar styles - reusable for any component */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f3f4f6; /* gray-100 */
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #d1d5db; /* gray-300 */
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af; /* gray-400 */
+}
+
+/* Dark mode scrollbar */
+@media (prefers-color-scheme: dark) {
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: #1f2937; /* gray-800 */
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #4b5563; /* gray-600 */
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #6b7280; /* gray-500 */
+  }
+}
+
+/* Firefox scrollbar */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #d1d5db #f3f4f6; /* thumb track */
+}
+
+@media (prefers-color-scheme: dark) {
+  .custom-scrollbar {
+    scrollbar-color: #4b5563 #1f2937; /* thumb track */
+  }
+}
+
+/* React Flow Controls and MiniMap - dark mode support */
+@media (prefers-color-scheme: dark) {
+  /* Controls panel */
+  .react-flow__controls {
+    background: #1f2937 !important; /* gray-800 */
+    border-color: #374151 !important; /* gray-700 */
+  }
+
+  .react-flow__controls-button {
+    background: #1f2937 !important; /* gray-800 */
+    border-color: #374151 !important; /* gray-700 */
+    color: #d1d5db !important; /* gray-300 */
+  }
+
+  .react-flow__controls-button:hover {
+    background: #374151 !important; /* gray-700 */
+    color: #f3f4f6 !important; /* gray-100 */
+  }
+
+  .react-flow__controls-button svg {
+    fill: #d1d5db !important; /* gray-300 */
+  }
+
+  .react-flow__controls-button:hover svg {
+    fill: #f3f4f6 !important; /* gray-100 */
+  }
+
+  /* MiniMap */
+  .react-flow__minimap {
+    background: #1f2937 !important; /* gray-800 */
+    border-color: #374151 !important; /* gray-700 */
+  }
+
+  .react-flow__minimap svg {
+    background: #111827 !important; /* gray-900 */
+  }
+
+  /* MiniMap viewport area - make it more visible in dark mode */
+  .react-flow__minimap-mask {
+    fill: rgba(0, 0, 0, 0.6) !important; /* Darker mask for better contrast */
+  }
+
+  .react-flow__minimap-node {
+    fill: #4b5563 !important; /* gray-600 - lighter nodes for visibility */
+  }
+}

@@ -41,11 +41,11 @@ export function UserMenu({ user }: UserMenuProps) {
     <div className="relative" ref={menuRef} data-testid="user-menu">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 transition-colors"
+        className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
         data-testid="user-menu-button"
       >
         <div
-          className="w-8 h-8 bg-black text-white rounded-full flex items-center justify-center font-medium"
+          className="w-8 h-8 bg-black dark:bg-white text-white dark:text-black rounded-full flex items-center justify-center font-medium"
           data-testid="user-avatar"
         >
           {user.email?.[0]?.toUpperCase()}
@@ -54,12 +54,12 @@ export function UserMenu({ user }: UserMenuProps) {
 
       {isOpen && (
         <div
-          className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50"
+          className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-50"
           data-testid="user-menu-dropdown"
         >
-          <div className="px-4 py-2 border-b border-gray-100">
+          <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-700">
             <p
-              className="text-sm font-medium text-gray-900 truncate"
+              className="text-sm font-medium text-gray-900 dark:text-white truncate"
               data-testid="user-email-display"
             >
               {user.email}
@@ -68,7 +68,7 @@ export function UserMenu({ user }: UserMenuProps) {
 
           <button
             onClick={handleSignOut}
-            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+            className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             data-testid="signout-button"
           >
             退出登录

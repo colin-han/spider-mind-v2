@@ -62,9 +62,9 @@ export const NodePanel = forwardRef<NodePanelRef>((_props, ref) => {
         defaultWidth={384}
         minWidth={300}
         maxWidth={600}
-        className="border-l bg-gray-50"
+        className="border-l border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900"
       >
-        <div className="flex items-center justify-center h-full text-gray-500">
+        <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
           未选中节点
         </div>
       </ResizablePanel>
@@ -77,7 +77,7 @@ export const NodePanel = forwardRef<NodePanelRef>((_props, ref) => {
       defaultWidth={384}
       minWidth={300}
       maxWidth={600}
-      className="border-l bg-white"
+      className="border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900"
     >
       <div className="p-4 space-y-4">
         {/* 工具栏 */}
@@ -87,7 +87,7 @@ export const NodePanel = forwardRef<NodePanelRef>((_props, ref) => {
         <div>
           <label
             htmlFor="node-title-input"
-            className="block text-sm font-medium text-gray-700 mb-1"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
           >
             标题
           </label>
@@ -100,7 +100,7 @@ export const NodePanel = forwardRef<NodePanelRef>((_props, ref) => {
             onChange={(e) => updateNodeTitle(node.short_id, e.target.value)}
             onFocus={() => setFocusedArea("panel")}
             onBlur={() => setFocusedArea("graph")}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-gray-900 bg-white"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 outline-none text-gray-900 dark:text-white bg-white dark:bg-gray-800"
             placeholder="节点标题"
           />
         </div>
@@ -109,7 +109,7 @@ export const NodePanel = forwardRef<NodePanelRef>((_props, ref) => {
         <div>
           <label
             htmlFor="node-content-textarea"
-            className="block text-sm font-medium text-gray-700 mb-1"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
           >
             内容
           </label>
@@ -121,14 +121,14 @@ export const NodePanel = forwardRef<NodePanelRef>((_props, ref) => {
             onFocus={() => setFocusedArea("panel")}
             onBlur={() => setFocusedArea("graph")}
             rows={20}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none text-gray-900 bg-white"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 outline-none resize-none text-gray-900 dark:text-white bg-white dark:bg-gray-800"
             placeholder="节点内容 (可选)"
           />
         </div>
 
         {/* 元信息显示 */}
-        <div className="pt-4 border-t border-gray-200">
-          <div className="text-xs text-gray-500 space-y-1">
+        <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+          <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
             <div>
               <span className="font-medium">类型:</span>{" "}
               {node.parent_id === null ? "根节点" : "普通节点"}

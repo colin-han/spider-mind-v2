@@ -132,7 +132,7 @@ export function MindmapCard({
       </div>
 
       {/* 时间信息 */}
-      <div className="space-y-1 text-xs text-gray-500 dark:text-gray-500">
+      <div className="space-y-1 text-xs text-gray-500 dark:text-gray-400">
         <div className="flex items-center gap-1">
           <span>🕐</span>
           <span>创建于 {formatRelativeTime(created_at)}</span>

@@ -99,7 +99,7 @@ function CustomMindNodeComponent({ data }: NodeProps) {
           isVisible={isSelected}
         >
           <div
-            className="px-2 py-1 bg-white border border-gray-300 rounded-lg shadow-lg"
+            className="px-2 py-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg"
             style={{
               transform: `scale(${zoom})`,
               transformOrigin: "bottom left",
@@ -125,9 +125,9 @@ function CustomMindNodeComponent({ data }: NodeProps) {
           "cursor-pointer",
           {
             // 选中状态
-            "border-blue-500 shadow-[0_0_0_3px_rgba(59,130,246,0.1)]":
+            "border-blue-500 shadow-[0_0_0_3px_rgba(59,130,246,0.3)] dark:border-blue-400 dark:shadow-[0_0_0_4px_rgba(96,165,250,0.4)]":
               isSelected,
-            "border-gray-200": !isSelected,
+            "border-gray-200 dark:border-gray-300": !isSelected,
             // 根节点样式
             "bg-gradient-to-br from-purple-600 to-purple-700 text-white border-purple-800 font-semibold":
               isRoot,

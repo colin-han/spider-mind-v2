@@ -629,10 +629,13 @@ const baseButtonStyles = "px-4 py-2 rounded-lg font-medium transition-colors";
 
 如果必须添加自定义工具类，请在此文档中记录：
 
+#### 隐藏滚动条
+
+用于完全隐藏滚动条的自定义滚动容器：
+
 ```css
 /* globals.css */
 @layer utilities {
-  /* 隐藏滚动条 - 用于自定义滚动容器 */
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
@@ -642,6 +645,97 @@ const baseButtonStyles = "px-4 py-2 rounded-lg font-medium transition-colors";
   }
 }
 ```
+
+**使用方法：**
+
+```tsx
+<div className="overflow-auto scrollbar-hide">
+  {/* 内容会滚动，但滚动条不可见 */}
+</div>
+```
+
+#### 自定义滚动条样式
+
+用于提供适配 dark mode 的自定义滚动条样式：
+
+```css
+/* globals.css */
+/* Custom scrollbar styles - reusable for any component */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f3f4f6; /* gray-100 */
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #d1d5db; /* gray-300 */
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af; /* gray-400 */
+}
+
+/* Dark mode scrollbar */
+@media (prefers-color-scheme: dark) {
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: #1f2937; /* gray-800 */
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #4b5563; /* gray-600 */
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #6b7280; /* gray-500 */
+  }
+}
+
+/* Firefox scrollbar */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #d1d5db #f3f4f6; /* thumb track */
+}
+
+@media (prefers-color-scheme: dark) {
+  .custom-scrollbar {
+    scrollbar-color: #4b5563 #1f2937; /* thumb track */
+  }
+}
+```
+
+**使用方法：**
+
+```tsx
+// 直接应用到容器
+<div className="overflow-auto custom-scrollbar">
+  {/* 显示自定义样式的滚动条，自动适配 light/dark 模式 */}
+</div>
+
+// 应用到容器及其所有子元素（适用于包含第三方组件的情况）
+<div className="overflow-auto custom-scrollbar [&_*]:custom-scrollbar">
+  {/* react-arborist 等第三方组件也会应用自定义滚动条样式 */}
+  <Tree ... />
+</div>
+```
+
+**特性：**
+
+- ✅ 支持 WebKit 浏览器（Chrome, Safari, Edge）
+- ✅ 支持 Firefox 浏览器
+- ✅ 自动适配 light 和 dark 模式
+- ✅ 8px 细窄设计，现代UI风格
+- ✅ 圆角滚动条，视觉更柔和
+- ✅ Hover 状态反馈
+
+**使用场景：**
+
+- 大纲视图、侧边栏等需要滚动的面板
+- 代码编辑器、文本编辑区域
+- 任何需要自定义滚动条样式的组件
 
 ## 检查清单
 

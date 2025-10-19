@@ -161,11 +161,14 @@ export function MindmapEditorLayout() {
   }, [isOutlineCollapsed, outlineWidth]);
 
   return (
-    <div className="h-full flex bg-gray-50" data-testid="mindmap-editor-layout">
+    <div
+      className="h-full flex bg-gray-50 dark:bg-gray-900"
+      data-testid="mindmap-editor-layout"
+    >
       {/* 左侧：大纲面板 */}
       <div
         className={cn(
-          "h-full border-r border-gray-200 bg-white flex-shrink-0 relative",
+          "h-full border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex-shrink-0 relative",
           !isResizing && "transition-all duration-200"
         )}
         style={{

@@ -103,7 +103,10 @@ export function NodeToolbar({
 
   return (
     <div
-      className={cn("pb-3 border-b border-gray-200", className)}
+      className={cn(
+        "pb-3 border-b border-gray-200 dark:border-gray-700",
+        className
+      )}
       data-testid={testId}
     >
       <CommandBar commands={toolbarCommands} />
