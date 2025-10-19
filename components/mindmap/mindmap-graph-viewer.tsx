@@ -33,6 +33,7 @@ import {
   validateDrop,
   getDropActionType,
 } from "@/lib/utils/mindmap/drag-validator";
+import type { CustomNodeData } from "@/lib/types/react-flow";
 import "@xyflow/react/dist/style.css";
 
 /**
@@ -331,10 +332,16 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
         <MiniMap
           data-testid="mindmap-graph-viewer-minimap"
           nodeColor={(node) => {
-            const data = node.data as { nodeType: string };
-            return data.nodeType === "root" ? "#9333ea" : "#cbd5e1";
+            const data = node.data as CustomNodeData;
+            // 根节点的 parentId 为 null
+            return data.parentId === null ? "#9333ea" : "#cbd5e1";
           }}
-          maskColor="rgba(0, 0, 0, 0.05)"
+          nodeStrokeColor={(node) => {
+            const data = node.data as CustomNodeData;
+            return data.parentId === null ? "#7c3aed" : "#94a3b8";
+          }}
+          nodeStrokeWidth={2}
+          maskColor="rgba(0, 0, 0, 0.1)"
           pannable
           zoomable
         />

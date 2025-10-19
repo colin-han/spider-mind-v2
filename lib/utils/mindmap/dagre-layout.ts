@@ -72,15 +72,20 @@ export function calculateDagreLayout(
   // 应用计算结果到节点
   return nodes.map((node) => {
     const nodeWithPosition = dagreGraph.node(node.id);
+    const width = node.width || opts.nodeWidth;
+    const height = node.height || opts.nodeHeight;
 
     return {
       ...node,
       position: {
         // Dagre 的锚点是中心,React Flow 是左上角
         // 所以需要减去一半的宽度和高度
-        x: nodeWithPosition.x - (node.width || opts.nodeWidth) / 2,
-        y: nodeWithPosition.y - (node.height || opts.nodeHeight) / 2,
+        x: nodeWithPosition.x - width / 2,
+        y: nodeWithPosition.y - height / 2,
       },
+      // MiniMap 需要这些属性来渲染节点
+      width,
+      height,
     };
   });
 }
