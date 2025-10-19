@@ -14,7 +14,7 @@
 
 "use client";
 
-import { useCallback, useMemo, useEffect, useState } from "react";
+import { useCallback, useMemo, useEffect, useState, memo } from "react";
 import {
   ReactFlow,
   Background,
@@ -38,12 +38,7 @@ import "@xyflow/react/dist/style.css";
 /**
  * MindmapGraphViewer Props
  */
-export interface MindmapGraphViewerProps {
-  /**
-   * 双击节点时的回调 (触发聚焦编辑面板)
-   */
-  onNodeEdit?: () => void;
-}
+export type MindmapGraphViewerProps = Record<string, never>;
 
 /**
  * 节点类型注册
@@ -68,9 +63,11 @@ interface DragState {
 }
 
 /**
- * MindmapGraphViewer 组件
+ * MindmapGraphViewer 组件（使用 memo 优化）
  */
-export function MindmapGraphViewer({ onNodeEdit }: MindmapGraphViewerProps) {
+export const MindmapGraphViewer = memo(function MindmapGraphViewer(
+  _props: MindmapGraphViewerProps = {}
+) {
   const { fitView } = useReactFlow();
   const {
     currentMindmap,
@@ -120,13 +117,12 @@ export function MindmapGraphViewer({ onNodeEdit }: MindmapGraphViewerProps) {
     [setCurrentNode]
   );
 
-  // 双击节点 - 触发编辑
+  // 双击节点 - 选中节点（编辑在 NodePanel 中自动响应）
   const onNodeDoubleClick = useCallback(
     (_event: React.MouseEvent, node: Node) => {
       setCurrentNode(node.id);
-      onNodeEdit?.();
     },
-    [setCurrentNode, onNodeEdit]
+    [setCurrentNode]
   );
 
   // 拖拽开始
@@ -353,4 +349,4 @@ export function MindmapGraphViewer({ onNodeEdit }: MindmapGraphViewerProps) {
       )}
     </div>
   );
-}
+});

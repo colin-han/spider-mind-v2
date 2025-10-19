@@ -5,7 +5,7 @@
  * - 管理 MindmapEditorStore 的初始化
  * - 提供顶部工具栏 (返回、标题、保存、撤销/重做)
  * - 展示离线横幅
- * - 组合 MindmapEditorTabs (包含两个视图)
+ * - 组合 MindmapEditorLayout (三栏布局)
  *
  * 不负责:
  * - 具体的编辑 UI (由子组件实现)
@@ -18,7 +18,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { useMindmapData } from "@/lib/hooks/use-mindmap-data";
 import { useMindmapEditorStore } from "@/lib/store/mindmap-editor.store";
-import { MindmapEditorTabs } from "./mindmap-editor-tabs";
+import { MindmapEditorLayout } from "./mindmap-editor-layout";
 import { SaveButton } from "./save-button";
 import { OfflineBanner } from "./offline-banner";
 import { ConflictDialog } from "./conflict-dialog";
@@ -135,9 +135,9 @@ export function MindmapEditor({ mindmap, initialNodes }: MindmapEditorProps) {
           </div>
         </div>
 
-        {/* Tab 页内容 */}
+        {/* 三栏布局内容 */}
         <div className="h-[calc(100vh-129px)]">
-          <MindmapEditorTabs />
+          <MindmapEditorLayout />
         </div>
       </div>
 

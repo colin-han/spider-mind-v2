@@ -89,7 +89,7 @@ export const NodePanel = forwardRef<NodePanelRef>((_props, ref) => {
             type="text"
             value={node.title}
             onChange={(e) => updateNodeTitle(node.short_id, e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-gray-900 bg-white"
             placeholder="节点标题"
           />
         </div>
@@ -108,7 +108,7 @@ export const NodePanel = forwardRef<NodePanelRef>((_props, ref) => {
             value={node.content || ""}
             onChange={(e) => updateNodeContent(node.short_id, e.target.value)}
             rows={20}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none text-gray-900 bg-white"
             placeholder="节点内容 (可选)"
           />
         </div>

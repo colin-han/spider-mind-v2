@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 
+/* eslint-disable @typescript-eslint/no-var-requires */
+/* eslint-disable @typescript-eslint/no-require-imports */
+
 /**
  * 开发服务器启动脚本
  * 加载 .env.local 文件中的环境变量，并启动 Next.js 开发服务器

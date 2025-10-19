@@ -18,10 +18,32 @@ import type { CustomNodeData } from "@/lib/types/react-flow";
 import { cn } from "@/lib/utils/cn";
 
 /**
+ * 检查目标节点是否在指定节点的子树中
+ */
+function isNodeInSubtree(
+  targetNodeId: string | null,
+  parentNodeId: string,
+  nodesMap: Map<string, { short_id: string; parent_short_id: string | null }>
+): boolean {
+  if (!targetNodeId) return false;
+
+  let currentId: string | null = targetNodeId;
+  while (currentId) {
+    if (currentId === parentNodeId) {
+      return true;
+    }
+    const node = nodesMap.get(currentId);
+    if (!node) break;
+    currentId = node.parent_short_id;
+  }
+  return false;
+}
+
+/**
  * CustomMindNode 组件
  */
 function CustomMindNodeComponent({ data }: NodeProps) {
-  const { currentNode, collapsedNodes } = useMindmapEditorStore();
+  const { currentNode, collapsedNodes, nodes } = useMindmapEditorStore();
 
   // 将 data 断言为 CustomNodeData 类型
   const nodeData = data as CustomNodeData;
@@ -29,6 +51,13 @@ function CustomMindNodeComponent({ data }: NodeProps) {
   const isSelected = currentNode === nodeData.shortId;
   const isExpanded = !collapsedNodes.has(nodeData.shortId);
   const isRoot = !nodeData.parentId;
+
+  // 检查当前选中节点是否被这个节点折叠隐藏
+  const containsCurrentNode =
+    !isExpanded &&
+    currentNode &&
+    currentNode !== nodeData.shortId &&
+    isNodeInSubtree(currentNode, nodeData.shortId, nodes);
 
   // 展开/折叠切换
   const toggleExpand = useCallback(
@@ -50,7 +79,7 @@ function CustomMindNodeComponent({ data }: NodeProps) {
     <div
       data-testid={`mindmap-node-${nodeData.shortId}`}
       className={cn(
-        "mind-node",
+        "mind-node relative",
         "flex items-center gap-2",
         "min-w-[150px] px-4 py-3",
         "rounded-lg border-2 bg-white",
@@ -66,33 +95,6 @@ function CustomMindNodeComponent({ data }: NodeProps) {
         }
       )}
     >
-      {/* 展开/折叠按钮 */}
-      {nodeData.hasChildren && (
-        <button
-          data-testid={`mindmap-node-${nodeData.shortId}-expand-button`}
-          onClick={toggleExpand}
-          className={cn(
-            "expand-button",
-            "w-5 h-5 flex items-center justify-center",
-            "border-none bg-transparent cursor-pointer",
-            "transition-colors duration-150",
-            {
-              "text-white/70 hover:text-white": isRoot,
-              "text-gray-600 hover:text-gray-900 dark:text-gray-900 dark:hover:text-gray-700":
-                !isRoot,
-            }
-          )}
-          aria-label={isExpanded ? "折叠子节点" : "展开子节点"}
-        >
-          {isExpanded ? "▼" : "▶"}
-        </button>
-      )}
-
-      {/* 节点图标 */}
-      <span className="text-lg" aria-hidden="true">
-        {isRoot ? "👑" : "📄"}
-      </span>
-
       {/* 节点标题 (只读) */}
       <span
         data-testid={`mindmap-node-${nodeData.shortId}-title`}
@@ -115,6 +117,36 @@ function CustomMindNodeComponent({ data }: NodeProps) {
         position={Position.Right}
         className="!w-2 !h-2 !bg-blue-500"
       />
+
+      {/* 展开/折叠按钮 - 右侧连接点位置 */}
+      {nodeData.hasChildren && (
+        <button
+          data-testid={`mindmap-node-${nodeData.shortId}-expand-button`}
+          onClick={toggleExpand}
+          className={cn(
+            "expand-button absolute",
+            "w-5 h-5 flex items-center justify-center",
+            "rounded-full border cursor-pointer",
+            "transition-all duration-150",
+            "right-[-10px] top-1/2 -translate-y-1/2",
+            "z-10",
+            {
+              // 包含当前节点 - 蓝色高亮
+              "bg-blue-500 border-blue-600 text-white hover:bg-blue-600 shadow-md":
+                containsCurrentNode,
+              // 根节点 - 紫色
+              "bg-white border-purple-600 text-purple-600 hover:bg-purple-50":
+                !containsCurrentNode && isRoot,
+              // 普通节点 - 灰色
+              "bg-white border-gray-400 text-gray-600 hover:bg-gray-50":
+                !containsCurrentNode && !isRoot,
+            }
+          )}
+          aria-label={isExpanded ? "折叠子节点" : "展开子节点"}
+        >
+          <span className="text-xs font-bold">{isExpanded ? "−" : "+"}</span>
+        </button>
+      )}
     </div>
   );
 }

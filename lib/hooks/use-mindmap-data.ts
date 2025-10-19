@@ -100,6 +100,12 @@ export function useMindmapData(mindmap: Mindmap, initialNodes: MindmapNode[]) {
             state.nodes.set(node.short_id, node);
           });
 
+          // 自动选中根节点
+          const rootNode = nodesToLoad.find((node) => node.parent_id === null);
+          if (rootNode) {
+            state.currentNode = rootNode.short_id;
+          }
+
           // 重置状态
           state.isDirty = false;
           state.isSynced = true;
@@ -119,6 +125,12 @@ export function useMindmapData(mindmap: Mindmap, initialNodes: MindmapNode[]) {
           initialNodes.forEach((node) => {
             state.nodes.set(node.short_id, node);
           });
+
+          // 自动选中根节点
+          const rootNode = initialNodes.find((node) => node.parent_id === null);
+          if (rootNode) {
+            state.currentNode = rootNode.short_id;
+          }
         });
 
         setIsInitialized(true);
