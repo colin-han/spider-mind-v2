@@ -67,11 +67,13 @@ function convertToTreeData(
  * 自定义节点渲染组件
  */
 function Node({ node, style, dragHandle }: NodeRendererProps<TreeNode>) {
-  const { currentNode, setCurrentNode } = useMindmapEditorStore();
-  const isSelected = currentNode === node.data.id;
+  const { currentNode, setCurrentNode, setFocusedArea } =
+    useMindmapEditorStore();
+  const isSelected = currentNode === node.id;
 
   const handleClick = () => {
-    setCurrentNode(node.data.id);
+    setCurrentNode(node.id);
+    setFocusedArea("outline");
   };
 
   const handleToggle = (e: React.MouseEvent) => {
@@ -91,10 +93,10 @@ function Node({ node, style, dragHandle }: NodeRendererProps<TreeNode>) {
           "hover:bg-gray-100": !isSelected,
         }
       )}
-      data-testid={`mindmap-node-${node.data.id}`}
+      data-testid={`mindmap-node-${node.id}`}
     >
       {/* 展开/折叠图标 */}
-      {node.data.children && node.data.children.length > 0 && (
+      {node.children && node.children.length > 0 && (
         <span
           className="w-4 h-4 flex items-center justify-center text-gray-400 flex-shrink-0 hover:text-gray-600 cursor-pointer transition-colors"
           onClick={handleToggle}
@@ -121,7 +123,7 @@ function Node({ node, style, dragHandle }: NodeRendererProps<TreeNode>) {
           </svg>
         </span>
       )}
-      {(!node.data.children || node.data.children.length === 0) && (
+      {(!node.children || node.children.length === 0) && (
         <span className="w-4 flex-shrink-0" />
       )}
 
@@ -163,10 +165,18 @@ export const MindmapOutlineArborist = memo(function MindmapOutlineArborist({
   useEffect(() => {
     if (!containerRef.current) return;
 
+    // 立即获取初始高度
+    const initialHeight = containerRef.current.clientHeight;
+    if (initialHeight > 0) {
+      setContainerHeight(initialHeight);
+    }
+
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const height = entry.contentRect.height;
-        setContainerHeight(height);
+        if (height > 0) {
+          setContainerHeight(height);
+        }
       }
     });
 
@@ -235,7 +245,7 @@ export const MindmapOutlineArborist = memo(function MindmapOutlineArborist({
       {/* Tree 内容 */}
       <div
         ref={containerRef}
-        className="flex-1 min-h-0 overflow-hidden"
+        className="flex-1 min-h-0 overflow-hidden [&_*:focus-visible]:outline-none"
         data-testid="outline-tree"
       >
         {!currentMindmap && (

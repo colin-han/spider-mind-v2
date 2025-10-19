@@ -13,6 +13,7 @@ import type { MindmapNode } from "@/lib/types";
 import type {
   MindmapEditorStore,
   AddChildNodeParams,
+  FocusedArea,
 } from "./mindmap-editor.types";
 import { autoPersistence } from "./middleware/auto-persistence.middleware";
 
@@ -33,6 +34,7 @@ export const useMindmapEditorStore = create<MindmapEditorStore>()(
       currentMindmap: null,
       nodes: new Map(),
       currentNode: null,
+      focusedArea: "graph",
       isDirty: false,
       isSynced: true,
       isEditing: false,
@@ -390,6 +392,12 @@ export const useMindmapEditorStore = create<MindmapEditorStore>()(
             // 设置焦点
             state.currentNode = nodeId;
           }
+        });
+      },
+
+      setFocusedArea: (area: FocusedArea) => {
+        set((state) => {
+          state.focusedArea = area;
         });
       },
 

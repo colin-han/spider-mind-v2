@@ -18,6 +18,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { useMindmapData } from "@/lib/hooks/use-mindmap-data";
 import { useMindmapEditorStore } from "@/lib/store/mindmap-editor.store";
+import { CommandRegistryProvider, allCommands } from "@/lib/commands";
 import { MindmapEditorLayout } from "./mindmap-editor-layout";
 import { SaveButton } from "./save-button";
 import { OfflineBanner } from "./offline-banner";
@@ -84,7 +85,7 @@ export function MindmapEditor({ mindmap, initialNodes }: MindmapEditorProps) {
   }
 
   return (
-    <>
+    <CommandRegistryProvider commands={allCommands}>
       {/* 离线提示横幅 */}
       <OfflineBanner mindmapId={mindmap.short_id} />
 
@@ -148,6 +149,6 @@ export function MindmapEditor({ mindmap, initialNodes }: MindmapEditorProps) {
         serverVersion={conflictInfo?.serverUpdatedAt || ""}
         onResolve={handleConflictResolve}
       />
-    </>
+    </CommandRegistryProvider>
   );
 }

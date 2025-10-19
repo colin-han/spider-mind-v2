@@ -9,6 +9,14 @@
 import type { Mindmap, MindmapNode } from "@/lib/types";
 
 /**
+ * UI 焦点区域
+ * - 用于快捷键系统判断当前焦点位置
+ * - 总是有一个明确的焦点区域
+ * - 默认为 'graph' (思维导图可视化区域)
+ */
+export type FocusedArea = "graph" | "panel" | "outline" | "search";
+
+/**
  * 编辑器状态
  */
 export interface EditorState {
@@ -18,6 +26,7 @@ export interface EditorState {
 
   // 焦点状态
   currentNode: string | null; // short_id
+  focusedArea: FocusedArea; // UI 焦点区域
 
   // 编辑状态
   isDirty: boolean; // 是否有未保存的修改
@@ -141,6 +150,12 @@ export interface MindmapEditorActions {
    * 设置当前焦点节点
    */
   setCurrentNode: (nodeId: string | null) => void;
+
+  /**
+   * 设置 UI 焦点区域
+   * 用于快捷键系统判断当前焦点位置
+   */
+  setFocusedArea: (area: FocusedArea) => void;
 
   // ========== 同步状态操作 ==========
   /**

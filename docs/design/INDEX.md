@@ -4,13 +4,16 @@
 
 ## 📋 文档概览
 
-| 文档名称                                                                   | 描述                     | 状态      | 最后更新   |
-| -------------------------------------------------------------------------- | ------------------------ | --------- | ---------- |
-| [ID 设计规范](./id-design.md)                                              | 系统 ID 生成和管理机制   | ✅ 已确认 | 2025-01-07 |
-| [思维导图编辑器 Store 设计](./mindmap-editor-store-design.md)              | 编辑器状态管理架构       | ✅ 已确认 | 2025-01-06 |
-| [思维导图编辑器布局设计](./mindmap-editor-layout-design.md)                | 编辑器界面布局和组件协作 | ✅ 已确认 | 2025-10-19 |
-| [IndexedDB 持久化中间件设计](./indexeddb-persistence-middleware-design.md) | 本地数据持久化方案       | ✅ 已确认 | 2025-01-04 |
-| [思维导图持久化系统设计](./mindmap-persistence-design.md)                  | 三层数据流架构和同步机制 | ✅ 已确认 | 2025-10-18 |
+| 文档名称                                                                   | 描述                       | 状态      | 最后更新   |
+| -------------------------------------------------------------------------- | -------------------------- | --------- | ---------- |
+| [ID 设计规范](./id-design.md)                                              | 系统 ID 生成和管理机制     | ✅ 已确认 | 2025-01-07 |
+| [思维导图编辑器 Store 设计](./mindmap-editor-store-design.md)              | 编辑器状态管理架构         | ✅ 已确认 | 2025-01-06 |
+| [思维导图编辑器布局设计](./mindmap-editor-layout-design.md)                | 编辑器界面布局和组件协作   | ✅ 已确认 | 2025-10-19 |
+| [命令系统设计](./command-system-design.md)                                 | 命令模式架构和业务逻辑解耦 | ✅ 已确认 | 2025-10-19 |
+| [快捷键系统设计](./shortcut-system-design.md)                              | 上下文感知的快捷键系统     | ✅ 已确认 | 2025-10-19 |
+| [命令参考手册](./command-reference.md)                                     | 所有命令和快捷键快速查询   | ✅ 已确认 | 2025-10-19 |
+| [IndexedDB 持久化中间件设计](./indexeddb-persistence-middleware-design.md) | 本地数据持久化方案         | ✅ 已确认 | 2025-01-04 |
+| [思维导图持久化系统设计](./mindmap-persistence-design.md)                  | 三层数据流架构和同步机制   | ✅ 已确认 | 2025-10-18 |
 
 ## 🏗️ 按模块分类
 
@@ -35,6 +38,25 @@
   - 图形视图（React Flow）
   - 折叠节点高亮和导航
   - 布局状态持久化
+
+#### 用户交互
+
+- **[命令系统设计](./command-system-design.md)**
+  - Command Pattern 架构
+  - 触发方式与业务逻辑解耦
+  - 命令注册和执行机制
+  - 上下文感知的条件判断
+  - 25 个命令实现（节点操作、导航、编辑、全局、AI）
+- **[快捷键系统设计](./shortcut-system-design.md)**
+  - react-hotkeys-hook 集成
+  - 基于 focusedArea 的上下文切换
+  - Editor vs Global 作用域设计
+  - 21 个快捷键绑定
+  - Panel 中的原生快捷键保留
+- **[命令参考手册](./command-reference.md)**
+  - 所有命令快速查询表
+  - 按键位分类的快捷键索引
+  - 使用示例和故障排查指南
 
 ### 数据管理
 
@@ -76,6 +98,10 @@ graph TD
     D --> I[持久化系统设计]
 
     B --> J[布局设计]
+    B --> M[命令系统设计]
+    M --> N[快捷键系统设计]
+    M --> O[命令参考手册]
+    N --> O
 
     B -.->|使用| E[Zustand]
     B -.->|使用| F[Immer]
@@ -89,6 +115,10 @@ graph TD
     J -.->|使用| K[react-arborist]
     J -.->|使用| L[React Flow]
 
+    M -.->|读取| B
+    N -.->|使用| P[react-hotkeys-hook]
+    N -.->|调用| M
+
     style D fill:#fffacd
     style E fill:#e1f5fe
     style F fill:#e1f5fe
@@ -96,6 +126,7 @@ graph TD
     style H fill:#e1f5fe
     style K fill:#e1f5fe
     style L fill:#e1f5fe
+    style P fill:#e1f5fe
 ```
 
 **图例**:
@@ -107,16 +138,18 @@ graph TD
 
 ### 已确定的技术选型
 
-| 领域           | 技术选择        | 理由                         | 相关文档                                                     |
-| -------------- | --------------- | ---------------------------- | ------------------------------------------------------------ |
-| **ID 生成**    | UUID + short_id | 兼顾唯一性和用户友好性       | [ID 设计](./id-design.md)                                    |
-| **状态管理**   | Zustand + Immer | 轻量级、类型安全、不可变更新 | [Store 设计](./mindmap-editor-store-design.md)               |
-| **本地存储**   | IndexedDB       | 大容量、结构化、离线支持     | [持久化中间件](./indexeddb-persistence-middleware-design.md) |
-| **云端存储**   | Supabase        | 开源、实时同步、PostgreSQL   | [Supabase 配置](../setup/supabase-local-setup.md)            |
-| **大纲视图**   | react-arborist  | 虚拟化渲染、类型安全         | [布局设计](./mindmap-editor-layout-design.md)                |
-| **图形渲染**   | React Flow      | 成熟稳定、丰富功能           | [布局设计](./mindmap-editor-layout-design.md)                |
-| **尺寸监听**   | ResizeObserver  | 原生 API、性能优秀           | [布局设计](./mindmap-editor-layout-design.md)                |
-| **布局持久化** | localStorage    | 快速响应、离线可用           | [布局设计](./mindmap-editor-layout-design.md)                |
+| 领域           | 技术选择           | 理由                              | 相关文档                                                     |
+| -------------- | ------------------ | --------------------------------- | ------------------------------------------------------------ |
+| **ID 生成**    | UUID + short_id    | 兼顾唯一性和用户友好性            | [ID 设计](./id-design.md)                                    |
+| **状态管理**   | Zustand + Immer    | 轻量级、类型安全、不可变更新      | [Store 设计](./mindmap-editor-store-design.md)               |
+| **命令模式**   | Command Pattern    | 解耦触发与逻辑、可扩展            | [命令系统设计](./command-system-design.md)                   |
+| **快捷键**     | react-hotkeys-hook | Hook API、轻量级、TypeScript 支持 | [快捷键系统设计](./shortcut-system-design.md)                |
+| **本地存储**   | IndexedDB          | 大容量、结构化、离线支持          | [持久化中间件](./indexeddb-persistence-middleware-design.md) |
+| **云端存储**   | Supabase           | 开源、实时同步、PostgreSQL        | [Supabase 配置](../setup/supabase-local-setup.md)            |
+| **大纲视图**   | react-arborist     | 虚拟化渲染、类型安全              | [布局设计](./mindmap-editor-layout-design.md)                |
+| **图形渲染**   | React Flow         | 成熟稳定、丰富功能                | [布局设计](./mindmap-editor-layout-design.md)                |
+| **尺寸监听**   | ResizeObserver     | 原生 API、性能优秀                | [布局设计](./mindmap-editor-layout-design.md)                |
+| **布局持久化** | localStorage       | 快速响应、离线可用                | [布局设计](./mindmap-editor-layout-design.md)                |
 
 ### 核心设计原则
 
@@ -170,49 +203,61 @@ graph TD
 
 ### 按关键词索引
 
-| 关键词                         | 相关文档                                                                                                    |
-| ------------------------------ | ----------------------------------------------------------------------------------------------------------- |
-| UUID, short_id, 唯一性         | [ID 设计](./id-design.md)                                                                                   |
-| Zustand, Immer, 状态管理       | [Store 设计](./mindmap-editor-store-design.md)                                                              |
-| IndexedDB, 离线, 同步          | [持久化中间件](./indexeddb-persistence-middleware-design.md), [持久化系统](./mindmap-persistence-design.md) |
-| 节点, 树结构, order_index      | [Store 设计](./mindmap-editor-store-design.md)                                                              |
-| 冲突解决, 数据同步             | [持久化中间件](./indexeddb-persistence-middleware-design.md), [持久化系统](./mindmap-persistence-design.md) |
-| 脏数据, 三层架构, 中间件       | [持久化系统](./mindmap-persistence-design.md)                                                               |
-| 时间戳冲突检测, 拓扑排序       | [持久化系统](./mindmap-persistence-design.md)                                                               |
-| Supabase, 云端同步             | [持久化系统](./mindmap-persistence-design.md)                                                               |
-| 布局, 三栏, 大纲视图, 图形视图 | [布局设计](./mindmap-editor-layout-design.md)                                                               |
-| react-arborist, 虚拟化, Tree   | [布局设计](./mindmap-editor-layout-design.md)                                                               |
-| React Flow, 图形渲染           | [布局设计](./mindmap-editor-layout-design.md)                                                               |
-| ResizeObserver, 响应式         | [布局设计](./mindmap-editor-layout-design.md)                                                               |
-| localStorage, 布局持久化       | [布局设计](./mindmap-editor-layout-design.md)                                                               |
-| 折叠节点, 高亮, 导航           | [布局设计](./mindmap-editor-layout-design.md)                                                               |
+| 关键词                                     | 相关文档                                                                                                    |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| UUID, short_id, 唯一性                     | [ID 设计](./id-design.md)                                                                                   |
+| Zustand, Immer, 状态管理                   | [Store 设计](./mindmap-editor-store-design.md)                                                              |
+| Command Pattern, 命令模式, 业务逻辑解耦    | [命令系统设计](./command-system-design.md), [命令参考](./command-reference.md)                              |
+| 快捷键, react-hotkeys-hook, 键盘事件       | [快捷键系统设计](./shortcut-system-design.md), [命令参考](./command-reference.md)                           |
+| CommandContext, CommandRegistry, when 条件 | [命令系统设计](./command-system-design.md)                                                                  |
+| focusedArea, 上下文感知, 作用域            | [快捷键系统设计](./shortcut-system-design.md)                                                               |
+| 节点操作, 导航, 编辑命令                   | [命令参考](./command-reference.md)                                                                          |
+| IndexedDB, 离线, 同步                      | [持久化中间件](./indexeddb-persistence-middleware-design.md), [持久化系统](./mindmap-persistence-design.md) |
+| 节点, 树结构, order_index                  | [Store 设计](./mindmap-editor-store-design.md)                                                              |
+| 冲突解决, 数据同步                         | [持久化中间件](./indexeddb-persistence-middleware-design.md), [持久化系统](./mindmap-persistence-design.md) |
+| 脏数据, 三层架构, 中间件                   | [持久化系统](./mindmap-persistence-design.md)                                                               |
+| 时间戳冲突检测, 拓扑排序                   | [持久化系统](./mindmap-persistence-design.md)                                                               |
+| Supabase, 云端同步                         | [持久化系统](./mindmap-persistence-design.md)                                                               |
+| 布局, 三栏, 大纲视图, 图形视图             | [布局设计](./mindmap-editor-layout-design.md)                                                               |
+| react-arborist, 虚拟化, Tree               | [布局设计](./mindmap-editor-layout-design.md)                                                               |
+| React Flow, 图形渲染                       | [布局设计](./mindmap-editor-layout-design.md)                                                               |
+| ResizeObserver, 响应式                     | [布局设计](./mindmap-editor-layout-design.md)                                                               |
+| localStorage, 布局持久化                   | [布局设计](./mindmap-editor-layout-design.md)                                                               |
+| 折叠节点, 高亮, 导航                       | [布局设计](./mindmap-editor-layout-design.md)                                                               |
 
 ### 常见问题对应文档
 
-| 问题                     | 查看文档                                                                                                    |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------- |
-| 如何生成唯一 ID？        | [ID 设计](./id-design.md)                                                                                   |
-| 如何管理思维导图状态？   | [Store 设计](./mindmap-editor-store-design.md)                                                              |
-| 如何实现编辑器布局？     | [布局设计](./mindmap-editor-layout-design.md)                                                               |
-| 如何实现虚拟化大纲视图？ | [布局设计](./mindmap-editor-layout-design.md)                                                               |
-| 如何实现图形视图？       | [布局设计](./mindmap-editor-layout-design.md)                                                               |
-| 如何实现可调整宽度面板？ | [布局设计](./mindmap-editor-layout-design.md)                                                               |
-| 如何实现折叠节点高亮？   | [布局设计](./mindmap-editor-layout-design.md)                                                               |
-| 如何保存用户布局偏好？   | [布局设计](./mindmap-editor-layout-design.md)                                                               |
-| 如何实现离线功能？       | [持久化中间件](./indexeddb-persistence-middleware-design.md), [持久化系统](./mindmap-persistence-design.md) |
-| 如何处理数据同步冲突？   | [持久化中间件](./indexeddb-persistence-middleware-design.md), [持久化系统](./mindmap-persistence-design.md) |
-| 如何实现自动持久化？     | [持久化系统](./mindmap-persistence-design.md)                                                               |
-| 如何追踪脏数据？         | [持久化系统](./mindmap-persistence-design.md)                                                               |
-| 如何同步到 Supabase？    | [持久化系统](./mindmap-persistence-design.md)                                                               |
-| 如何优化大量节点的性能？ | [布局设计](./mindmap-editor-layout-design.md), [Store 设计](./mindmap-editor-store-design.md)               |
+| 问题                         | 查看文档                                                                                                    |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| 如何生成唯一 ID？            | [ID 设计](./id-design.md)                                                                                   |
+| 如何管理思维导图状态？       | [Store 设计](./mindmap-editor-store-design.md)                                                              |
+| 如何设计命令系统？           | [命令系统设计](./command-system-design.md)                                                                  |
+| 如何实现快捷键？             | [快捷键系统设计](./shortcut-system-design.md)                                                               |
+| 有哪些可用的命令？           | [命令参考](./command-reference.md)                                                                          |
+| 快捷键如何绑定到命令？       | [快捷键系统设计](./shortcut-system-design.md)                                                               |
+| 如何实现上下文感知的快捷键？ | [快捷键系统设计](./shortcut-system-design.md)                                                               |
+| 如何添加新命令？             | [命令系统设计](./command-system-design.md), [命令参考](./command-reference.md)                              |
+| 如何实现编辑器布局？         | [布局设计](./mindmap-editor-layout-design.md)                                                               |
+| 如何实现虚拟化大纲视图？     | [布局设计](./mindmap-editor-layout-design.md)                                                               |
+| 如何实现图形视图？           | [布局设计](./mindmap-editor-layout-design.md)                                                               |
+| 如何实现可调整宽度面板？     | [布局设计](./mindmap-editor-layout-design.md)                                                               |
+| 如何实现折叠节点高亮？       | [布局设计](./mindmap-editor-layout-design.md)                                                               |
+| 如何保存用户布局偏好？       | [布局设计](./mindmap-editor-layout-design.md)                                                               |
+| 如何实现离线功能？           | [持久化中间件](./indexeddb-persistence-middleware-design.md), [持久化系统](./mindmap-persistence-design.md) |
+| 如何处理数据同步冲突？       | [持久化中间件](./indexeddb-persistence-middleware-design.md), [持久化系统](./mindmap-persistence-design.md) |
+| 如何实现自动持久化？         | [持久化系统](./mindmap-persistence-design.md)                                                               |
+| 如何追踪脏数据？             | [持久化系统](./mindmap-persistence-design.md)                                                               |
+| 如何同步到 Supabase？        | [持久化系统](./mindmap-persistence-design.md)                                                               |
+| 如何优化大量节点的性能？     | [布局设计](./mindmap-editor-layout-design.md), [Store 设计](./mindmap-editor-store-design.md)               |
 
 ## 📅 更新记录
 
-| 日期       | 更新内容                       | 更新者      |
-| ---------- | ------------------------------ | ----------- |
-| 2025-10-19 | 添加思维导图编辑器布局设计文档 | Claude Code |
-| 2025-10-18 | 添加思维导图持久化系统设计文档 | Claude Code |
-| 2025-01-07 | 创建索引文档                   | Claude Code |
+| 日期       | 更新内容                                       | 更新者      |
+| ---------- | ---------------------------------------------- | ----------- |
+| 2025-10-19 | 添加命令系统、快捷键系统设计文档和命令参考手册 | Claude Code |
+| 2025-10-19 | 添加思维导图编辑器布局设计文档                 | Claude Code |
+| 2025-10-18 | 添加思维导图持久化系统设计文档                 | Claude Code |
+| 2025-01-07 | 创建索引文档                                   | Claude Code |
 
 ---
 

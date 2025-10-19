@@ -77,6 +77,7 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
     setCurrentNode,
     getRootNode,
     moveNode,
+    setFocusedArea,
   } = useMindmapEditorStore();
 
   // 拖拽状态
@@ -114,8 +115,9 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
   const onNodeClick = useCallback(
     (_event: React.MouseEvent, node: Node) => {
       setCurrentNode(node.id);
+      setFocusedArea("graph");
     },
-    [setCurrentNode]
+    [setCurrentNode, setFocusedArea]
   );
 
   // 双击节点 - 选中节点（编辑在 NodePanel 中自动响应）
@@ -125,6 +127,11 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
     },
     [setCurrentNode]
   );
+
+  // 点击空白区域 - 设置焦点到图形视图
+  const onPaneClick = useCallback(() => {
+    setFocusedArea("graph");
+  }, [setFocusedArea]);
 
   // 拖拽开始
   const onNodeDragStart = useCallback(
@@ -311,9 +318,11 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
         nodeTypes={nodeTypes}
         onNodeClick={onNodeClick}
         onNodeDoubleClick={onNodeDoubleClick}
+        onPaneClick={onPaneClick}
         onNodeDragStart={onNodeDragStart}
         onNodeDrag={onNodeDrag}
         onNodeDragStop={onNodeDragStop}
+        disableKeyboardA11y={true}
         fitView
         minZoom={0.1}
         maxZoom={2}
