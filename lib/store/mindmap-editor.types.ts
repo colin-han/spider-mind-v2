@@ -7,14 +7,7 @@
  */
 
 import type { Mindmap, MindmapNode } from "@/lib/types";
-
-/**
- * UI 焦点区域
- * - 用于快捷键系统判断当前焦点位置
- * - 总是有一个明确的焦点区域
- * - 默认为 'graph' (思维导图可视化区域)
- */
-export type FocusedArea = "graph" | "panel" | "outline" | "search";
+import { FocusedArea } from "../domain/mindmap-store.types";
 
 /**
  * 编辑器状态

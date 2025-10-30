@@ -13,8 +13,8 @@ import type { MindmapNode } from "@/lib/types";
 import type {
   MindmapEditorStore,
   AddChildNodeParams,
-  FocusedArea,
 } from "./mindmap-editor.types";
+import type { FocusedArea } from "../domain/mindmap-store.types";
 import { autoPersistence } from "./middleware/auto-persistence.middleware";
 
 // 启用 Immer 的 MapSet 插件以支持 Map 和 Set
