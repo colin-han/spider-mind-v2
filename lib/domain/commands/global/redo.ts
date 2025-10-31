@@ -1,11 +1,11 @@
-import { MindmapStore } from "../mindmap-store.types";
-import { CommandDefinition, registerCommand } from "../command-registry";
+import { MindmapStore } from "../../mindmap-store.types";
+import { CommandDefinition, registerCommand } from "../../command-registry";
 
 /**
  * 重做上一次撤销的操作
  */
 export const redoCommand: CommandDefinition = {
-  id: "history.redo",
+  id: "global.redo",
   name: "重做",
   description: "重做上一次撤销的操作",
   category: "global",

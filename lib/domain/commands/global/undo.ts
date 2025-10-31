@@ -1,11 +1,11 @@
-import { MindmapStore } from "../mindmap-store.types";
-import { CommandDefinition, registerCommand } from "../command-registry";
+import { MindmapStore } from "../../mindmap-store.types";
+import { CommandDefinition, registerCommand } from "../../command-registry";
 
 /**
  * 撤销上一次操作
  */
 export const undoCommand: CommandDefinition = {
-  id: "history.undo",
+  id: "global.undo",
   name: "撤销",
   description: "撤销上一次操作",
   category: "global",

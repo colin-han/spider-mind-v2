@@ -1,5 +1,5 @@
-import { MindmapStore } from "../mindmap-store.types";
-import { CommandDefinition, registerCommand } from "../command-registry";
+import { MindmapStore } from "../../mindmap-store.types";
+import { CommandDefinition, registerCommand } from "../../command-registry";
 
 /**
  * 保存思维导图到服务器
@@ -13,7 +13,7 @@ import { CommandDefinition, registerCommand } from "../command-registry";
  * 6. 更新 IndexedDB（设置 dirty=false，更新 server_updated_at）
  */
 export const saveMindmapCommand: CommandDefinition = {
-  id: "mindmap.save",
+  id: "global.save",
   name: "保存思维导图",
   description: "将未保存的修改同步到服务器",
   category: "global",

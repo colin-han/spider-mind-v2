@@ -7,6 +7,9 @@ import { CommandManager } from "./command-manager";
 import { ShortcutManager } from "./shortcut-manager";
 import { HistoryManager } from "./history-manager";
 
+// 导入所有命令以触发注册
+import "./commands";
+
 // 启用 Immer 的 Map/Set 支持
 enableMapSet();
 

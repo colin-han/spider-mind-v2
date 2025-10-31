@@ -1,9 +1,9 @@
-import { MindmapStore } from "../mindmap-store.types";
-import { CommandDefinition, registerCommand } from "../command-registry";
+import { MindmapStore } from "../../mindmap-store.types";
+import { CommandDefinition, registerCommand } from "../../command-registry";
 import { generateShortId } from "@/lib/utils/short-id";
-import { AddNodeAction } from "../actions/add-node";
-import { UpdateNodeAction } from "../actions/update-node";
-import { getChildNodes } from "../editor-utils";
+import { AddNodeAction } from "../../actions/add-node";
+import { UpdateNodeAction } from "../../actions/update-node";
+import { getChildNodes } from "../../editor-utils";
 
 type AddChildNodeParams = [string, number?, string?, string?];
 
