@@ -21,8 +21,7 @@ export class CommandManager {
       }
       if (command.undoable == false) {
         actions.forEach((action) => {
-          this.root.currentEditor!.acceptAction(action);
-          action.visitIndexedDB(this.root.db!);
+          this.root.acceptAction(action);
         });
       } else {
         this.root.historyManager!.execute({

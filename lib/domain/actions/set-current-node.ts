@@ -12,11 +12,12 @@ export class SetCurrentNodeAction implements EditorAction {
 
   constructor(private readonly params: SetCurrentNodeParams) {}
 
-  async visitEditorState(mutableState: EditorState) {
-    mutableState.currentNode = this.params.newNodeId;
+  applyToEditorState(draft: EditorState): void {
+    draft.currentNode = this.params.newNodeId;
+    draft.isSaved = false;
   }
 
-  async visitIndexedDB(_db: IDBPDatabase<MindmapDB>) {
+  async applyToIndexedDB(_db: IDBPDatabase<MindmapDB>): Promise<void> {
     // Do nothing
   }
 

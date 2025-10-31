@@ -15,18 +15,20 @@ export class UpdateNodeAction implements EditorAction {
 
   constructor(private readonly params: UpdateNodeParams) {}
 
-  async visitEditorState(mutableState: EditorState) {
-    const node = mutableState.nodes.get(this.params.short_id);
+  applyToEditorState(draft: EditorState): void {
+    const node = draft.nodes.get(this.params.short_id);
     if (!node) {
       throw new Error(`节点不存在: ${this.params.short_id}`);
     }
-    mutableState.nodes.set(this.params.short_id, {
-      ...node,
-      ...this.params.newNode,
-    });
+
+    // Immer 允许直接修改属性
+    Object.assign(node, this.params.newNode);
+    node.updated_at = new Date().toISOString();
+
+    draft.isSaved = false;
   }
 
-  async visitIndexedDB(db: IDBPDatabase<MindmapDB>) {
+  async applyToIndexedDB(db: IDBPDatabase<MindmapDB>): Promise<void> {
     const node = await db.get("mindmap_nodes", this.params.id);
     if (!node) {
       throw new Error(`节点不存在: ${this.params.id}`);
@@ -35,6 +37,8 @@ export class UpdateNodeAction implements EditorAction {
     await db.put("mindmap_nodes", {
       ...node,
       ...this.params.newNode,
+      dirty: true,
+      local_updated_at: new Date().toISOString(),
     });
   }
 

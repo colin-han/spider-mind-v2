@@ -3,14 +3,27 @@ import { MindmapDB } from "../db/schema";
 import { Mindmap, MindmapNode } from "../types";
 import { CommandManager } from "./command-manager";
 import { ShortcutManager } from "./shortcut-manager";
-import { EditorStore } from "./editor-store";
 import { HistoryManager } from "./history-manager";
 
 export interface EditorAction {
   type: string;
-  visitEditorState(mutableState: EditorState): Promise<void>;
-  visitIndexedDB(db: IDBPDatabase<MindmapDB>): Promise<void>;
+
+  /**
+   * 应用到 EditorState
+   * 使用 Immer Draft，可以直接修改 draft
+   */
+  applyToEditorState(draft: EditorState): void;
+
+  /**
+   * 返回逆操作（用于 undo）
+   */
   reverse(): EditorAction;
+
+  /**
+   * （可选）持久化到 IndexedDB
+   * 会被 MindmapStore.acceptAction 自动调用
+   */
+  applyToIndexedDB?(db: IDBPDatabase<MindmapDB>): Promise<void>;
 }
 
 export type FocusedArea = "graph" | "panel" | "outline" | "search";
@@ -32,14 +45,14 @@ export interface EditorState {
 }
 
 export interface MindmapStore {
-  readonly currentEditor?: EditorStore; // 内存中的编辑状态
+  readonly currentEditor?: EditorState; // 内存中的编辑状态（immutable 对象）
   readonly db?: IDBPDatabase<MindmapDB>; // 用来保存编辑状态的信息到IndexedDB中。
   readonly commandManager?: CommandManager;
   readonly shortcutManager?: ShortcutManager;
   readonly historyManager?: HistoryManager;
 
   init(): Promise<void>;
-  openMindmap(mindmapId: string): Promise<void>; // 打开指定 mindmap （id是short_id），创建新的EditorStore。并清理undo/redo栈。
-
+  openMindmap(mindmapId: string): Promise<void>; // 打开指定 mindmap （id是short_id），创建新的EditorState。并清理undo/redo栈。
+  acceptAction(action: EditorAction): void; // 应用 EditorAction 到当前编辑器状态
   executeCommand(commandId: string, params?: unknown[]): Promise<void>;
 }

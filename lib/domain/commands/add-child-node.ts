@@ -3,6 +3,7 @@ import { CommandDefinition, registerCommand } from "../command-registry";
 import { generateShortId } from "@/lib/utils/short-id";
 import { AddNodeAction } from "../actions/add-node";
 import { UpdateNodeAction } from "../actions/update-node";
+import { getChildNodes } from "../editor-utils";
 
 type AddChildNodeParams = [string, number?, string?, string?];
 
@@ -31,7 +32,7 @@ export const addChildNodeCommand: CommandDefinition = {
     if (!parentNode) {
       return;
     }
-    const siblings = root.currentEditor!.getChildNode(normalizedParentId);
+    const siblings = getChildNodes(root.currentEditor!, normalizedParentId);
     const order_index = normalizePosition(siblings.length, position);
     const normalizedTitle = title || "新节点";
 

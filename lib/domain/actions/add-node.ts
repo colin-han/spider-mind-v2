@@ -9,10 +9,12 @@ export class AddNodeAction implements EditorAction {
 
   constructor(private readonly node: MindmapNode) {}
 
-  async visitEditorState(mutableState: EditorState) {
-    mutableState.nodes.set(this.node.id, this.node);
+  applyToEditorState(draft: EditorState): void {
+    // Immer 允许直接修改（会自动转为 immutable）
+    draft.nodes.set(this.node.short_id, this.node);
+    draft.isSaved = false;
   }
-  async visitIndexedDB(db: IDBPDatabase<MindmapDB>) {
+  async applyToIndexedDB(db: IDBPDatabase<MindmapDB>) {
     db.put("mindmap_nodes", {
       ...this.node,
       dirty: true,
@@ -20,6 +22,6 @@ export class AddNodeAction implements EditorAction {
     });
   }
   reverse(): EditorAction {
-    return new RemoveNodeAction(this.node);
+    return new RemoveNodeAction(this.node.short_id, this.node);
   }
 }

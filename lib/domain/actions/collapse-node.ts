@@ -8,11 +8,11 @@ export class CollapseNodeAction implements EditorAction {
 
   constructor(private readonly nodeId: string) {}
 
-  async visitEditorState(mutableState: EditorState) {
-    mutableState.collapsedNodes.add(this.nodeId);
+  applyToEditorState(draft: EditorState): void {
+    draft.collapsedNodes.add(this.nodeId);
   }
 
-  async visitIndexedDB(_db: IDBPDatabase<MindmapDB>) {
+  async applyToIndexedDB(_db: IDBPDatabase<MindmapDB>): Promise<void> {
     // Do nothing
   }
 

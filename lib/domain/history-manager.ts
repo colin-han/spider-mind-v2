@@ -15,8 +15,7 @@ export class HistoryManager {
 
   private executeActions(actions: EditorAction[]) {
     actions.forEach((action) => {
-      this.root.currentEditor!.acceptAction(action);
-      action.visitIndexedDB(this.root.db!);
+      this.root.acceptAction(action);
     });
   }
 

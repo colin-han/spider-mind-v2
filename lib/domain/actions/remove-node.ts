@@ -7,17 +7,39 @@ import { AddNodeAction } from "./add-node";
 export class RemoveNodeAction implements EditorAction {
   type = "removeNode";
 
-  constructor(private readonly node: MindmapNode) {}
+  constructor(
+    private readonly nodeId: string,
+    private deletedNode?: MindmapNode
+  ) {}
 
-  async visitEditorState(mutableState: EditorState) {
-    mutableState.nodes.delete(this.node.id);
+  applyToEditorState(draft: EditorState): void {
+    // 在删除前保存节点（用于 undo）
+    if (!this.deletedNode) {
+      const node = draft.nodes.get(this.nodeId);
+      if (node) {
+        this.deletedNode = node;
+      }
+    }
+
+    draft.nodes.delete(this.nodeId);
+    draft.isSaved = false;
+
+    // 如果删除的是当前节点，切换到父节点
+    if (draft.currentNode === this.nodeId && this.deletedNode) {
+      draft.currentNode = this.deletedNode.parent_short_id || "";
+    }
   }
 
-  async visitIndexedDB(db: IDBPDatabase<MindmapDB>) {
-    await db.delete("mindmap_nodes", this.node.id);
+  async applyToIndexedDB(db: IDBPDatabase<MindmapDB>): Promise<void> {
+    if (this.deletedNode) {
+      await db.delete("mindmap_nodes", this.deletedNode.id);
+    }
   }
 
   reverse(): EditorAction {
-    return new AddNodeAction(this.node);
+    if (!this.deletedNode) {
+      throw new Error("Cannot reverse RemoveNodeAction without deletedNode");
+    }
+    return new AddNodeAction(this.deletedNode);
   }
 }
