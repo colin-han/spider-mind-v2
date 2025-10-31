@@ -27,7 +27,7 @@ export class CommandManager {
         this.root.historyManager!.execute({
           commandId: run.commandId,
           description: command.getDescription
-            ? command.getDescription(run.params)
+            ? command.getDescription(this.root, run.params)
             : command.description,
           actions,
         });

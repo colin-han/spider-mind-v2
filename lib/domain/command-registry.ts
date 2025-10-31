@@ -21,7 +21,7 @@ export interface CommandDefinition {
   // 上下文条件（可选）
   when?: (root: MindmapStore, params?: unknown[]) => boolean;
 
-  getDescription?: (params: unknown[] | undefined) => string;
+  getDescription?: (root: MindmapStore, params?: unknown[]) => string;
 }
 
 export function registerCommand(def: CommandDefinition) {

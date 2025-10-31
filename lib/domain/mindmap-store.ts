@@ -22,8 +22,52 @@ export const useMindmapStore = create<MindmapStore>()(
         state.historyManager = new HistoryManager(root);
       });
     },
-    openMindmap: async (_mindmapId: string) => {
-      //TODO: 加载mindmap, 创建editorstore;
+    openMindmap: async (mindmapId: string) => {
+      const db = get().db;
+      if (!db) {
+        throw new Error("Database not initialized");
+      }
+
+      // 1. 从 IndexedDB 加载 mindmap
+      const mindmap = await db.get("mindmaps", mindmapId);
+
+      if (!mindmap) {
+        throw new Error(`Mindmap ${mindmapId} not found in local database`);
+      }
+
+      // 2. 加载所有节点
+      const nodeIndex = db
+        .transaction("mindmap_nodes")
+        .store.index("by-mindmap");
+      const nodes = await nodeIndex.getAll(mindmap.id);
+
+      if (nodes.length === 0) {
+        throw new Error(`No nodes found for mindmap ${mindmapId}`);
+      }
+
+      // 3. 找到根节点
+      const rootNode = nodes.find((n) => !n.parent_short_id);
+      if (!rootNode) {
+        throw new Error(`Root node not found for mindmap ${mindmapId}`);
+      }
+
+      // 4. 构造 EditorState
+      const editorState: EditorState = {
+        currentMindmap: mindmap,
+        nodes: new Map(nodes.map((n) => [n.short_id, n])),
+        collapsedNodes: new Set(),
+        focusedArea: "graph",
+        currentNode: rootNode.short_id,
+        isSaved: !mindmap.dirty,
+      };
+
+      // 5. 更新状态
+      set((state) => {
+        state.currentEditor = editorState;
+      });
+
+      // 6. 清空历史栈
+      get().historyManager?.clear();
     },
     executeCommand: async (commandId: string, params?: unknown[]) => {
       get().commandManager!.executeCommand({
