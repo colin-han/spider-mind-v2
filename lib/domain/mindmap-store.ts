@@ -10,6 +10,9 @@ import { HistoryManager } from "./history-manager";
 // 导入所有命令以触发注册
 import "./commands";
 
+// 导入所有快捷键以触发注册
+import "./shortcuts";
+
 // 启用 Immer 的 Map/Set 支持
 enableMapSet();
 
