@@ -38,12 +38,12 @@ export const selectNextSiblingCommand: CommandDefinition = {
       return;
     }
 
-    root.acceptAction(
+    return [
       new SetCurrentNodeAction({
         oldNodeId: currentNode.short_id,
         newNodeId: nextSibling.short_id,
-      })
-    );
+      }),
+    ];
   },
 
   when: (root: MindmapStore) => {

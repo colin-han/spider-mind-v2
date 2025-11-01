@@ -14,8 +14,17 @@ import type {
   MindmapEditorStore,
   AddChildNodeParams,
 } from "./mindmap-editor.types";
-import type { FocusedArea } from "../domain/mindmap-store.types";
+import type {
+  FocusedArea,
+  MindmapStore,
+  EditorState as DomainEditorState,
+  EditorAction,
+} from "../domain/mindmap-store.types";
 import { autoPersistence } from "./middleware/auto-persistence.middleware";
+import { getCommand } from "../domain/command-registry";
+
+// 导入所有命令以触发注册
+import "../domain/commands";
 
 // 启用 Immer 的 MapSet 插件以支持 Map 和 Set
 enableMapSet();
@@ -406,6 +415,69 @@ export const useMindmapEditorStore = create<MindmapEditorStore>()(
         set((state) => {
           state.isDirty = false;
           state.isSynced = true;
+        });
+      },
+
+      // ========== 命令执行（桥接到新 domain 模块） ==========
+      executeCommand: async (commandId: string, params?: unknown[]) => {
+        const command = getCommand(commandId);
+        if (!command) {
+          throw new Error(`Command not found: ${commandId}`);
+        }
+
+        // 构建兼容的 MindmapStore 接口供命令使用
+        const currentState = get();
+        const storeAdapter = {
+          currentEditor: currentState.currentMindmap
+            ? {
+                currentMindmap: currentState.currentMindmap,
+                nodes: currentState.nodes,
+                collapsedNodes: currentState.collapsedNodes,
+                focusedArea: currentState.focusedArea,
+                currentNode: currentState.currentNode || "",
+                isSaved: !currentState.isDirty,
+              }
+            : undefined,
+        };
+
+        // 执行命令获取 actions（可能是异步的）
+        const result = await command.handler(
+          storeAdapter as unknown as MindmapStore,
+          params
+        );
+
+        // 如果命令没有返回 actions（void 或 undefined），直接返回
+        if (!result || !Array.isArray(result)) {
+          return;
+        }
+
+        const actions = result as EditorAction[];
+        if (actions.length === 0) {
+          return;
+        }
+
+        // 应用所有 actions 到旧 store
+        set((state) => {
+          actions.forEach((action: EditorAction) => {
+            // 调用 action 的 applyToEditorState，但适配到旧 store 的结构
+            const editorState = {
+              currentMindmap: state.currentMindmap!,
+              nodes: state.nodes,
+              collapsedNodes: state.collapsedNodes,
+              focusedArea: state.focusedArea,
+              currentNode: state.currentNode || "",
+              isSaved: !state.isDirty,
+            };
+
+            action.applyToEditorState(
+              editorState as unknown as DomainEditorState
+            );
+
+            // 更新旧 store 的状态
+            state.currentNode = editorState.currentNode;
+            state.isDirty = true;
+            state.isSynced = false;
+          });
         });
       },
     }))

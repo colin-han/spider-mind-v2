@@ -31,12 +31,12 @@ export const selectFirstChildCommand: CommandDefinition = {
       return;
     }
 
-    root.acceptAction(
+    return [
       new SetCurrentNodeAction({
         oldNodeId: currentNode.short_id,
         newNodeId: firstChild.short_id,
-      })
-    );
+      }),
+    ];
   },
 
   when: (root: MindmapStore) => {

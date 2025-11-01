@@ -20,12 +20,12 @@ export const selectParentCommand: CommandDefinition = {
       return;
     }
 
-    root.acceptAction(
+    return [
       new SetCurrentNodeAction({
         oldNodeId: currentNode.short_id,
         newNodeId: currentNode.parent_short_id,
-      })
-    );
+      }),
+    ];
   },
 
   when: (root: MindmapStore) => {

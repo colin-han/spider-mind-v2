@@ -13,33 +13,31 @@ export class HistoryManager {
 
   constructor(private readonly root: MindmapStore) {}
 
-  private executeActions(actions: EditorAction[]) {
-    actions.forEach((action) => {
-      this.root.acceptAction(action);
-    });
+  private async executeActions(actions: EditorAction[]) {
+    await this.root.acceptActions(actions);
   }
 
-  execute(item: HistoryItem) {
-    this.executeActions(item.actions);
+  async execute(item: HistoryItem) {
+    await this.executeActions(item.actions);
     this.undoStack.push(item);
     this.redoStack = [];
   }
 
-  undo() {
+  async undo() {
     if (this.undoStack.length === 0) {
       return;
     }
     const item = this.undoStack.pop()!;
-    this.executeActions(item.actions.map((action) => action.reverse()));
+    await this.executeActions(item.actions.map((action) => action.reverse()));
     this.redoStack.push(item);
   }
 
-  redo() {
+  async redo() {
     if (this.redoStack.length === 0) {
       return;
     }
     const item = this.redoStack.pop()!;
-    this.executeActions(item.actions);
+    await this.executeActions(item.actions);
     this.undoStack.push(item);
   }
 

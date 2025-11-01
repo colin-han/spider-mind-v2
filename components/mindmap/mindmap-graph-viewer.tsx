@@ -76,7 +76,7 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
     collapsedNodes,
     setCurrentNode,
     getRootNode,
-    moveNode,
+    executeCommand,
     setFocusedArea,
   } = useMindmapEditorStore();
 
@@ -300,18 +300,14 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
         position = Infinity; // 插入到最后
       }
 
-      // 执行移动
-      try {
-        moveNode({
-          nodeId: draggedNodeId,
-          newParentId,
-          position,
-        });
-      } catch (error) {
-        console.error("[MindmapGraphViewer] Failed to move node:", error);
-      }
+      // 执行移动（使用新的命令系统）
+      executeCommand("node.move", [draggedNodeId, newParentId, position]).catch(
+        (error) => {
+          console.error("[MindmapGraphViewer] Failed to move node:", error);
+        }
+      );
     },
-    [dragState, nodesMap, moveNode]
+    [dragState, nodesMap, executeCommand]
   );
 
   // 初始化时自动适应视图

@@ -30,13 +30,8 @@ export interface NodePanelRef {
  * NodePanel 组件
  */
 export const NodePanel = forwardRef<NodePanelRef>((_props, ref) => {
-  const {
-    currentNode,
-    getNode,
-    updateNodeTitle,
-    updateNodeContent,
-    setFocusedArea,
-  } = useMindmapEditorStore();
+  const { currentNode, getNode, executeCommand, setFocusedArea } =
+    useMindmapEditorStore();
 
   const titleInputRef = useRef<HTMLInputElement>(null);
 
@@ -97,7 +92,12 @@ export const NodePanel = forwardRef<NodePanelRef>((_props, ref) => {
             ref={titleInputRef}
             type="text"
             value={node.title}
-            onChange={(e) => updateNodeTitle(node.short_id, e.target.value)}
+            onChange={(e) =>
+              executeCommand("node.updateTitle", [
+                node.short_id,
+                e.target.value,
+              ])
+            }
             onFocus={() => setFocusedArea("panel")}
             onBlur={() => setFocusedArea("graph")}
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 outline-none text-gray-900 dark:text-white bg-white dark:bg-gray-800"
@@ -117,7 +117,12 @@ export const NodePanel = forwardRef<NodePanelRef>((_props, ref) => {
             id="node-content-textarea"
             data-testid="node-panel-content-textarea"
             value={node.content || ""}
-            onChange={(e) => updateNodeContent(node.short_id, e.target.value)}
+            onChange={(e) =>
+              executeCommand("node.updateContent", [
+                node.short_id,
+                e.target.value,
+              ])
+            }
             onFocus={() => setFocusedArea("panel")}
             onBlur={() => setFocusedArea("graph")}
             rows={20}

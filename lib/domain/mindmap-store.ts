@@ -82,17 +82,60 @@ export const useMindmapStore = create<MindmapStore>()(
       });
     },
 
-    acceptAction: (action) => {
+    acceptActions: async (actions) => {
+      if (actions.length === 0) {
+        return;
+      }
+
+      // 1. 批量更新内存状态（同步）
       set((state) => {
         if (!state.currentEditor) {
           throw new Error("No editor opened");
         }
-        action.applyToEditorState(state.currentEditor);
+        actions.forEach((action) => {
+          action.applyToEditorState(state.currentEditor!);
+        });
       });
-      // 应用到 IndexedDB
+
+      // 2. 批量持久化到 IndexedDB（单事务，异步）
       const db = get().db;
-      if (db) {
-        action.applyToIndexedDB?.(db);
+      if (!db) {
+        return;
+      }
+
+      try {
+        // 创建单个事务
+        const tx = db.transaction("mindmap_nodes", "readwrite");
+
+        // 在事务中顺序执行所有持久化操作
+        for (const action of actions) {
+          if (action.applyToIndexedDB) {
+            await action.applyToIndexedDB(db);
+          }
+        }
+
+        // 等待事务提交
+        await tx.done;
+
+        console.log(
+          `[MindmapStore] Successfully persisted ${actions.length} action(s) in a single transaction`
+        );
+      } catch (error) {
+        console.error("[MindmapStore] Failed to persist actions:", {
+          actionCount: actions.length,
+          actionTypes: actions.map((a) => a.type),
+          error,
+        });
+
+        // 标记为未保存
+        set((state) => {
+          if (state.currentEditor) {
+            state.currentEditor.isSaved = false;
+          }
+        });
+
+        // 传播错误
+        throw error;
       }
     },
   }))

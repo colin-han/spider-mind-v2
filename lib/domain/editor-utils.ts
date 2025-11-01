@@ -58,3 +58,33 @@ export function getDescendantNodes(
 
   return descendants;
 }
+
+/**
+ * 检查 ancestorId 是否是 descendantId 的祖先
+ * 用于防止循环引用
+ */
+export function isDescendant(
+  ancestorId: string,
+  descendantId: string,
+  nodesMap: Map<string, MindmapNode>
+): boolean {
+  // 向上遍历 descendantId 的祖先链
+  let current = nodesMap.get(descendantId);
+
+  while (current) {
+    // 如果找到了 ancestorId,说明确实是祖先
+    if (current.short_id === ancestorId) {
+      return true;
+    }
+
+    // 继续向上查找父节点
+    if (current.parent_short_id) {
+      current = nodesMap.get(current.parent_short_id);
+    } else {
+      // 已到达根节点或浮动节点,停止
+      break;
+    }
+  }
+
+  return false;
+}

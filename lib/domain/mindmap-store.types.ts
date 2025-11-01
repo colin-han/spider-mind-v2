@@ -15,15 +15,15 @@ export interface EditorAction {
   applyToEditorState(draft: EditorState): void;
 
   /**
+   * （可选）持久化到 IndexedDB
+   * 会被 MindmapStore.acceptActions 自动调用
+   */
+  applyToIndexedDB?(db: IDBPDatabase<MindmapDB>): Promise<void>;
+
+  /**
    * 返回逆操作（用于 undo）
    */
   reverse(): EditorAction;
-
-  /**
-   * （可选）持久化到 IndexedDB
-   * 会被 MindmapStore.acceptAction 自动调用
-   */
-  applyToIndexedDB?(db: IDBPDatabase<MindmapDB>): Promise<void>;
 }
 
 export type FocusedArea = "graph" | "panel" | "outline" | "search";
@@ -53,6 +53,6 @@ export interface MindmapStore {
 
   init(): Promise<void>;
   openMindmap(mindmapId: string): Promise<void>; // 打开指定 mindmap （id是short_id），创建新的EditorState。并清理undo/redo栈。
-  acceptAction(action: EditorAction): void; // 应用 EditorAction 到当前编辑器状态
+  acceptActions(actions: EditorAction[]): Promise<void>; // 批量应用 EditorActions 到当前编辑器状态（单事务保证原子性）
   executeCommand(commandId: string, params?: unknown[]): Promise<void>;
 }

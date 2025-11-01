@@ -19,12 +19,12 @@ export class CommandManager {
       if (!actions) {
         return;
       }
-      if (command.undoable == false) {
-        actions.forEach((action) => {
-          this.root.acceptAction(action);
-        });
+      if (command.undoable === false) {
+        // 不可撤销的命令，直接批量执行
+        await this.root.acceptActions(actions);
       } else {
-        this.root.historyManager!.execute({
+        // 可撤销的命令，通过 HistoryManager 执行
+        await this.root.historyManager!.execute({
           commandId: run.commandId,
           description: command.getDescription
             ? command.getDescription(this.root, run.params)

@@ -11,6 +11,9 @@ import "./node/add-sibling-below";
 import "./node/delete";
 import "./node/move-up";
 import "./node/move-down";
+import "./node/move";
+import "./node/update-title";
+import "./node/update-content";
 
 // 导航操作命令
 import "./navigation/select-parent";

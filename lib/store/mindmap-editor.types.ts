@@ -156,6 +156,16 @@ export interface MindmapEditorActions {
    * 应在成功保存到云端后调用
    */
   clearSyncStatus: () => void;
+
+  // ========== 命令执行（桥接到新 domain 模块） ==========
+  /**
+   * 执行命令（使用新的命令系统）
+   * 这是一个桥接方法，允许旧 store 调用新 domain 模块中的命令
+   *
+   * @param commandId - 命令 ID（如 'node.updateTitle', 'node.move'）
+   * @param params - 命令参数数组
+   */
+  executeCommand: (commandId: string, params?: unknown[]) => Promise<void>;
 }
 
 /**
