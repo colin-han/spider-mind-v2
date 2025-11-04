@@ -69,9 +69,9 @@ interface DragState {
 export const MindmapGraphViewer = memo(function MindmapGraphViewer(
   _props: MindmapGraphViewerProps = {}
 ) {
-  const { fitView } = useReactFlow();
-  const editorState = useMindmapEditorState()!;
+  const { fitView, flowToScreenPosition, getViewport } = useReactFlow();
   const moveNode = useCommand("node.move");
+  const editorState = useMindmapEditorState()!;
   const setFocusedArea = useCommand("global.setFocusedArea");
   const setCurrentNode = useCommand("navigation.setCurrentNode");
 
@@ -216,15 +216,21 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
 
       if (!isValid) {
         // 显示禁止指示器
+        // 将画布坐标转换为屏幕坐标
+        const screenPosition = flowToScreenPosition({
+          x: targetNode.position.x,
+          y: targetNode.position.y,
+        });
+
         setDragState((prev) => ({
           ...prev,
           targetNodeId: targetNode.id,
           dropIndicatorType: "forbidden",
           targetRect: {
-            x: targetNode.position.x,
-            y: targetNode.position.y,
-            width: targetNode.width || 172,
-            height: targetNode.height || 50,
+            x: screenPosition.x,
+            y: screenPosition.y,
+            width: (targetNode.width || 172) * getViewport().zoom,
+            height: (targetNode.height || 50) * getViewport().zoom,
           },
         }));
         return;
@@ -245,19 +251,31 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
             ? "line-below"
             : "highlight";
 
+      // 将画布坐标转换为屏幕坐标
+      const screenPosition = flowToScreenPosition({
+        x: targetNode.position.x,
+        y: targetNode.position.y,
+      });
+
       setDragState((prev) => ({
         ...prev,
         targetNodeId: targetNode.id,
         dropIndicatorType: indicatorType,
         targetRect: {
-          x: targetNode.position.x,
-          y: targetNode.position.y,
-          width: targetNode.width || 172,
-          height: targetNode.height || 50,
+          x: screenPosition.x,
+          y: screenPosition.y,
+          width: (targetNode.width || 172) * getViewport().zoom,
+          height: (targetNode.height || 50) * getViewport().zoom,
         },
       }));
     },
-    [dragState.draggedNodeId, nodes, nodesMap]
+    [
+      dragState.draggedNodeId,
+      nodes,
+      nodesMap,
+      flowToScreenPosition,
+      getViewport,
+    ]
   );
 
   // 拖拽结束
