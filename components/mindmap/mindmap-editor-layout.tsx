@@ -20,7 +20,6 @@ import { MindmapOutlineArborist } from "./mindmap-outline-arborist";
 import { MindmapGraphViewer } from "./mindmap-graph-viewer";
 import { NodePanel } from "./node-panel";
 import { cn } from "@/lib/utils/cn";
-import { useShortcuts, allBindings } from "@/lib/shortcuts";
 
 // 常量定义
 const DEFAULT_OUTLINE_WIDTH = 280;
@@ -87,9 +86,6 @@ export function MindmapEditorLayout() {
     savedState.outlineWidth ?? DEFAULT_OUTLINE_WIDTH
   );
   const [isResizing, setIsResizing] = useState(false);
-
-  // 注册所有快捷键
-  useShortcuts(allBindings);
 
   /**
    * 处理拖拽开始
