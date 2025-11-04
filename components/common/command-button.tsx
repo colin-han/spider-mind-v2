@@ -12,11 +12,10 @@
 
 import { useMemo } from "react";
 import { LucideIcon } from "lucide-react";
-import { useCommandRegistry } from "@/lib/commands/context";
-import { ShortcutManager } from "@/lib/shortcuts";
-import { allBindings } from "@/lib/shortcuts";
 import { cn } from "@/lib/utils/cn";
-import { useExecuteCommand } from "@/lib/commands/context";
+import { useCommand } from "@/lib/domain/mindmap-store";
+import { getCommand } from "@/lib/domain/command-registry";
+import { findShortcutByCommand } from "@/lib/domain/shortcut-register";
 
 /**
  * CommandButton Props
@@ -106,20 +105,14 @@ export function CommandButton({
   displayMode = "icon",
   testId,
 }: CommandButtonProps) {
-  const commandRegistry = useCommandRegistry();
-  const executeCommand = useExecuteCommand();
+  // 使用新的 command 系统
+  const executeCommand = useCommand(commandId);
 
   // 获取命令信息
-  const command = commandRegistry.get(commandId);
+  const command = useMemo(() => getCommand(commandId), [commandId]);
 
   // 查询快捷键绑定
-  const shortcutManager = useMemo(() => {
-    const manager = new ShortcutManager();
-    manager.registerAll(allBindings);
-    return manager;
-  }, []);
-
-  const shortcut = shortcutManager.findByCommand(commandId);
+  const shortcut = useMemo(() => findShortcutByCommand(commandId), [commandId]);
 
   // 构建 title 文本
   const title = useMemo(() => {
@@ -132,7 +125,7 @@ export function CommandButton({
     }
 
     if (shortcut) {
-      parts.push(`(${formatShortcut(shortcut.keys)})`);
+      parts.push(`(${formatShortcut(shortcut.key)})`);
     }
 
     return parts.join(" ");
@@ -141,7 +134,9 @@ export function CommandButton({
   // 处理点击
   const handleClick = () => {
     if (!disabled && command) {
-      executeCommand(commandId);
+      executeCommand().catch((error) => {
+        console.error(`Failed to execute command ${commandId}:`, error);
+      });
     }
   };
 

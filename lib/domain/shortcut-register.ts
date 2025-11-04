@@ -62,3 +62,23 @@ function registerShortcutImpl(def: ShortcutDefinition) {
 export function getShortcutDefinitions(key: string) {
   return shortcutDefinitions.get(key);
 }
+
+/**
+ * 根据命令 ID 查找快捷键
+ */
+export function findShortcutByCommand(commandId: string):
+  | {
+      key: string;
+      definition: ShortcutDefinition;
+    }
+  | undefined {
+  for (const [key, defs] of shortcutDefinitions.entries()) {
+    for (const def of defs) {
+      const run = def.run({} as unknown as MindmapStore);
+      if (run.commandId === commandId) {
+        return { key, definition: def };
+      }
+    }
+  }
+  return undefined;
+}
