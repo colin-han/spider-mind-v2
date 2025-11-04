@@ -86,15 +86,13 @@ export const saveMindmapCommand: CommandDefinition = {
     // 5. 更新 IndexedDB
     const tx = db.transaction(["mindmaps", "mindmap_nodes"], "readwrite");
 
-    // 更新 mindmap
-    if (dirtyMindmap.dirty) {
-      await tx.objectStore("mindmaps").put({
-        ...dirtyMindmap,
-        dirty: false,
-        server_updated_at: uploadResult.updated_at,
-        local_updated_at: new Date().toISOString(),
-      });
-    }
+    // 更新 mindmap（不管mindmap本身是否dirty，只要有数据上传，就需要更新server_updated_at）
+    await tx.objectStore("mindmaps").put({
+      ...dirtyMindmap,
+      dirty: false,
+      server_updated_at: uploadResult.updated_at,
+      local_updated_at: new Date().toISOString(),
+    });
 
     // 更新所有 dirty 节点
     for (const node of dirtyNodes) {
