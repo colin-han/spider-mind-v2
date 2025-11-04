@@ -20,7 +20,6 @@ import {
   useMindmapStore,
   useMindmapEditorState,
 } from "@/lib/domain/mindmap-store";
-import { CommandRegistryProvider, allCommands } from "@/lib/commands";
 import { MindmapEditorLayout } from "./mindmap-editor-layout";
 import { SaveButton } from "./save-button";
 import { OfflineBanner } from "./offline-banner";
@@ -103,7 +102,7 @@ export function MindmapEditor({ mindmapId }: MindmapEditorProps) {
   }
 
   return (
-    <CommandRegistryProvider commands={allCommands}>
+    <>
       {/* 离线提示横幅 */}
       <OfflineBanner mindmapId={editorState.currentMindmap.short_id} />
 
@@ -168,6 +167,6 @@ export function MindmapEditor({ mindmapId }: MindmapEditorProps) {
         serverVersion={conflictInfo?.serverUpdatedAt || ""}
         onResolve={handleConflictResolve}
       />
-    </CommandRegistryProvider>
+    </>
   );
 }

@@ -1,7 +1,16 @@
-import { CommandCategory } from "../commands";
 import { MindmapStore, EditorAction } from "./mindmap-store.types";
 
 const commandRegistry = new Map<string, CommandDefinition>();
+
+/**
+ * 命令分类
+ */
+export type CommandCategory =
+  | "node" // 节点操作
+  | "navigation" // 导航操作
+  | "edit" // 编辑操作
+  | "global" // 全局操作
+  | "ai"; // AI 相关操作
 
 export interface CommandDefinition {
   // 基本信息
