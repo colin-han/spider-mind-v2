@@ -29,9 +29,9 @@ export class UpdateNodeAction implements EditorAction {
   }
 
   async applyToIndexedDB(db: IDBPDatabase<MindmapDB>): Promise<void> {
-    const node = await db.get("mindmap_nodes", this.params.id);
+    const node = await db.get("mindmap_nodes", this.params.short_id);
     if (!node) {
-      throw new Error(`节点不存在: ${this.params.id}`);
+      throw new Error(`节点不存在: ${this.params.short_id}`);
     }
 
     await db.put("mindmap_nodes", {

@@ -24,7 +24,7 @@ import {
   type Node,
   type NodeTypes,
 } from "@xyflow/react";
-import { useMindmapEditorStore } from "@/lib/store/mindmap-editor.store";
+import { useMindmapEditorState, useCommand } from "@/lib/domain/mindmap-store";
 import { convertToFlowData } from "@/lib/utils/mindmap/mindmap-to-flow";
 import { calculateDagreLayout } from "@/lib/utils/mindmap/dagre-layout";
 import { CustomMindNode } from "./viewer/custom-mind-node";
@@ -70,15 +70,25 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
   _props: MindmapGraphViewerProps = {}
 ) {
   const { fitView } = useReactFlow();
-  const {
-    currentMindmap,
-    nodes: nodesMap,
-    collapsedNodes,
-    setCurrentNode,
-    getRootNode,
-    executeCommand,
-    setFocusedArea,
-  } = useMindmapEditorStore();
+  const editorState = useMindmapEditorState()!;
+  const moveNode = useCommand("node.move");
+  const setFocusedArea = useCommand("global.setFocusedArea");
+  const setCurrentNode = useCommand("navigation.setCurrentNode");
+
+  // 从 editorState 获取数据
+  const currentMindmap = editorState.currentMindmap;
+  const nodesMap = editorState.nodes;
+  const collapsedNodes = editorState.collapsedNodes;
+
+  // 获取根节点的辅助函数
+  const getRootNode = useCallback(
+    (mindmapId: string) => {
+      return Array.from(editorState.nodes.values()).find(
+        (node) => node.mindmap_id === mindmapId && node.parent_id === null
+      );
+    },
+    [editorState.nodes]
+  );
 
   // 拖拽状态
   const [dragState, setDragState] = useState<DragState>({
@@ -141,8 +151,9 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
   const onNodeDoubleClick = useCallback(
     (_event: React.MouseEvent, node: Node) => {
       setCurrentNode(node.id);
+      setFocusedArea("panel");
     },
-    [setCurrentNode]
+    [setCurrentNode, setFocusedArea]
   );
 
   // 点击空白区域 - 设置焦点到图形视图
@@ -301,13 +312,11 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
       }
 
       // 执行移动（使用新的命令系统）
-      executeCommand("node.move", [draggedNodeId, newParentId, position]).catch(
-        (error) => {
-          console.error("[MindmapGraphViewer] Failed to move node:", error);
-        }
-      );
+      moveNode(draggedNodeId, newParentId, position).catch((error) => {
+        console.error("[MindmapGraphViewer] Failed to move node:", error);
+      });
     },
-    [dragState, nodesMap, executeCommand]
+    [dragState, nodesMap, moveNode]
   );
 
   // 初始化时自动适应视图

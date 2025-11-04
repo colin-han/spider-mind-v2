@@ -1,5 +1,5 @@
+import { useMindmapStore } from "./mindmap-store";
 import { EditorAction } from "./mindmap-store.types";
-import { MindmapStore } from "./mindmap-store.types";
 
 export interface HistoryItem {
   commandId: string;
@@ -11,10 +11,11 @@ export class HistoryManager {
   undoStack: HistoryItem[] = [];
   redoStack: HistoryItem[] = [];
 
-  constructor(private readonly root: MindmapStore) {}
+  constructor() {}
 
   private async executeActions(actions: EditorAction[]) {
-    await this.root.acceptActions(actions);
+    const root = useMindmapStore.getState();
+    await root.acceptActions(actions);
   }
 
   async execute(item: HistoryItem) {

@@ -1,23 +1,36 @@
-import { CommandRun } from "./command-manager";
-import { MindmapStore } from "./mindmap-store.types";
+import { useMindmapStore } from "./mindmap-store";
 import { getShortcutDefinitions } from "./shortcut-register";
 
 export class ShortcutManager {
-  constructor(private readonly root: MindmapStore) {}
+  constructor() {}
 
-  handleKeydown(event: KeyboardEvent): CommandRun | undefined {
+  handleKeydown(event: KeyboardEvent): void {
+    const root = useMindmapStore.getState();
     const keys = this.getKeysFromEvent(event);
     const shortcutDefs = getShortcutDefinitions(keys);
     if (!shortcutDefs) {
-      return undefined;
+      return;
     }
-    const shortcutDef = shortcutDefs.find(
-      (def) => def.when?.(this.root) ?? true
-    );
+
+    const shortcutDef = shortcutDefs.find((def) => def.when?.(root) ?? true);
     if (!shortcutDef) {
-      return undefined;
+      return;
     }
-    return shortcutDef.run(this.root);
+
+    console.log(
+      "[ShortcutManager] handleKeydown",
+      keys,
+      shortcutDef,
+      root.currentEditor?.version
+    );
+    const run = shortcutDef.run(root);
+    if (run && run.commandId) {
+      root.commandManager?.executeCommand(run);
+      if (run.preventDefault) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    }
   }
 
   private getKeysFromEvent(event: KeyboardEvent): string {

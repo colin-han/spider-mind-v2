@@ -13,10 +13,15 @@
 
 "use client";
 
-import { useEffect, useRef, memo, useMemo, useState } from "react";
+import { useEffect, useRef, memo, useMemo, useState, useCallback } from "react";
 import { ChevronLeft, ChevronRight, BookOpen } from "lucide-react";
 import { Tree, NodeRendererProps, TreeApi } from "react-arborist";
-import { useMindmapEditorStore } from "@/lib/store/mindmap-editor.store";
+import {
+  useMindmapEditorState,
+  useMindmapStore,
+} from "@/lib/domain/mindmap-store";
+import { SetCurrentNodeAction } from "@/lib/domain/actions/set-current-node";
+import { SetFocusedAreaAction } from "@/lib/domain/actions/set-focused-area";
 import type { MindmapNode } from "@/lib/types";
 import { cn } from "@/lib/utils/cn";
 
@@ -67,14 +72,27 @@ function convertToTreeData(
  * 自定义节点渲染组件
  */
 function Node({ node, style, dragHandle }: NodeRendererProps<TreeNode>) {
-  const { currentNode, setCurrentNode, setFocusedArea } =
-    useMindmapEditorStore();
-  const isSelected = currentNode === node.id;
+  const editorState = useMindmapEditorState()!;
+  const { acceptActions } = useMindmapStore();
+  const isSelected = editorState.currentNode === node.id;
 
-  const handleClick = () => {
-    setCurrentNode(node.id);
-    setFocusedArea("outline");
-  };
+  const handleClick = useCallback(async () => {
+    await acceptActions([
+      new SetCurrentNodeAction({
+        oldNodeId: editorState.currentNode,
+        newNodeId: node.id,
+      }),
+      new SetFocusedAreaAction({
+        oldArea: editorState.focusedArea,
+        newArea: "outline",
+      }),
+    ]);
+  }, [
+    node.id,
+    editorState.currentNode,
+    editorState.focusedArea,
+    acceptActions,
+  ]);
 
   const handleToggle = (e: React.MouseEvent) => {
     e.stopPropagation(); // 阻止事件冒泡，避免触发节点选中
@@ -144,24 +162,31 @@ export const MindmapOutlineArborist = memo(function MindmapOutlineArborist({
   isCollapsed,
   onToggleCollapse,
 }: MindmapOutlineArboristProps) {
-  const {
-    currentMindmap,
-    getRootNode,
-    nodes: nodesMap,
-    currentNode,
-  } = useMindmapEditorStore();
+  const editorState = useMindmapEditorState()!;
   const containerRef = useRef<HTMLDivElement>(null);
   const treeRef = useRef<TreeApi<TreeNode> | undefined>(undefined);
   const [containerHeight, setContainerHeight] = useState<number>(0);
 
-  const rootNode = currentMindmap ? getRootNode(currentMindmap.id) : null;
+  // 获取根节点的辅助函数
+  const getRootNode = useCallback(
+    (mindmapId: string) => {
+      return Array.from(editorState.nodes.values()).find(
+        (node) => node.mindmap_id === mindmapId && node.parent_id === null
+      );
+    },
+    [editorState.nodes]
+  );
+
+  const rootNode = editorState.currentMindmap
+    ? getRootNode(editorState.currentMindmap.id)
+    : null;
 
   // 转换数据为 Tree 格式
   const treeData = useMemo(() => {
     if (!rootNode) return [];
-    const root = convertToTreeData(rootNode.short_id, nodesMap);
+    const root = convertToTreeData(rootNode.short_id, editorState.nodes);
     return root ? [root] : [];
-  }, [rootNode, nodesMap]);
+  }, [rootNode, editorState.nodes]);
 
   // 监听容器尺寸变化
   useEffect(() => {
@@ -191,7 +216,7 @@ export const MindmapOutlineArborist = memo(function MindmapOutlineArborist({
 
   // 当 currentNode 变化时，自动滚动并选中
   useEffect(() => {
-    if (!currentNode || isCollapsed || !treeRef.current) {
+    if (!editorState.currentNode || isCollapsed || !treeRef.current) {
       return;
     }
 
@@ -199,12 +224,12 @@ export const MindmapOutlineArborist = memo(function MindmapOutlineArborist({
     const timer = setTimeout(() => {
       // 使用 react-arborist 的 API 滚动到节点
       if (treeRef.current) {
-        treeRef.current.focus(currentNode, { scroll: true });
+        treeRef.current.focus(editorState.currentNode, { scroll: true });
       }
     }, 100);
 
     return () => clearTimeout(timer);
-  }, [currentNode, isCollapsed]);
+  }, [editorState.currentNode, isCollapsed]);
 
   // 收起状态：只显示展开按钮
   if (isCollapsed) {
@@ -255,13 +280,13 @@ export const MindmapOutlineArborist = memo(function MindmapOutlineArborist({
         className="flex-1 min-h-0 overflow-hidden [&_*:focus-visible]:outline-none bg-white dark:bg-gray-900 custom-scrollbar [&_*]:custom-scrollbar"
         data-testid="outline-tree"
       >
-        {!currentMindmap && (
+        {!editorState.currentMindmap && (
           <div className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">
             未加载思维导图
           </div>
         )}
 
-        {currentMindmap && !rootNode && (
+        {editorState.currentMindmap && !rootNode && (
           <div className="text-sm text-red-500 dark:text-red-400 text-center py-8">
             错误: 未找到根节点
           </div>

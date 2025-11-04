@@ -2,25 +2,25 @@
  * 导航操作命令的快捷键注册
  */
 
-import { registerShortcut } from "../shortcut-register";
+import { registerNonEditShortcut } from "../shortcut-register";
 
 // ← - 选择父节点
-registerShortcut("arrowleft", "navigation.selectParent");
+registerNonEditShortcut("arrowleft", "navigation.selectParent", true);
 
 // → - 选择第一个子节点
-registerShortcut("arrowright", "navigation.selectFirstChild");
+registerNonEditShortcut("arrowright", "navigation.selectFirstChild", true);
 
 // ↑ - 选择上一个兄弟节点
-registerShortcut("arrowup", "navigation.selectPreviousSibling");
+registerNonEditShortcut("arrowup", "navigation.selectPreviousSibling", true);
 
 // ↓ - 选择下一个兄弟节点
-registerShortcut("arrowdown", "navigation.selectNextSibling");
+registerNonEditShortcut("arrowdown", "navigation.selectNextSibling", true);
 
 // - - 折叠节点
-registerShortcut("-", "navigation.collapseNode");
+registerNonEditShortcut("-", "navigation.collapseNode", true);
 
 // = - 展开节点
-registerShortcut("=", "navigation.expandNode");
+registerNonEditShortcut("=", "navigation.expandNode", true);
 
 // Space - 切换折叠状态
-registerShortcut(" ", "navigation.toggleCollapse");
+registerNonEditShortcut(" ", "navigation.toggleCollapse", true);

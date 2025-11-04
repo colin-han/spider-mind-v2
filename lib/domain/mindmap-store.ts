@@ -2,80 +2,196 @@ import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import { enableMapSet } from "immer";
 import type { MindmapStore, EditorState } from "./mindmap-store.types";
+import type { MindmapNode } from "../types";
 import { getDB } from "../db/schema";
 import { CommandManager } from "./command-manager";
 import { ShortcutManager } from "./shortcut-manager";
 import { HistoryManager } from "./history-manager";
+import {
+  fetchMindmapData,
+  fetchServerVersion,
+} from "@/lib/actions/mindmap-sync";
 
 // 导入所有命令以触发注册
 import "./commands";
 
 // 导入所有快捷键以触发注册
 import "./shortcuts";
+import { useCallback } from "react";
 
 // 启用 Immer 的 Map/Set 支持
 enableMapSet();
 
 export const useMindmapStore = create<MindmapStore>()(
   immer((set, get) => ({
-    init: async () => {
-      const db = await getDB();
-      const root = get();
-      set((state) => {
-        state.db = db;
-        state.commandManager = new CommandManager(root);
-        state.shortcutManager = new ShortcutManager(root);
-        state.historyManager = new HistoryManager(root);
-      });
-    },
+    isLoading: true,
+    commandManager: new CommandManager(),
+    shortcutManager: new ShortcutManager(),
+    historyManager: new HistoryManager(),
     openMindmap: async (mindmapId: string) => {
-      const db = get().db;
+      const db = await getDB();
       if (!db) {
         throw new Error("Database not initialized");
       }
 
-      // 1. 从 IndexedDB 加载 mindmap
-      const mindmap = await db.get("mindmaps", mindmapId);
-
-      if (!mindmap) {
-        throw new Error(`Mindmap ${mindmapId} not found in local database`);
-      }
-
-      // 2. 加载所有节点
-      const nodeIndex = db
-        .transaction("mindmap_nodes")
-        .store.index("by-mindmap");
-      const nodes = await nodeIndex.getAll(mindmap.id);
-
-      if (nodes.length === 0) {
-        throw new Error(`No nodes found for mindmap ${mindmapId}`);
-      }
-
-      // 3. 找到根节点
-      const rootNode = nodes.find((n) => !n.parent_short_id);
-      if (!rootNode) {
-        throw new Error(`Root node not found for mindmap ${mindmapId}`);
-      }
-
-      // 4. 构造 EditorState
-      const editorState: EditorState = {
-        currentMindmap: mindmap,
-        nodes: new Map(nodes.map((n) => [n.short_id, n])),
-        collapsedNodes: new Set(),
-        focusedArea: "graph",
-        currentNode: rootNode.short_id,
-        isSaved: !mindmap.dirty,
-      };
-
-      // 5. 更新状态
       set((state) => {
-        state.currentEditor = editorState;
+        state.isLoading = true;
       });
 
-      // 6. 清空历史栈
-      get().historyManager?.clear();
+      try {
+        // 1. 从 IndexedDB 加载本地数据
+        const localMindmap = await db.get("mindmaps", mindmapId);
+
+        let mindmapToLoad;
+        let nodesToLoad: MindmapNode[] = [];
+        let loadedFromServer = false; // 追踪数据来源
+
+        // 2. 检查是否需要从服务器加载
+        let shouldFetchFromServer = false;
+
+        if (!localMindmap) {
+          // 情况1：本地没有数据，需要从服务器加载
+          console.log(
+            `[openMindmap] No local data found for ${mindmapId}, fetching from server`
+          );
+          shouldFetchFromServer = true;
+        } else {
+          // 情况2：本地有数据，检查服务器时间戳
+          try {
+            // 使用 server action 获取服务器版本
+            const serverVersion = await fetchServerVersion(mindmapId);
+            const serverUpdatedAt = new Date(
+              serverVersion.updated_at
+            ).getTime();
+            const localUpdatedAt = new Date(localMindmap.updated_at).getTime();
+
+            if (serverUpdatedAt > localUpdatedAt) {
+              console.log(
+                `[openMindmap] Server data is newer (${serverVersion.updated_at} > ${localMindmap.updated_at}), fetching from server`
+              );
+              shouldFetchFromServer = true;
+            } else {
+              console.log(
+                `[openMindmap] Local data is up-to-date, loading from IndexedDB`
+              );
+            }
+          } catch (error) {
+            console.warn(
+              "[openMindmap] Failed to check server timestamp, using local data:",
+              error
+            );
+            // 服务器检查失败，使用本地数据
+          }
+        }
+
+        // 3. 根据判断结果加载数据
+        if (shouldFetchFromServer) {
+          // 使用 server action 从服务器加载
+          const serverData = await fetchMindmapData(mindmapId);
+          mindmapToLoad = serverData.mindmap;
+          nodesToLoad = serverData.nodes;
+          loadedFromServer = true;
+
+          console.log(
+            `[openMindmap] Loaded from server: ${nodesToLoad.length} nodes`
+          );
+
+          // 保存到 IndexedDB
+          const writeTx = db.transaction(
+            ["mindmaps", "mindmap_nodes"],
+            "readwrite"
+          );
+
+          await writeTx.objectStore("mindmaps").put({
+            ...mindmapToLoad,
+            dirty: false,
+            local_updated_at: new Date().toISOString(),
+            server_updated_at: mindmapToLoad.updated_at,
+          });
+
+          // 清空旧节点
+          const nodeStore = writeTx.objectStore("mindmap_nodes");
+          const oldNodesIndex = nodeStore.index("by-mindmap");
+          const oldNodes = await oldNodesIndex.getAllKeys(mindmapToLoad.id);
+          for (const key of oldNodes) {
+            await nodeStore.delete(key);
+          }
+
+          // 保存新节点
+          for (const node of nodesToLoad) {
+            await nodeStore.put({
+              ...node,
+              dirty: false,
+              local_updated_at: new Date().toISOString(),
+            });
+          }
+
+          await writeTx.done;
+          console.log("[openMindmap] Server data saved to IndexedDB");
+        } else {
+          // 从本地加载
+          mindmapToLoad = localMindmap;
+
+          const nodeIndex = db
+            .transaction("mindmap_nodes")
+            .store.index("by-mindmap");
+          nodesToLoad = await nodeIndex.getAll(localMindmap!.id);
+
+          console.log(
+            `[openMindmap] Loaded from IndexedDB: ${nodesToLoad.length} nodes`
+          );
+        }
+
+        // 4. 验证数据
+        if (!mindmapToLoad) {
+          throw new Error(`Mindmap ${mindmapId} not found`);
+        }
+
+        if (nodesToLoad.length === 0) {
+          throw new Error(`No nodes found for mindmap ${mindmapId}`);
+        }
+
+        // 5. 找到根节点
+        const rootNode = nodesToLoad.find((n) => !n.parent_short_id);
+        if (!rootNode) {
+          throw new Error(`Root node not found for mindmap ${mindmapId}`);
+        }
+
+        // 6. 构造 EditorState
+        const editorState: EditorState = {
+          currentMindmap: mindmapToLoad,
+          nodes: new Map(nodesToLoad.map((n) => [n.short_id, n])),
+          collapsedNodes: new Set(),
+          focusedArea: "graph",
+          currentNode: rootNode.short_id,
+          isLoading: false,
+          // 如果从服务器加载，数据总是已保存状态；如果从本地加载，检查 dirty 标志
+          isSaved: loadedFromServer ? true : !localMindmap?.dirty,
+          version: 0,
+        };
+
+        // 7. 更新状态
+        set((state) => {
+          state.currentEditor = editorState;
+          state.isLoading = false;
+        });
+
+        // 8. 清空历史栈
+        get().historyManager?.clear();
+      } catch (error) {
+        set((state) => {
+          state.isLoading = false;
+        });
+        throw error;
+      }
     },
     executeCommand: async (commandId: string, params?: unknown[]) => {
+      console.log(
+        "[MindmapStore] executeCommand",
+        commandId,
+        params,
+        get().currentEditor!.version
+      );
       get().commandManager!.executeCommand({
         commandId,
         params,
@@ -95,10 +211,11 @@ export const useMindmapStore = create<MindmapStore>()(
         actions.forEach((action) => {
           action.applyToEditorState(state.currentEditor!);
         });
+        state.currentEditor.version++;
       });
 
       // 2. 批量持久化到 IndexedDB（单事务，异步）
-      const db = get().db;
+      const db = await getDB();
       if (!db) {
         return;
       }
@@ -116,10 +233,6 @@ export const useMindmapStore = create<MindmapStore>()(
 
         // 等待事务提交
         await tx.done;
-
-        console.log(
-          `[MindmapStore] Successfully persisted ${actions.length} action(s) in a single transaction`
-        );
       } catch (error) {
         console.error("[MindmapStore] Failed to persist actions:", {
           actionCount: actions.length,
@@ -141,10 +254,11 @@ export const useMindmapStore = create<MindmapStore>()(
   }))
 );
 
-export const useMindmapEditorState = (): EditorState => {
+export const useMindmapEditorState = (): EditorState | undefined => {
   const store = useMindmapStore();
+
   if (!store.currentEditor) {
-    throw new Error("打开一个Mindmap后才能够使用editor state");
+    return undefined;
   }
   return store.currentEditor;
 };
@@ -152,4 +266,18 @@ export const useMindmapEditorState = (): EditorState => {
 export const useCommandManager = (): CommandManager => {
   const store = useMindmapStore();
   return store.commandManager!;
+};
+
+export const useCommand = (
+  commandId: string
+): ((...params: unknown[]) => Promise<void>) => {
+  const manager = useCommandManager();
+  return useCallback(
+    (...params) =>
+      manager.executeCommand({
+        commandId,
+        params,
+      }),
+    [manager, commandId]
+  );
 };

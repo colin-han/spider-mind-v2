@@ -19,7 +19,12 @@ import {
   type NodeProps,
   useViewport,
 } from "@xyflow/react";
-import { useMindmapEditorStore } from "@/lib/store/mindmap-editor.store";
+import {
+  useMindmapEditorState,
+  useMindmapStore,
+} from "@/lib/domain/mindmap-store";
+import { CollapseNodeAction } from "@/lib/domain/actions/collapse-node";
+import { ExpandNodeAction } from "@/lib/domain/actions/expand-node";
 import type { CustomNodeData } from "@/lib/types/react-flow";
 import { cn } from "@/lib/utils/cn";
 import { NodeToolbar } from "../node-toolbar";
@@ -50,8 +55,8 @@ function isNodeInSubtree(
  * CustomMindNode 组件
  */
 function CustomMindNodeComponent({ data }: NodeProps) {
-  const { currentNode, collapsedNodes, nodes, getNode } =
-    useMindmapEditorStore();
+  const editorState = useMindmapEditorState()!;
+  const { acceptActions } = useMindmapStore();
 
   // 获取当前缩放级别
   const { zoom } = useViewport();
@@ -59,34 +64,36 @@ function CustomMindNodeComponent({ data }: NodeProps) {
   // 将 data 断言为 CustomNodeData 类型
   const nodeData = data as CustomNodeData;
 
-  const isSelected = currentNode === nodeData.shortId;
-  const isExpanded = !collapsedNodes.has(nodeData.shortId);
+  const isSelected = editorState.currentNode === nodeData.shortId;
+  const isExpanded = !editorState.collapsedNodes.has(nodeData.shortId);
   const isRoot = !nodeData.parentId;
 
   // 获取完整节点数据（用于工具栏）
-  const node = getNode(nodeData.shortId);
+  const node = editorState.nodes.get(nodeData.shortId);
 
   // 检查当前选中节点是否被这个节点折叠隐藏
   const containsCurrentNode =
     !isExpanded &&
-    currentNode &&
-    currentNode !== nodeData.shortId &&
-    isNodeInSubtree(currentNode, nodeData.shortId, nodes);
+    editorState.currentNode &&
+    editorState.currentNode !== nodeData.shortId &&
+    isNodeInSubtree(
+      editorState.currentNode,
+      nodeData.shortId,
+      editorState.nodes
+    );
 
   // 展开/折叠切换
   const toggleExpand = useCallback(
-    (e: React.MouseEvent) => {
+    async (e: React.MouseEvent) => {
       e.stopPropagation();
 
-      useMindmapEditorStore.setState((state) => {
-        if (isExpanded) {
-          state.collapsedNodes.add(nodeData.shortId);
-        } else {
-          state.collapsedNodes.delete(nodeData.shortId);
-        }
-      });
+      await acceptActions([
+        isExpanded
+          ? new CollapseNodeAction(nodeData.shortId)
+          : new ExpandNodeAction(nodeData.shortId),
+      ]);
     },
-    [nodeData.shortId, isExpanded]
+    [nodeData.shortId, isExpanded, acceptActions]
   );
 
   return (

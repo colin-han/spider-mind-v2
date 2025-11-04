@@ -40,18 +40,21 @@ export interface EditorState {
   focusedArea: FocusedArea; // UI 焦点区域
   currentNode: string; // short_id
 
-  // 编辑状态
+  // 状态
+  isLoading: boolean;
   isSaved: boolean;
+
+  version: number;
 }
 
 export interface MindmapStore {
+  isLoading: boolean;
+
   readonly currentEditor?: EditorState; // 内存中的编辑状态（immutable 对象）
-  readonly db?: IDBPDatabase<MindmapDB>; // 用来保存编辑状态的信息到IndexedDB中。
   readonly commandManager?: CommandManager;
   readonly shortcutManager?: ShortcutManager;
   readonly historyManager?: HistoryManager;
 
-  init(): Promise<void>;
   openMindmap(mindmapId: string): Promise<void>; // 打开指定 mindmap （id是short_id），创建新的EditorState。并清理undo/redo栈。
   acceptActions(actions: EditorAction[]): Promise<void>; // 批量应用 EditorActions 到当前编辑器状态（单事务保证原子性）
   executeCommand(commandId: string, params?: unknown[]): Promise<void>;

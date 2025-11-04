@@ -1,5 +1,10 @@
 import { MindmapStore } from "../../mindmap-store.types";
 import { CommandDefinition, registerCommand } from "../../command-registry";
+import {
+  fetchServerVersion,
+  uploadMindmapChanges,
+} from "@/lib/actions/mindmap-sync";
+import { getDB } from "@/lib/db/schema";
 
 /**
  * 保存思维导图到服务器
@@ -20,7 +25,8 @@ export const saveMindmapCommand: CommandDefinition = {
   undoable: false, // 保存操作不可撤销
 
   handler: async (root: MindmapStore) => {
-    const { currentEditor, db } = root;
+    const { currentEditor } = root;
+    const db = await getDB();
 
     if (!currentEditor) {
       throw new Error("No mindmap is currently open");
@@ -54,7 +60,7 @@ export const saveMindmapCommand: CommandDefinition = {
 
     console.log(`Found ${dirtyNodes.length} dirty nodes to save`);
 
-    // 2. 查询服务器版本（TODO: 需要实现 Server Action）
+    // 2. 查询服务器版本
     const serverVersion = await fetchServerVersion(currentMindmap.short_id);
 
     // 3. 冲突检测
@@ -68,10 +74,12 @@ export const saveMindmapCommand: CommandDefinition = {
       });
     }
 
-    // 4. 上传到服务器（TODO: 需要实现 Server Action）
+    // 4. 上传到服务器
     const uploadResult = await uploadMindmapChanges({
       mindmapId: currentMindmap.short_id,
-      mindmap: dirtyMindmap.dirty ? currentMindmap : undefined,
+      mindmap: dirtyMindmap.dirty
+        ? (currentMindmap as Partial<typeof currentMindmap>)
+        : undefined,
       nodes: dirtyNodes,
     });
 
@@ -108,7 +116,7 @@ export const saveMindmapCommand: CommandDefinition = {
   },
 };
 
-// ============ 辅助类型和函数（TODO: 移到合适的位置）============
+// ============ 辅助类型 ============
 
 /**
  * 冲突错误
@@ -125,43 +133,6 @@ export class ConflictError extends Error {
     super(details.message);
     this.name = "ConflictError";
   }
-}
-
-/**
- * 查询服务器版本（TODO: 实现 Server Action）
- */
-async function fetchServerVersion(
-  mindmapId: string
-): Promise<{ updated_at: string }> {
-  // TODO: 调用 Server Action 获取服务器版本
-  // 示例实现：
-  // const response = await fetch(`/api/mindmaps/${mindmapId}/version`);
-  // return await response.json();
-
-  throw new Error(
-    `fetchServerVersion not implemented yet. Please implement Server Action for mindmap ${mindmapId}`
-  );
-}
-
-/**
- * 上传修改到服务器（TODO: 实现 Server Action）
- */
-async function uploadMindmapChanges(data: {
-  mindmapId: string;
-  mindmap?: unknown;
-  nodes: unknown[];
-}): Promise<{ updated_at: string }> {
-  // TODO: 调用 Server Action 上传数据
-  // 示例实现：
-  // const response = await fetch(`/api/mindmaps/${data.mindmapId}/sync`, {
-  //   method: 'POST',
-  //   body: JSON.stringify(data),
-  // });
-  // return await response.json();
-
-  throw new Error(
-    `uploadMindmapChanges not implemented yet. Need to upload ${data.nodes.length} nodes`
-  );
 }
 
 registerCommand(saveMindmapCommand);

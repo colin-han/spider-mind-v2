@@ -13,33 +13,47 @@
 
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { useMindmapData } from "@/lib/hooks/use-mindmap-data";
-import { useMindmapEditorStore } from "@/lib/store/mindmap-editor.store";
+import {
+  useMindmapStore,
+  useMindmapEditorState,
+} from "@/lib/domain/mindmap-store";
 import { CommandRegistryProvider, allCommands } from "@/lib/commands";
 import { MindmapEditorLayout } from "./mindmap-editor-layout";
 import { SaveButton } from "./save-button";
 import { OfflineBanner } from "./offline-banner";
 import { ConflictDialog } from "./conflict-dialog";
-import type { Mindmap, MindmapNode } from "@/lib/types";
 import type { ConflictResolution } from "@/lib/sync/sync-manager";
 
 /**
  * MindmapEditor Props
  */
 export interface MindmapEditorProps {
-  mindmap: Mindmap;
-  initialNodes: MindmapNode[];
+  mindmapId: string;
 }
 
 /**
  * MindmapEditor 容器组件
  */
-export function MindmapEditor({ mindmap, initialNodes }: MindmapEditorProps) {
-  const { isInitialized } = useMindmapData(mindmap, initialNodes);
-  const { isDirty, isSynced, clearSyncStatus } = useMindmapEditorStore();
+export function MindmapEditor({ mindmapId }: MindmapEditorProps) {
+  const { openMindmap, shortcutManager } = useMindmapStore();
+  const editorState = useMindmapEditorState();
+
+  const keyHandle = useCallback(
+    (e: KeyboardEvent) => shortcutManager?.handleKeydown(e),
+    [shortcutManager]
+  );
+
+  useEffect(() => {
+    addEventListener("keydown", keyHandle, {
+      capture: true,
+    });
+    return () => {
+      removeEventListener("keydown", keyHandle);
+    };
+  }, [keyHandle]);
 
   // 冲突对话框状态
   const [showConflictDialog, setShowConflictDialog] = useState(false);
@@ -48,6 +62,10 @@ export function MindmapEditor({ mindmap, initialNodes }: MindmapEditorProps) {
     localUpdatedAt: string;
     resolve: (resolution: ConflictResolution) => void;
   } | null>(null);
+
+  useEffect(() => {
+    openMindmap(mindmapId);
+  }, [mindmapId, openMindmap]);
 
   /**
    * 处理冲突
@@ -76,7 +94,7 @@ export function MindmapEditor({ mindmap, initialNodes }: MindmapEditorProps) {
     setConflictInfo(null);
   };
 
-  if (!isInitialized) {
+  if (!editorState) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-gray-500 dark:text-gray-400">加载中...</div>
@@ -87,7 +105,7 @@ export function MindmapEditor({ mindmap, initialNodes }: MindmapEditorProps) {
   return (
     <CommandRegistryProvider commands={allCommands}>
       {/* 离线提示横幅 */}
-      <OfflineBanner mindmapId={mindmap.short_id} />
+      <OfflineBanner mindmapId={editorState.currentMindmap.short_id} />
 
       <div
         className="min-h-screen bg-gray-50 dark:bg-gray-900"
@@ -108,16 +126,15 @@ export function MindmapEditor({ mindmap, initialNodes }: MindmapEditorProps) {
                 </Link>
 
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {mindmap.title}
+                  {editorState.currentMindmap.title}
                 </h1>
               </div>
               <div className="flex items-center gap-4">
                 {/* 保存按钮 */}
                 <SaveButton
-                  mindmapId={mindmap.short_id}
+                  mindmapId={editorState.currentMindmap.short_id}
                   onSaveSuccess={() => {
-                    console.log("[MindmapEditor] 保存成功，清除同步状态");
-                    clearSyncStatus();
+                    console.log("[MindmapEditor] 保存成功");
                   }}
                   onSaveError={(error) => {
                     console.error("[MindmapEditor] 保存失败:", error);
@@ -127,12 +144,11 @@ export function MindmapEditor({ mindmap, initialNodes }: MindmapEditorProps) {
 
                 {/* 状态指示器 */}
                 <div className="flex items-center gap-2 text-sm">
-                  {isDirty ? (
+                  {!editorState.isSaved ? (
                     <span className="text-orange-600">● 未保存</span>
                   ) : (
                     <span className="text-green-600">✓ 已保存</span>
                   )}
-                  {!isSynced && <span className="text-gray-500">(未同步)</span>}
                 </div>
               </div>
             </div>

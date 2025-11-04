@@ -14,41 +14,37 @@
 
 "use client";
 
-import { forwardRef, useImperativeHandle, useRef } from "react";
-import { useMindmapEditorStore } from "@/lib/store/mindmap-editor.store";
+import { useEffect, useRef } from "react";
+import { useMindmapEditorState, useCommand } from "@/lib/domain/mindmap-store";
 import { ResizablePanel } from "./resizable-panel";
 import { NodeToolbar } from "./node-toolbar";
 
 /**
- * NodePanelRef - 暴露给父组件的方法
- */
-export interface NodePanelRef {
-  focusTitleInput: () => void;
-}
-
-/**
  * NodePanel 组件
  */
-export const NodePanel = forwardRef<NodePanelRef>((_props, ref) => {
-  const { currentNode, getNode, executeCommand, setFocusedArea } =
-    useMindmapEditorStore();
+export const NodePanel = () => {
+  const editorState = useMindmapEditorState()!;
+  const updateTitle = useCommand("node.updateTitle");
+  const updateContent = useCommand("node.updateContent");
+  const setFocusedArea = useCommand("global.setFocusedArea");
 
+  const panelRef = useRef<HTMLDivElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
 
-  // 暴露方法给父组件
-  useImperativeHandle(
-    ref,
-    () => ({
-      focusTitleInput: () => {
-        titleInputRef.current?.focus();
-        titleInputRef.current?.select();
-      },
-    }),
-    []
-  );
+  useEffect(() => {
+    if (
+      editorState.focusedArea === "panel" &&
+      !panelRef.current?.contains(document.activeElement)
+    ) {
+      titleInputRef.current?.focus();
+      titleInputRef.current?.select();
+    }
+  }, [editorState.focusedArea]);
 
   // 获取当前节点数据
-  const node = currentNode ? getNode(currentNode) : null;
+  const node = editorState.currentNode
+    ? editorState.nodes.get(editorState.currentNode)
+    : null;
 
   if (!node) {
     return (
@@ -74,7 +70,7 @@ export const NodePanel = forwardRef<NodePanelRef>((_props, ref) => {
       maxWidth={600}
       className="border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900"
     >
-      <div className="p-4 space-y-4">
+      <div className="p-4 space-y-4" ref={panelRef}>
         {/* 工具栏 */}
         <NodeToolbar node={node} />
 
@@ -92,14 +88,8 @@ export const NodePanel = forwardRef<NodePanelRef>((_props, ref) => {
             ref={titleInputRef}
             type="text"
             value={node.title}
-            onChange={(e) =>
-              executeCommand("node.updateTitle", [
-                node.short_id,
-                e.target.value,
-              ])
-            }
+            onChange={(e) => updateTitle(node.short_id, e.target.value)}
             onFocus={() => setFocusedArea("panel")}
-            onBlur={() => setFocusedArea("graph")}
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 outline-none text-gray-900 dark:text-white bg-white dark:bg-gray-800"
             placeholder="节点标题"
           />
@@ -117,14 +107,8 @@ export const NodePanel = forwardRef<NodePanelRef>((_props, ref) => {
             id="node-content-textarea"
             data-testid="node-panel-content-textarea"
             value={node.content || ""}
-            onChange={(e) =>
-              executeCommand("node.updateContent", [
-                node.short_id,
-                e.target.value,
-              ])
-            }
+            onChange={(e) => updateContent(node.short_id, e.target.value)}
             onFocus={() => setFocusedArea("panel")}
-            onBlur={() => setFocusedArea("graph")}
             rows={20}
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 outline-none resize-none text-gray-900 dark:text-white bg-white dark:bg-gray-800"
             placeholder="节点内容 (可选)"
@@ -150,6 +134,6 @@ export const NodePanel = forwardRef<NodePanelRef>((_props, ref) => {
       </div>
     </ResizablePanel>
   );
-});
+};
 
 NodePanel.displayName = "NodePanel";

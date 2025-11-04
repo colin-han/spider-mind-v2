@@ -2,16 +2,19 @@
  * 全局操作命令的快捷键注册
  */
 
-import { registerShortcut } from "../shortcut-register";
+import {
+  registerNonEditShortcut,
+  registerShortcut,
+} from "../shortcut-register";
 import { getModifierKey } from "./platform-utils";
 
 const mod = getModifierKey();
 
 // Cmd+S / Ctrl+S - 保存
-registerShortcut(`${mod}+s`, "mindmap.save");
+registerShortcut(`${mod}+s`, "global.save", true);
 
 // Cmd+Z / Ctrl+Z - 撤销
-registerShortcut(`${mod}+z`, "history.undo");
+registerNonEditShortcut(`${mod}+z`, "global.undo", true);
 
 // Cmd+Shift+Z / Ctrl+Shift+Z - 重做
-registerShortcut(`${mod}+shift+z`, "history.redo");
+registerNonEditShortcut(`${mod}+shift+z`, "global.redo", true);

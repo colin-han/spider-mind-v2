@@ -23,8 +23,10 @@ import "./navigation/select-next-sibling";
 import "./navigation/collapse-node";
 import "./navigation/expand-node";
 import "./navigation/toggle-collapse";
+import "./navigation/set-current-node";
 
 // 全局操作命令
 import "./global/save";
 import "./global/undo";
 import "./global/redo";
+import "./global/set-focused-area";

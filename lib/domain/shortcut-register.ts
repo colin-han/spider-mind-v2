@@ -6,14 +6,19 @@ const shortcutDefinitions = new Map<string, ShortcutDefinition[]>();
 export interface ShortcutDefinition {
   key: string;
   when?: (root: MindmapStore) => boolean;
-  run(root: MindmapStore): CommandRun;
+  run(root: MindmapStore): CommandRun & { preventDefault?: boolean };
 }
 
-export function registerShortcut(key: string, commandId: string): void;
+export function registerShortcut(
+  key: string,
+  commandId: string,
+  preventDefault?: boolean
+): void;
 export function registerShortcut(def: ShortcutDefinition): void;
 export function registerShortcut(
   arg: string | ShortcutDefinition,
-  commandId?: string
+  commandId?: string,
+  preventDefault?: boolean
 ) {
   if (typeof arg === "string") {
     registerShortcutImpl({
@@ -21,11 +26,28 @@ export function registerShortcut(
       run: () => ({
         commandId: commandId!,
         params: [],
+        preventDefault: preventDefault ?? false,
       }),
     });
   } else {
     registerShortcutImpl(arg);
   }
+}
+
+export function registerNonEditShortcut(
+  key: string,
+  commandId: string,
+  preventDefault?: boolean
+) {
+  registerShortcutImpl({
+    key,
+    run: () => ({
+      commandId,
+      params: [],
+      preventDefault: preventDefault ?? false,
+    }),
+    when: (root) => root.currentEditor!.focusedArea !== "panel",
+  });
 }
 
 function registerShortcutImpl(def: ShortcutDefinition) {
