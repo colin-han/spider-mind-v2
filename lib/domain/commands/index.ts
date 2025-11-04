@@ -30,3 +30,6 @@ import "./global/save";
 import "./global/undo";
 import "./global/redo";
 import "./global/set-focused-area";
+
+// AI 操作命令
+import "./ai/ai-assist";

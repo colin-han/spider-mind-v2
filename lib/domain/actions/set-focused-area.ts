@@ -15,10 +15,6 @@ export class SetFocusedAreaAction implements EditorAction {
   applyToEditorState(draft: EditorState): void {
     draft.focusedArea = this.params.newArea;
     draft.isSaved = false;
-    console.log(
-      `[SetFocusedAreaAction] ${this.params.oldArea} -> ${this.params.newArea}`,
-      draft
-    );
   }
 
   async applyToIndexedDB(_db: IDBPDatabase<MindmapDB>): Promise<void> {

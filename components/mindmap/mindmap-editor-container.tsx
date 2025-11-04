@@ -50,7 +50,9 @@ export function MindmapEditor({ mindmapId }: MindmapEditorProps) {
       capture: true,
     });
     return () => {
-      removeEventListener("keydown", keyHandle);
+      removeEventListener("keydown", keyHandle, {
+        capture: true,
+      });
     };
   }, [keyHandle]);
 

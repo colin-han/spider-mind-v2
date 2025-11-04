@@ -14,7 +14,7 @@
 
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMindmapEditorState, useCommand } from "@/lib/domain/mindmap-store";
 import { ResizablePanel } from "./resizable-panel";
 import { NodeToolbar } from "./node-toolbar";
@@ -31,6 +31,10 @@ export const NodePanel = () => {
   const panelRef = useRef<HTMLDivElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
 
+  // 本地编辑状态
+  const [editingTitle, setEditingTitle] = useState("");
+  const [editingContent, setEditingContent] = useState("");
+
   useEffect(() => {
     if (
       editorState.focusedArea === "panel" &&
@@ -45,6 +49,14 @@ export const NodePanel = () => {
   const node = editorState.currentNode
     ? editorState.nodes.get(editorState.currentNode)
     : null;
+
+  // 当切换节点时，同步本地编辑状态
+  useEffect(() => {
+    if (node) {
+      setEditingTitle(node.title);
+      setEditingContent(node.content || "");
+    }
+  }, [node]);
 
   if (!node) {
     return (
@@ -87,8 +99,14 @@ export const NodePanel = () => {
             data-testid="node-panel-title-input"
             ref={titleInputRef}
             type="text"
-            value={node.title}
-            onChange={(e) => updateTitle(node.short_id, e.target.value)}
+            value={editingTitle}
+            onChange={(e) => setEditingTitle(e.target.value)}
+            onBlur={() => {
+              // 只有当值确实改变时才调用 command
+              if (editingTitle !== node.title) {
+                updateTitle(node.short_id, editingTitle);
+              }
+            }}
             onFocus={() => setFocusedArea("panel")}
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 outline-none text-gray-900 dark:text-white bg-white dark:bg-gray-800"
             placeholder="节点标题"
@@ -106,8 +124,14 @@ export const NodePanel = () => {
           <textarea
             id="node-content-textarea"
             data-testid="node-panel-content-textarea"
-            value={node.content || ""}
-            onChange={(e) => updateContent(node.short_id, e.target.value)}
+            value={editingContent}
+            onChange={(e) => setEditingContent(e.target.value)}
+            onBlur={() => {
+              // 只有当值确实改变时才调用 command
+              if (editingContent !== (node.content || "")) {
+                updateContent(node.short_id, editingContent);
+              }
+            }}
             onFocus={() => setFocusedArea("panel")}
             rows={20}
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 outline-none resize-none text-gray-900 dark:text-white bg-white dark:bg-gray-800"
