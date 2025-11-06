@@ -24,7 +24,7 @@ import {
   type Node,
   type NodeTypes,
 } from "@xyflow/react";
-import { useMindmapEditorState, useCommand } from "@/lib/domain/mindmap-store";
+import { useMindmapEditorState, useCommand } from "@/domain/mindmap-store";
 import { convertToFlowData } from "@/lib/utils/mindmap/mindmap-to-flow";
 import { calculateDagreLayout } from "@/lib/utils/mindmap/dagre-layout";
 import { CustomMindNode } from "./viewer/custom-mind-node";

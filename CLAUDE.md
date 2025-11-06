@@ -12,7 +12,7 @@
 
 ### 思维导图编辑器
 
-- `src/lib/domain/mindmap-store.ts` - Zustand 状态管理
+- `src/domain/mindmap-store.ts` - Zustand 状态管理
 - `src/components/mindmap/` - 思维导图 UI 组件
 - `src/lib/hooks/` - React Hooks
 

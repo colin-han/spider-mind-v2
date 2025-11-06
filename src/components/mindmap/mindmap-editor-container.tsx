@@ -16,10 +16,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import {
-  useMindmapStore,
-  useMindmapEditorState,
-} from "@/lib/domain/mindmap-store";
+import { useMindmapStore, useMindmapEditorState } from "@/domain/mindmap-store";
 import { MindmapEditorLayout } from "./mindmap-editor-layout";
 import { SaveButton } from "./save-button";
 import { OfflineBanner } from "./offline-banner";

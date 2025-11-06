@@ -1,5 +1,5 @@
 import { EditorState } from "./mindmap-store.types";
-import { MindmapNode } from "../types";
+import { MindmapNode } from "@/lib/types";
 
 /**
  * 获取子节点（已按 order_index 排序）

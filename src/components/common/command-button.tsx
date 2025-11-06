@@ -13,9 +13,9 @@
 import { useMemo } from "react";
 import { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
-import { useCommand } from "@/lib/domain/mindmap-store";
-import { getCommand } from "@/lib/domain/command-registry";
-import { findShortcutByCommand } from "@/lib/domain/shortcut-register";
+import { useCommand } from "@/domain/mindmap-store";
+import { getCommand } from "@/domain/command-registry";
+import { findShortcutByCommand } from "@/domain/shortcut-register";
 
 /**
  * CommandButton Props

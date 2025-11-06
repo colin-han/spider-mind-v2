@@ -15,7 +15,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useMindmapEditorState, useCommand } from "@/lib/domain/mindmap-store";
+import { useMindmapEditorState, useCommand } from "@/domain/mindmap-store";
 import { ResizablePanel } from "./resizable-panel";
 import { NodeToolbar } from "./node-toolbar";
 

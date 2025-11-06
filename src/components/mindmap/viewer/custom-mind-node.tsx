@@ -19,12 +19,9 @@ import {
   type NodeProps,
   useViewport,
 } from "@xyflow/react";
-import {
-  useMindmapEditorState,
-  useMindmapStore,
-} from "@/lib/domain/mindmap-store";
-import { CollapseNodeAction } from "@/lib/domain/actions/collapse-node";
-import { ExpandNodeAction } from "@/lib/domain/actions/expand-node";
+import { useMindmapEditorState, useMindmapStore } from "@/domain/mindmap-store";
+import { CollapseNodeAction } from "@/domain/actions/collapse-node";
+import { ExpandNodeAction } from "@/domain/actions/expand-node";
 import type { CustomNodeData } from "@/lib/types/react-flow";
 import { cn } from "@/lib/utils/cn";
 import { NodeToolbar } from "../node-toolbar";

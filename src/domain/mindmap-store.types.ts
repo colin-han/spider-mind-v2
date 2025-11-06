@@ -1,6 +1,6 @@
 import { IDBPDatabase } from "idb";
-import { MindmapDB } from "../db/schema";
-import { Mindmap, MindmapNode } from "../types";
+import { MindmapDB } from "@/lib/db/schema";
+import { Mindmap, MindmapNode } from "@/lib/types";
 import { CommandManager } from "./command-manager";
 import { ShortcutManager } from "./shortcut-manager";
 import { HistoryManager } from "./history-manager";

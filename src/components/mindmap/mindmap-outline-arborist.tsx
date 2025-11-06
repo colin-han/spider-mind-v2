@@ -16,12 +16,9 @@
 import { useEffect, useRef, memo, useMemo, useState, useCallback } from "react";
 import { ChevronLeft, ChevronRight, BookOpen } from "lucide-react";
 import { Tree, NodeRendererProps, TreeApi } from "react-arborist";
-import {
-  useMindmapEditorState,
-  useMindmapStore,
-} from "@/lib/domain/mindmap-store";
-import { SetCurrentNodeAction } from "@/lib/domain/actions/set-current-node";
-import { SetFocusedAreaAction } from "@/lib/domain/actions/set-focused-area";
+import { useMindmapEditorState, useMindmapStore } from "@/domain/mindmap-store";
+import { SetCurrentNodeAction } from "@/domain/actions/set-current-node";
+import { SetFocusedAreaAction } from "@/domain/actions/set-focused-area";
 import type { MindmapNode } from "@/lib/types";
 import { cn } from "@/lib/utils/cn";
 
