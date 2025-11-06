@@ -57,7 +57,7 @@ let dbInstance: IDBPDatabase<MindmapDB> | null = null;
  * 数据库配置
  */
 const DB_NAME = "spider-mark-mindmap";
-const DB_VERSION = 2; // 版本 2: 添加 by-parent-short 索引，修复 unknown 类型
+const DB_VERSION = 3;
 
 /**
  * 初始化并打开数据库
