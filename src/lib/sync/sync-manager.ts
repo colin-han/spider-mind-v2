@@ -312,14 +312,19 @@ export class SyncManager {
     try {
       // 1. 上传思维导图元数据
       if (mindmap) {
-        const { error: mindmapError } = await supabase.from("mindmaps").upsert({
-          id: mindmap.id,
-          short_id: mindmap.short_id,
-          user_id: mindmap.user_id,
-          title: mindmap.title,
-          created_at: mindmap.created_at,
-          updated_at: new Date().toISOString(), // 使用当前时间
-        });
+        const { error: mindmapError } = await supabase.from("mindmaps").upsert(
+          {
+            id: mindmap.id,
+            short_id: mindmap.short_id,
+            user_id: mindmap.user_id,
+            title: mindmap.title,
+            created_at: mindmap.created_at,
+            updated_at: new Date().toISOString(), // 使用当前时间
+          },
+          {
+            onConflict: "id",
+          }
+        );
 
         if (mindmapError) {
           if (
@@ -365,7 +370,9 @@ export class SyncManager {
 
         const { error: nodesError } = await supabase
           .from("mindmap_nodes")
-          .upsert(nodesToUpload);
+          .upsert(nodesToUpload, {
+            onConflict: "id",
+          });
 
         if (nodesError) {
           if (nodesError.code === "PGRST301" || nodesError.code === "42501") {
