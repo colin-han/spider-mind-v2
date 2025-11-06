@@ -81,10 +81,14 @@ components/
 ├── layout/                     # 布局组件
 │   └── ...
 ├── mindmap/                    # 思维导图组件
-│   ├── MindmapCanvas.tsx      # 画布容器
-│   ├── MindmapNode.tsx        # 节点组件
-│   ├── NodeEditor.tsx         # 节点编辑器
-│   ├── Toolbar.tsx            # 工具栏
+│   ├── mindmap-editor-container.tsx  # 编辑器容器组件
+│   ├── mindmap-editor-layout.tsx     # 编辑器布局组件
+│   ├── mindmap-graph-viewer.tsx      # 图形视图组件
+│   ├── mindmap-outline-arborist.tsx  # 大纲视图组件
+│   ├── node-panel.tsx         # 节点属性面板
+│   ├── node-toolbar.tsx       # 节点工具栏
+│   ├── resizable-panel.tsx    # 可调整大小的面板
+│   ├── save-button.tsx        # 保存按钮
 │   └── ...
 └── ui/                        # 通用 UI 组件 (shadcn/ui)
     ├── button.tsx
@@ -123,11 +127,11 @@ lib/
 │   ├── commands/              # 命令模式实现
 │   │   ├── ai/               # AI 相关命令
 │   │   ├── global/           # 全局命令
-│   │   ├── navigation/       # 导航命令 (8个)
-│   │   ├── node/             # 节点操作命令 (8个)
+│   │   ├── navigation/       # 导航命令
+│   │   ├── node/             # 节点操作命令
 │   │   └── index.ts
-│   ├── actions/              # 可撤销的原子操作 (7个)
-│   ├── shortcuts/            # 快捷键定义 (5个)
+│   ├── actions/              # 可撤销的原子操作
+│   ├── shortcuts/            # 快捷键定义
 │   ├── command-manager.ts    # 命令管理器
 │   ├── command-registry.ts   # 命令注册表
 │   ├── history-manager.ts    # 撤销/重做管理器
@@ -136,13 +140,16 @@ lib/
 │   ├── editor-utils.ts       # 编辑器工具函数
 │   ├── shortcut-manager.ts   # 快捷键管理器
 │   └── shortcut-register.ts  # 快捷键注册
-├── env.ts                     # 环境变量验证
 ├── hooks/                     # 自定义 React Hooks
 ├── providers/                 # React Context Providers
 ├── supabase/                  # Supabase 客户端配置
 ├── sync/                      # 同步相关
 ├── types/                     # TypeScript 类型定义
 └── utils/                     # 工具函数
+    ├── auth-helpers.ts        # 认证相关工具函数
+    ├── cn.ts                  # className合并工具（tailwind-merge + clsx）
+    ├── date-format.ts         # 日期格式化工具
+    └── short-id.ts            # 短ID生成和验证工具
 ```
 
 **职责:**
@@ -255,29 +262,35 @@ scripts/
 
 ```
 docs/
-├── design/                    # 设计文档
-│   ├── id-design.md          # 双ID机制设计
-│   ├── database-schema.md    # 数据库架构
-│   ├── mindmap-editor-store-design.md  # Store设计
-│   ├── mindmap-persistence-design.md   # 持久化设计
-│   ├── command-system-design.md        # 命令系统设计
-│   └── shortcut-system-design.md       # 快捷键系统
+├── design/                    # 已确认的设计文档
+│   ├── command-reference.md  # 命令系统参考手册
+│   ├── database-schema.md    # 数据库设计文档
+│   ├── id-design.md          # ID设计规范（UUID + short_id）
+│   ├── mindmap-editor-layout-design.md  # 思维导图编辑器布局设计
+│   └── INDEX.md              # 设计文档索引
+├── draft/                    # 设计文档草稿，讨论中的设计方案
+│   ├── mindmap-viewer-implementation-plan.md
+│   └── pending-features.md
+├── obsolete❌/                # 已废弃的设计文档（保留以供参考）
+│   ├── command-system-design.md        # 已被 command-reference.md 替代
+│   ├── mindmap-editor-store-design.md  # 已整合到 mindmap-editor-layout-design.md
+│   ├── mindmap-persistence-design.md   # 已废弃
+│   └── shortcut-system-design.md       # 已整合到 command-reference.md
 ├── standard/                  # 标准规范
-│   ├── project-structure.md  # 项目结构 (本文档)
+│   ├── project-structure.md  # 项目结构（本文档）
 │   ├── coding-standards.md   # 代码规范
 │   ├── css-standards.md      # CSS规范
 │   └── testing-guide.md      # 测试指南
-├── setup/                     # 环境搭建
-│   ├── local-dev-setup.md    # 本地开发环境
-│   └── supabase-setup.md     # Supabase配置
-└── INDEX.md                   # 文档索引
+└── .claude_summary/          # Claude 工作过程中的临时总结文档
 ```
 
 **职责:**
 
-- **`design/`**: 架构和功能设计文档
+- **`design/`**: 已确认的设计文档
+- **`draft/`**: 设计文档草稿，讨论中的设计方案
+- **`obsolete❌/`**: 已废弃的设计文档（保留以供参考）
 - **`standard/`**: 开发规范和最佳实践
-- **`setup/`**: 环境搭建指南
+- **`.claude_summary/`**: Claude 工作过程中的临时总结文档
 
 **规范:**
 
@@ -302,11 +315,17 @@ docs/
 
 ### 代码质量配置
 
+| 文件             | 用途                    |
+| ---------------- | ----------------------- |
+| `.eslintrc.json` | ESLint 代码检查规则     |
+| `.prettierrc`    | Prettier 代码格式化规则 |
+
+### 测试配置
+
 | 文件                   | 用途                    |
 | ---------------------- | ----------------------- |
-| `.eslintrc.json`       | ESLint 代码检查规则     |
-| `.prettierrc`          | Prettier 代码格式化规则 |
 | `jest.config.js`       | Jest 单元测试配置       |
+| `jest.setup.js`        | Jest 测试环境设置       |
 | `playwright.config.ts` | Playwright E2E 测试配置 |
 
 ### Git 和 CI/CD

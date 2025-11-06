@@ -8,8 +8,6 @@
 - 版本：1.3.0
 - 相关文档：
   - [ID 设计文档](./id-design.md)
-  - [思维导图编辑器状态管理设计](./mindmap-editor-store-design.md)
-  - [IndexedDB 持久化中间件设计](./indexeddb-persistence-middleware-design.md)
 
 ## 关键概念
 
