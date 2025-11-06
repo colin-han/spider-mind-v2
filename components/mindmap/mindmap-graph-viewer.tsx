@@ -14,7 +14,7 @@
 
 "use client";
 
-import { useCallback, useMemo, useEffect, useState, memo } from "react";
+import { useCallback, useMemo, useEffect, useState, memo, useRef } from "react";
 import {
   ReactFlow,
   Background,
@@ -74,6 +74,9 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
   const editorState = useMindmapEditorState()!;
   const setFocusedArea = useCommand("global.setFocusedArea");
   const setCurrentNode = useCommand("navigation.setCurrentNode");
+
+  // 容器引用,用于计算相对坐标
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // 从 editorState 获取数据
   const currentMindmap = editorState.currentMindmap;
@@ -222,13 +225,18 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
           y: targetNode.position.y,
         });
 
+        // 获取容器偏移(DropIndicator 相对于容器定位)
+        const containerRect = containerRef.current?.getBoundingClientRect();
+        const offsetX = containerRect?.left || 0;
+        const offsetY = containerRect?.top || 0;
+
         setDragState((prev) => ({
           ...prev,
           targetNodeId: targetNode.id,
           dropIndicatorType: "forbidden",
           targetRect: {
-            x: screenPosition.x,
-            y: screenPosition.y,
+            x: screenPosition.x - offsetX,
+            y: screenPosition.y - offsetY,
             width: (targetNode.width || 172) * getViewport().zoom,
             height: (targetNode.height || 50) * getViewport().zoom,
           },
@@ -236,11 +244,17 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
         return;
       }
 
-      // 计算拖放动作类型
+      // 将画布坐标转换为屏幕坐标
+      const screenPosition = flowToScreenPosition({
+        x: targetNode.position.x,
+        y: targetNode.position.y,
+      });
+
+      // 计算拖放动作类型（使用屏幕坐标）
       const actionType = getDropActionType(
         mouseY,
-        targetNode.position.y,
-        targetNode.height || 50
+        screenPosition.y,
+        (targetNode.height || 50) * getViewport().zoom
       );
 
       // 映射到指示器类型
@@ -251,19 +265,18 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
             ? "line-below"
             : "highlight";
 
-      // 将画布坐标转换为屏幕坐标
-      const screenPosition = flowToScreenPosition({
-        x: targetNode.position.x,
-        y: targetNode.position.y,
-      });
+      // 获取容器偏移(DropIndicator 相对于容器定位)
+      const containerRect = containerRef.current?.getBoundingClientRect();
+      const offsetX = containerRect?.left || 0;
+      const offsetY = containerRect?.top || 0;
 
       setDragState((prev) => ({
         ...prev,
         targetNodeId: targetNode.id,
         dropIndicatorType: indicatorType,
         targetRect: {
-          x: screenPosition.x,
-          y: screenPosition.y,
+          x: screenPosition.x - offsetX,
+          y: screenPosition.y - offsetY,
           width: (targetNode.width || 172) * getViewport().zoom,
           height: (targetNode.height || 50) * getViewport().zoom,
         },
@@ -349,6 +362,7 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
 
   return (
     <div
+      ref={containerRef}
       data-testid="mindmap-graph-viewer"
       className="h-full w-full bg-gray-50 dark:bg-gray-900 relative"
     >
