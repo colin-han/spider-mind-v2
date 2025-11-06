@@ -1,6 +1,6 @@
 import { requireAuth } from "@/lib/utils/auth-helpers";
 import { createServerComponentClient } from "@/lib/supabase/server";
-import { MindmapList } from "@/components/dashboard/MindmapList";
+import { MindmapList } from "@/components/dashboard/mindmap-list";
 import type { MindmapListItem } from "@/lib/types";
 
 export default async function DashboardPage() {

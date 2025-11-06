@@ -19,7 +19,6 @@ CREATE TABLE IF NOT EXISTS public.mindmaps (
 
   -- 基本信息
   title text NOT NULL,
-  description text,
 
   -- 时间戳
   created_at timestamptz NOT NULL DEFAULT now(),
@@ -42,7 +41,6 @@ COMMENT ON COLUMN public.mindmaps.id IS '主键 UUID, 数据库内部使用';
 COMMENT ON COLUMN public.mindmaps.user_id IS '所属用户ID, 关联 user_profiles';
 COMMENT ON COLUMN public.mindmaps.short_id IS '短ID, 6位base36(a-z,0-9), 在用户范围内唯一, 用于URL';
 COMMENT ON COLUMN public.mindmaps.title IS '文档标题, 不能为空或仅空格';
-COMMENT ON COLUMN public.mindmaps.description IS '文档描述';
 COMMENT ON COLUMN public.mindmaps.created_at IS '创建时间';
 COMMENT ON COLUMN public.mindmaps.updated_at IS '最后更新时间';
 COMMENT ON COLUMN public.mindmaps.deleted_at IS '软删除时间戳, 非NULL表示已删除';

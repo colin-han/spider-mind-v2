@@ -142,7 +142,6 @@ SELECT * FROM get_node_descendants($node_id);
 | parent_short_id | TEXT        |                               | 父节点的 short_id（冗余字段，自动维护） |
 | short_id        | TEXT        | NOT NULL                      | 短ID（6位base36）                       |
 | title           | TEXT        | NOT NULL                      | 节点标题                                |
-| content         | TEXT        |                               | 节点内容（Markdown）                    |
 | order_index     | INTEGER     | NOT NULL, DEFAULT 0           | 排序索引                                |
 | created_at      | TIMESTAMPTZ | NOT NULL, DEFAULT NOW()       | 创建时间                                |
 | updated_at      | TIMESTAMPTZ | NOT NULL, DEFAULT NOW()       | 更新时间                                |
@@ -350,3 +349,4 @@ const children = await supabase
 | 2025-10-11 | 1.1.0 | 补充 parent_short_id 字段文档（字段定义、索引、触发器、使用示例、设计决策）                   | Claude |
 | 2025-10-11 | 1.2.0 | 更新 idx_one_root_per_map 索引说明 (从 WHERE node_type = 'root' 改为 WHERE parent_id IS NULL) | Claude |
 | 2025-10-11 | 1.3.0 | 完善索引策略文档，添加显式唯一索引说明，区分唯一索引和性能优化索引                            | Claude |
+| 2025-11-06 | 1.4.0 | 删除 mindmap_nodes.content 字段说明，简化节点数据模型                                         | Claude |

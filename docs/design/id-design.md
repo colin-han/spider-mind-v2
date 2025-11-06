@@ -231,7 +231,6 @@ interface MindmapNode {
   mindmap_id: string;
   parent_id: string | null;
   short_id: string;
-  content: string;
   created_at: string;
   updated_at: string;
 }
@@ -605,3 +604,4 @@ const RESERVED_USERNAMES = [
 | 2025-10-11 | 2.4  | 重构数据库设计章节,改为引用 database-schema.md，消除重复内容                    | Claude      |
 | 2025-10-11 | 2.5  | 简化索引说明,删除 SQL DDL 细节,改为引用 database-schema.md                      | Claude      |
 | 2025-10-11 | 2.6  | 统一查询示例使用 user_id，删除 username JOIN 查询                               | Claude      |
+| 2025-11-06 | 2.7  | 删除 MindmapNode.content 字段说明，与数据库 Schema 保持一致                     | Claude      |
