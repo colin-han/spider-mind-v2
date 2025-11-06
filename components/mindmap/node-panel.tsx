@@ -3,7 +3,7 @@
  *
  * 职责:
  * - 展示当前选中节点的详细信息
- * - 提供节点编辑 UI (标题、内容)
+ * - 提供节点标题编辑 UI
  * - 响应聚焦请求 (双击触发)
  *
  * 不负责:
@@ -25,7 +25,6 @@ import { NodeToolbar } from "./node-toolbar";
 export const NodePanel = () => {
   const editorState = useMindmapEditorState()!;
   const updateTitle = useCommand("node.updateTitle");
-  const updateContent = useCommand("node.updateContent");
   const setFocusedArea = useCommand("global.setFocusedArea");
 
   const panelRef = useRef<HTMLDivElement>(null);
@@ -33,7 +32,6 @@ export const NodePanel = () => {
 
   // 本地编辑状态
   const [editingTitle, setEditingTitle] = useState("");
-  const [editingContent, setEditingContent] = useState("");
 
   useEffect(() => {
     if (
@@ -54,7 +52,6 @@ export const NodePanel = () => {
   useEffect(() => {
     if (node) {
       setEditingTitle(node.title);
-      setEditingContent(node.content || "");
     }
   }, [node]);
 
@@ -110,32 +107,6 @@ export const NodePanel = () => {
             onFocus={() => setFocusedArea("panel")}
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 outline-none text-gray-900 dark:text-white bg-white dark:bg-gray-800"
             placeholder="节点标题"
-          />
-        </div>
-
-        {/* 内容编辑 */}
-        <div>
-          <label
-            htmlFor="node-content-textarea"
-            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-          >
-            内容
-          </label>
-          <textarea
-            id="node-content-textarea"
-            data-testid="node-panel-content-textarea"
-            value={editingContent}
-            onChange={(e) => setEditingContent(e.target.value)}
-            onBlur={() => {
-              // 只有当值确实改变时才调用 command
-              if (editingContent !== (node.content || "")) {
-                updateContent(node.short_id, editingContent);
-              }
-            }}
-            onFocus={() => setFocusedArea("panel")}
-            rows={20}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 outline-none resize-none text-gray-900 dark:text-white bg-white dark:bg-gray-800"
-            placeholder="节点内容 (可选)"
           />
         </div>
 

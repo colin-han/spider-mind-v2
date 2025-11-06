@@ -36,7 +36,6 @@ export type Database = {
     Tables: {
       mindmap_nodes: {
         Row: {
-          content: string | null
           created_at: string
           id: string
           mindmap_id: string
@@ -48,7 +47,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          content?: string | null
           created_at?: string
           id?: string
           mindmap_id: string
@@ -60,7 +58,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          content?: string | null
           created_at?: string
           id?: string
           mindmap_id?: string
@@ -92,6 +89,7 @@ export type Database = {
         Row: {
           created_at: string
           deleted_at: string | null
+          description: string | null
           id: string
           short_id: string
           title: string
@@ -101,6 +99,7 @@ export type Database = {
         Insert: {
           created_at?: string
           deleted_at?: string | null
+          description?: string | null
           id?: string
           short_id: string
           title: string
@@ -110,6 +109,7 @@ export type Database = {
         Update: {
           created_at?: string
           deleted_at?: string | null
+          description?: string | null
           id?: string
           short_id?: string
           title?: string
@@ -170,7 +170,6 @@ export type Database = {
           parent_id: string
           short_id: string
           title: string
-          node_type: string
           depth: number
         }[]
       }
@@ -183,7 +182,6 @@ export type Database = {
           parent_id: string
           short_id: string
           title: string
-          node_type: string
           depth: number
         }[]
       }

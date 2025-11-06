@@ -175,9 +175,6 @@ export async function uploadMindmapChanges(data: {
         if (node.title !== undefined) {
           nodeUpdateData["title"] = node.title;
         }
-        if (node.content !== undefined) {
-          nodeUpdateData["content"] = node.content;
-        }
         if (node.parent_short_id !== undefined) {
           nodeUpdateData["parent_short_id"] = node.parent_short_id;
         }

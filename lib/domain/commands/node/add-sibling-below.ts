@@ -9,7 +9,6 @@ type AddSiblingNodeParams = [
   string | undefined,
   "above" | "below" | undefined,
   string | undefined,
-  string | undefined,
 ];
 
 /**
@@ -22,7 +21,7 @@ export const addSiblingBelowCommand: CommandDefinition = {
   category: "node",
 
   handler: (root: MindmapStore, params?: unknown[]) => {
-    const [nodeId, , title, content] = (params as AddSiblingNodeParams) || [];
+    const [nodeId, , title] = (params as AddSiblingNodeParams) || [];
     const targetNodeId = nodeId || root.currentEditor!.currentNode;
     const targetNode = root.currentEditor?.nodes.get(targetNodeId);
 
@@ -53,7 +52,6 @@ export const addSiblingBelowCommand: CommandDefinition = {
         parent_id: parentNode.id,
         parent_short_id: targetNode.parent_short_id,
         title: title || "新节点",
-        content: content || null,
         order_index: targetNode.order_index + 1,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),

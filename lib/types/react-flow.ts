@@ -16,8 +16,6 @@ export interface CustomNodeData extends Record<string, unknown> {
   shortId: string;
   /** 节点标题 */
   title: string;
-  /** 节点内容 (可选) */
-  content: string | null;
   /** 节点在兄弟节点中的顺序 */
   orderIndex: number;
   /** 父节点 short_id (根节点为 null) */

@@ -5,7 +5,7 @@ import { AddNodeAction } from "../../actions/add-node";
 import { UpdateNodeAction } from "../../actions/update-node";
 import { getChildNodes } from "../../editor-utils";
 
-type AddChildNodeParams = [string, number?, string?, string?];
+type AddChildNodeParams = [string, number?, string?];
 
 function normalizePosition(siblingsCount: number, position?: number) {
   if (position === undefined) {
@@ -26,7 +26,7 @@ export const addChildNodeCommand: CommandDefinition = {
   description: "添加子节点",
   category: "node",
   handler: (root: MindmapStore, params?: unknown[]) => {
-    const [parentId, position, title, content] = params as AddChildNodeParams;
+    const [parentId, position, title] = params as AddChildNodeParams;
     const normalizedParentId = parentId || root.currentEditor!.currentNode;
     const parentNode = root.currentEditor?.nodes.get(normalizedParentId);
     if (!parentNode) {
@@ -47,7 +47,6 @@ export const addChildNodeCommand: CommandDefinition = {
         parent_id: parentNode.id,
         parent_short_id: normalizedParentId, // 使用 parent 的 short_id
         title: normalizedTitle,
-        content: content || null,
         order_index: order_index,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),

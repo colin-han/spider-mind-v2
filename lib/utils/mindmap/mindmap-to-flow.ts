@@ -60,7 +60,6 @@ export function convertToFlowData(
       data: {
         shortId: node.short_id,
         title: node.title,
-        content: node.content,
         orderIndex: node.order_index,
         parentId: node.parent_short_id,
         hasChildren: children.length > 0,
