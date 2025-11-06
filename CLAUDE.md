@@ -12,15 +12,14 @@
 
 ### 思维导图编辑器
 
-- `lib/store/mindmap-editor.store.ts` - Zustand 状态管理
-- `components/mindmap/` - 思维导图 UI 组件
-- `lib/hooks/use-mindmap-data.ts` - 数据初始化 Hook
+- `src/lib/domain/mindmap-store.ts` - Zustand 状态管理
+- `src/components/mindmap/` - 思维导图 UI 组件
+- `src/lib/hooks/` - React Hooks
 
-### 持久化系统 (设计中)
+### 持久化系统
 
-- `lib/db/schema.ts` - IndexedDB 数据库模式
-- `lib/store/middleware/persistence.middleware.ts` - 持久化中间件
-- `lib/sync/sync-manager.ts` - 云端同步管理器
+- `src/lib/db/schema.ts` - IndexedDB 数据库模式
+- `src/lib/sync/sync-manager.ts` - 云端同步管理器
 
 # 常用命令
 

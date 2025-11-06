@@ -51,7 +51,7 @@ WHERE mindmap_id = $1 AND short_id = $2;
 ### TypeScript 类型定义
 
 ```typescript
-// lib/types/mindmap.ts
+// src/lib/types/mindmap.ts
 interface Mindmap {
   id: string; // UUID
   short_id: string; // 6字符 base36
@@ -215,7 +215,7 @@ interface MindmapNode {
 ## TypeScript 类型定义
 
 ```typescript
-// lib/types/mindmap.ts
+// src/lib/types/mindmap.ts
 interface Mindmap {
   id: string;
   user_id: string;
@@ -242,7 +242,7 @@ interface MindmapNode {
 
 **统一方案**：
 
-- 使用 `lib/utils/short-id.ts` 中的 `generateShortId()` 工具函数
+- 使用 `src/lib/utils/short-id.ts` 中的 `generateShortId()` 工具函数
 - 基于 nanoid 库，使用 base36 字符集 (a-z0-9)
 - 自动处理保留词检查，避免冲突
 - 生成失败时抛出异常，由调用方处理
@@ -259,7 +259,7 @@ interface MindmapNode {
 **策略**：
 
 - 仅检查长度为 6 的保留词（与 short_id 长度匹配）
-- 保留词列表定义在 `lib/constants/reserved-words.ts`
+- 保留词列表定义在 `src/lib/constants/reserved-words.ts`
 - 生成时自动避开，无需调用方处理
 
 **保留词类别**：

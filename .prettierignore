@@ -48,7 +48,7 @@ yarn.lock
 *.tsbuildinfo
 
 # Generated types
-lib/types/supabase.ts
+src/lib/types/supabase.ts
 
 # Test outputs
 test-results/

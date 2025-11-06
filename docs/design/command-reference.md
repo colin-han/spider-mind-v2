@@ -142,7 +142,7 @@ import { CommandButton } from '@/components/command-button';
 
 ### 绑定快捷键
 
-快捷键绑定在 `lib/shortcuts/bindings/` 目录下定义：
+快捷键绑定在 `src/lib/shortcuts/bindings/` 目录下定义：
 
 ```typescript
 import type { ShortcutBinding } from "../types";
@@ -170,15 +170,15 @@ export const nodeBindings: ShortcutBinding[] = [
 
 ### 添加新命令
 
-1. 在 `lib/commands/definitions/` 目录下定义命令
-2. 注册到 `lib/commands/registry.ts`
-3. (可选) 在 `lib/shortcuts/bindings/` 添加快捷键绑定
+1. 在 `src/lib/commands/definitions/` 目录下定义命令
+2. 注册到 `src/lib/commands/registry.ts`
+3. (可选) 在 `src/lib/shortcuts/bindings/` 添加快捷键绑定
 4. 更新本参考文档
 
 示例：
 
 ```typescript
-// lib/commands/definitions/custom.commands.ts
+// src/lib/commands/definitions/custom.commands.ts
 export const myCommand: Command = {
   id: "custom.myCommand",
   name: "我的命令",

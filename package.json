@@ -39,7 +39,7 @@
     "postinstall": "yarn test:e2e:install",
     "dev:setup": "./scripts/dev-setup.sh",
     "dev:check": "node scripts/check-env.js",
-    "db:types": "mkdir -p lib/types && (supabase gen types typescript --local > lib/types/supabase.ts.tmp 2>/dev/null && mv lib/types/supabase.ts.tmp lib/types/supabase.ts || echo 'Supabase项目未初始化，保留当前类型定义')",
+    "db:types": "mkdir -p src/lib/types && (supabase gen types typescript --local > src/lib/types/supabase.ts.tmp 2>/dev/null && mv src/lib/types/supabase.ts.tmp src/lib/types/supabase.ts || echo 'Supabase项目未初始化，保留当前类型定义')",
     "db:reset": "supabase db reset",
     "db:seed": "npx tsx scripts/seed-test-users.ts",
     "db:start": "supabase start",

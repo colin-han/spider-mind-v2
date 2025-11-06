@@ -56,7 +56,7 @@ const config = {
   // 覆盖率配置
   collectCoverage: false,
   collectCoverageFrom: [
-    "lib/**/*.{ts,tsx}",
+    "src/**/*.{ts,tsx}",
     "!**/*.d.ts",
     "!**/node_modules/**",
     "!**/.next/**",
