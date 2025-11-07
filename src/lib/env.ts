@@ -12,6 +12,7 @@ interface RequiredEnvVars {
   NEXT_PUBLIC_SUPABASE_URL: string;
   NEXT_PUBLIC_SUPABASE_ANON_KEY: string;
   NEXT_PUBLIC_SITE_URL: string;
+  NEXT_PUBLIC_DEFAULT_AI_MODEL: string;
 }
 
 /**
@@ -159,6 +160,10 @@ export function validateEnvironment(): EnvConfig {
       }),
       ...(databaseUrl && { DATABASE_URL: databaseUrl }),
       NODE_ENV: nodeEnv,
+      NEXT_PUBLIC_DEFAULT_AI_MODEL: validateEnvVar(
+        "NEXT_PUBLIC_DEFAULT_AI_MODEL",
+        process.env["NEXT_PUBLIC_DEFAULT_AI_MODEL"]
+      ),
     };
   } catch (error) {
     if (error instanceof EnvValidationError) {
