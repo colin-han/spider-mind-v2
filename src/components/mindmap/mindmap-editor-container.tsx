@@ -15,6 +15,7 @@
 
 import { useCallback, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Undo2, Redo2, Save } from "lucide-react";
 import { useMindmapStore, useMindmapEditorState } from "@/domain/mindmap-store";
 import { MindmapEditorLayout } from "./mindmap-editor-layout";
@@ -78,10 +79,30 @@ export function MindmapEditor({ mindmapId }: MindmapEditorProps) {
             {/* 左侧：网站图标 + 返回 */}
             <Link
               href="/dashboard"
-              className="flex items-center gap-3 text-gray-900 dark:text-white hover:opacity-80 transition-opacity"
+              className="flex items-center gap-3 hover:opacity-80 transition-opacity"
               data-testid="mindmap-header-logo"
             >
-              <div className="text-xl font-bold">🕸️ Spider Mind</div>
+              {/* Light mode logo */}
+              <Image
+                src="/images/light-logo.png"
+                alt="Spider Mind Logo"
+                width={40}
+                height={40}
+                style={{ transformOrigin: "center", transform: "scale(1.5)" }}
+                className="object-contain dark:hidden"
+              />
+              {/* Dark mode logo */}
+              <Image
+                src="/images/dark-logo.png"
+                alt="Spider Mind Logo"
+                width={40}
+                height={40}
+                style={{ transformOrigin: "center", transform: "scale(1.5)" }}
+                className="object-contain hidden dark:block"
+              />
+              <span className="text-xl font-bold text-gray-900 dark:text-white">
+                Spider Mind
+              </span>
             </Link>
 
             {/* 中间：思维导图标题 */}
