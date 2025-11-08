@@ -330,11 +330,11 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
 
       if (dropIndicatorType === "line-above") {
         // 插入到目标节点上方 (同级)
-        newParentId = targetNode.parent_short_id;
+        newParentId = targetNode.parent_short_id ?? null;
         position = targetNode.order_index;
       } else if (dropIndicatorType === "line-below") {
         // 插入到目标节点下方 (同级)
-        newParentId = targetNode.parent_short_id;
+        newParentId = targetNode.parent_short_id ?? null;
         position = targetNode.order_index + 1;
       } else {
         // highlight: 成为目标节点的子节点

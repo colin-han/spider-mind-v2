@@ -155,8 +155,8 @@ interface EditorAction {
 
 **使用场景**:
 
-- 修改节点标题
-- 更新节点内容
+- 修改节点标题 (title)
+- 更新节点详细说明 (note)
 - 移动节点（更新 parent_id 和 order_index）
 
 ---

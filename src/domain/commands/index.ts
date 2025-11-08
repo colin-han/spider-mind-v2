@@ -13,6 +13,7 @@ import "./node/move-up";
 import "./node/move-down";
 import "./node/move";
 import "./node/update-title";
+import "./node/update-note";
 
 // 导航操作命令
 import "./navigation/select-parent";

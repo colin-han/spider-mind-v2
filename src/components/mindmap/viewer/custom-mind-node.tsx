@@ -24,26 +24,27 @@ import { CollapseNodeAction } from "@/domain/actions/collapse-node";
 import { ExpandNodeAction } from "@/domain/actions/expand-node";
 import type { CustomNodeData } from "@/lib/types/react-flow";
 import { cn } from "@/lib/utils/cn";
-import { NodeToolbar } from "../node-toolbar";
+import { NodeToolbar } from "@/components/mindmap/node-toolbar";
+import { MindmapNode } from "@/lib/types";
 
 /**
  * 检查目标节点是否在指定节点的子树中
  */
 function isNodeInSubtree(
-  targetNodeId: string | null,
+  targetNodeId: string,
   parentNodeId: string,
-  nodesMap: Map<string, { short_id: string; parent_short_id: string | null }>
+  nodesMap: Map<string, MindmapNode>
 ): boolean {
   if (!targetNodeId) return false;
 
-  let currentId: string | null = targetNodeId;
+  let currentId: string = targetNodeId;
   while (currentId) {
     if (currentId === parentNodeId) {
       return true;
     }
-    const node = nodesMap.get(currentId);
+    const node = nodesMap.get(currentId)!;
     if (!node) break;
-    currentId = node.parent_short_id;
+    currentId = node.parent_short_id!;
   }
   return false;
 }

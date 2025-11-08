@@ -39,6 +39,7 @@ export type Database = {
           created_at: string
           id: string
           mindmap_id: string
+          note: string | null
           order_index: number
           parent_id: string | null
           parent_short_id: string | null
@@ -50,6 +51,7 @@ export type Database = {
           created_at?: string
           id?: string
           mindmap_id: string
+          note?: string | null
           order_index?: number
           parent_id?: string | null
           parent_short_id?: string | null
@@ -61,6 +63,7 @@ export type Database = {
           created_at?: string
           id?: string
           mindmap_id?: string
+          note?: string | null
           order_index?: number
           parent_id?: string | null
           parent_short_id?: string | null

@@ -39,6 +39,7 @@
 | `node.moveDown`        | 下移节点   | `Cmd+Shift+↓`          | 在兄弟节点中向下移动       | ✅ 已实现 |
 | `node.moveUp`          | 上移节点   | `Cmd+Shift+↑`          | 在兄弟节点中向上移动       | ✅ 已实现 |
 | `node.updateTitle`     | 更新标题   | -                      | 更新节点标题               | ✅ 已实现 |
+| `node.updateNote`      | 更新笔记   | -                      | 更新节点详细说明           | ✅ 已实现 |
 
 ## 2. 导航操作命令
 

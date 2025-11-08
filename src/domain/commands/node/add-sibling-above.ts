@@ -53,6 +53,7 @@ export const addSiblingAboveCommand: CommandDefinition = {
         parent_id: parentNode.id,
         parent_short_id: targetNode.parent_short_id,
         title: title || "新节点",
+        note: null,
         order_index: targetNode.order_index, // 使用当前节点的位置
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),

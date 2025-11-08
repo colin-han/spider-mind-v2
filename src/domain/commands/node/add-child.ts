@@ -47,6 +47,7 @@ export const addChildNodeCommand: CommandDefinition = {
         parent_id: parentNode.id,
         parent_short_id: normalizedParentId, // 使用 parent 的 short_id
         title: normalizedTitle,
+        note: null,
         order_index: order_index,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),

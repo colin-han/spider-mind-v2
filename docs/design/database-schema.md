@@ -140,6 +140,7 @@ SELECT * FROM get_node_descendants($node_id);
 | parent_short_id | TEXT        |                               | 父节点的 short_id（冗余字段，自动维护） |
 | short_id        | TEXT        | NOT NULL                      | 短ID（6位base36）                       |
 | title           | TEXT        | NOT NULL                      | 节点标题                                |
+| note            | TEXT        | CHECK (长度 ≤ 10000)          | 节点详细说明（Markdown格式，可选）      |
 | order_index     | INTEGER     | NOT NULL, DEFAULT 0           | 排序索引                                |
 | created_at      | TIMESTAMPTZ | NOT NULL, DEFAULT NOW()       | 创建时间                                |
 | updated_at      | TIMESTAMPTZ | NOT NULL, DEFAULT NOW()       | 更新时间                                |
