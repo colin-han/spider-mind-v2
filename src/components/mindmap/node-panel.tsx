@@ -25,6 +25,7 @@ import { NodeToolbar } from "./node-toolbar";
 export const NodePanel = () => {
   const editorState = useMindmapEditorState()!;
   const updateTitle = useCommand("node.updateTitle");
+  const updateNote = useCommand("node.updateNote");
   const setFocusedArea = useCommand("global.setFocusedArea");
 
   const panelRef = useRef<HTMLDivElement>(null);
@@ -32,6 +33,7 @@ export const NodePanel = () => {
 
   // 本地编辑状态
   const [editingTitle, setEditingTitle] = useState("");
+  const [editingNote, setEditingNote] = useState("");
 
   useEffect(() => {
     if (
@@ -52,8 +54,15 @@ export const NodePanel = () => {
   useEffect(() => {
     if (node) {
       setEditingTitle(node.title);
+      setEditingNote(node.note || "");
     }
   }, [node]);
+
+  // 字符计数
+  const charCount = editingNote.length;
+  const maxChars = 10000;
+  const isNearLimit = charCount > 9000;
+  const isAtLimit = charCount >= maxChars;
 
   if (!node) {
     return (
@@ -79,7 +88,7 @@ export const NodePanel = () => {
       maxWidth={600}
       className="border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900"
     >
-      <div className="p-4 space-y-4" ref={panelRef}>
+      <div className="p-4 flex flex-col h-full gap-4" ref={panelRef}>
         {/* 工具栏 */}
         <NodeToolbar node={node} />
 
@@ -110,21 +119,49 @@ export const NodePanel = () => {
           />
         </div>
 
-        {/* 元信息显示 */}
-        <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-          <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
-            <div>
-              <span className="font-medium">类型:</span>{" "}
-              {node.parent_id === null ? "根节点" : "普通节点"}
-            </div>
-            <div>
-              <span className="font-medium">ID:</span> {node.short_id}
-            </div>
-            <div>
-              <span className="font-medium">更新时间:</span>{" "}
-              {new Date(node.updated_at).toLocaleString("zh-CN")}
-            </div>
+        {/* 笔记编辑 */}
+        <div className="flex-1 flex flex-col min-h-0">
+          <label
+            htmlFor="node-note-input"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+          >
+            笔记
+          </label>
+          <textarea
+            id="node-note-input"
+            data-testid="node-panel-note-input"
+            value={editingNote}
+            onChange={(e) => setEditingNote(e.target.value)}
+            onBlur={() => {
+              const trimmedNote = editingNote.trim();
+              const newNote = trimmedNote === "" ? null : editingNote;
+              if (newNote !== node.note) {
+                updateNote(node.short_id, newNote);
+              }
+            }}
+            onFocus={() => setFocusedArea("panel")}
+            maxLength={10000}
+            className="flex-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 outline-none text-gray-900 dark:text-white bg-white dark:bg-gray-800 resize-none"
+            placeholder="节点详细说明（支持 Markdown）"
+          />
+          {/* 字符计数 */}
+          <div
+            className={`text-xs mt-1 ${
+              isAtLimit
+                ? "text-red-600 dark:text-red-400"
+                : isNearLimit
+                  ? "text-yellow-600 dark:text-yellow-400"
+                  : "text-gray-500 dark:text-gray-400"
+            }`}
+          >
+            {charCount.toLocaleString()} / {maxChars.toLocaleString()}
           </div>
+        </div>
+
+        {/* 状态栏 */}
+        <div className="px-3 py-2 bg-gray-100 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-400 text-center">
+          ID: {node.short_id} · 更新时间:{" "}
+          {new Date(node.updated_at).toLocaleString("zh-CN")}
         </div>
       </div>
     </ResizablePanel>
