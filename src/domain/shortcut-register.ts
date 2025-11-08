@@ -46,7 +46,24 @@ export function registerNonEditShortcut(
       params: [],
       preventDefault: preventDefault ?? false,
     }),
-    when: (root) => root.currentEditor!.focusedArea !== "panel",
+    when: (root) => {
+      // 检查焦点是否在 panel 内
+      if (root.currentEditor!.focusedArea === "panel") {
+        return false;
+      }
+
+      // 检查焦点是否在 input 或 textarea 内
+      const activeElement = document.activeElement;
+      if (
+        activeElement &&
+        (activeElement.tagName === "INPUT" ||
+          activeElement.tagName === "TEXTAREA")
+      ) {
+        return false;
+      }
+
+      return true;
+    },
   });
 }
 
