@@ -26,6 +26,7 @@ import type { CustomNodeData } from "@/lib/types/react-flow";
 import { cn } from "@/lib/utils/cn";
 import { NodeToolbar } from "@/components/mindmap/node-toolbar";
 import { MindmapNode } from "@/lib/types";
+import { AlignLeft } from "lucide-react";
 
 /**
  * 检查目标节点是否在指定节点的子树中
@@ -149,6 +150,18 @@ function CustomMindNodeComponent({ data }: NodeProps) {
         >
           {nodeData.title}
         </span>
+
+        {/* Note 图标 - 只在节点有 note 时显示 */}
+        {node?.note && (
+          <AlignLeft
+            data-testid={`mindmap-node-${nodeData.shortId}-note-icon`}
+            className={cn("w-4 h-4 flex-shrink-0", {
+              "text-white opacity-80": isRoot,
+              "text-gray-500": !isRoot,
+            })}
+            aria-label="该节点有笔记"
+          />
+        )}
 
         {/* React Flow Handles (连接点) - 从左到右布局 */}
         <Handle

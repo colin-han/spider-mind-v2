@@ -75,10 +75,19 @@ export async function fetchServerVersion(mindmapId: string): Promise<{
     .eq("short_id", mindmapId)
     .eq("user_id", user.id)
     .is("deleted_at", null)
-    .single();
+    .maybeSingle();
 
-  if (error || !mindmap) {
-    throw new Error(`Failed to fetch mindmap version: ${error?.message}`);
+  if (error) {
+    console.error("[fetchServerVersion] Database error:", error);
+    throw new Error(`Failed to fetch mindmap version: ${error.message}`);
+  }
+
+  if (!mindmap) {
+    console.error("[fetchServerVersion] Mindmap not found:", {
+      mindmapId,
+      userId: user.id,
+    });
+    throw new Error(`Mindmap not found or access denied: ${mindmapId}`);
   }
 
   return {
@@ -174,6 +183,9 @@ export async function uploadMindmapChanges(data: {
 
         if (node.title !== undefined) {
           nodeUpdateData["title"] = node.title;
+        }
+        if (node.note !== undefined) {
+          nodeUpdateData["note"] = node.note;
         }
         if (node.parent_short_id !== undefined) {
           nodeUpdateData["parent_short_id"] = node.parent_short_id;

@@ -13,15 +13,13 @@
 
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { Undo2, Redo2, Save } from "lucide-react";
 import { useMindmapStore, useMindmapEditorState } from "@/domain/mindmap-store";
 import { MindmapEditorLayout } from "./mindmap-editor-layout";
-import { SaveButton } from "./save-button";
+import { CommandButton } from "@/components/common/command-button";
 import { OfflineBanner } from "./offline-banner";
-import { ConflictDialog } from "./conflict-dialog";
-import type { ConflictResolution } from "@/lib/sync/sync-manager";
 
 /**
  * MindmapEditor Props
@@ -34,7 +32,7 @@ export interface MindmapEditorProps {
  * MindmapEditor 容器组件
  */
 export function MindmapEditor({ mindmapId }: MindmapEditorProps) {
-  const { openMindmap, shortcutManager } = useMindmapStore();
+  const { openMindmap, shortcutManager, historyManager } = useMindmapStore();
   const editorState = useMindmapEditorState();
 
   const keyHandle = useCallback(
@@ -53,44 +51,9 @@ export function MindmapEditor({ mindmapId }: MindmapEditorProps) {
     };
   }, [keyHandle]);
 
-  // 冲突对话框状态
-  const [showConflictDialog, setShowConflictDialog] = useState(false);
-  const [conflictInfo, setConflictInfo] = useState<{
-    serverUpdatedAt: string;
-    localUpdatedAt: string;
-    resolve: (resolution: ConflictResolution) => void;
-  } | null>(null);
-
   useEffect(() => {
     openMindmap(mindmapId);
   }, [mindmapId, openMindmap]);
-
-  /**
-   * 处理冲突
-   */
-  const handleConflict = async (info: {
-    serverUpdatedAt: string;
-    localUpdatedAt: string;
-  }): Promise<ConflictResolution> => {
-    return new Promise<ConflictResolution>((resolve) => {
-      setConflictInfo({
-        ...info,
-        resolve,
-      });
-      setShowConflictDialog(true);
-    });
-  };
-
-  /**
-   * 处理冲突解决
-   */
-  const handleConflictResolve = (resolution: ConflictResolution) => {
-    if (conflictInfo?.resolve) {
-      conflictInfo.resolve(resolution);
-    }
-    setShowConflictDialog(false);
-    setConflictInfo(null);
-  };
 
   if (!editorState) {
     return (
@@ -111,43 +74,61 @@ export function MindmapEditor({ mindmapId }: MindmapEditorProps) {
       >
         {/* 工具栏 */}
         <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
-          <div className="max-w-7xl mx-auto px-8 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                {/* 返回 Dashboard 链接 */}
-                <Link
-                  href="/dashboard"
-                  className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
-                >
-                  <ArrowLeft className="w-5 h-5" />
-                  <span className="text-sm font-medium">返回</span>
-                </Link>
+          <div className="relative flex items-center justify-between px-4 py-3">
+            {/* 左侧：网站图标 + 返回 */}
+            <Link
+              href="/dashboard"
+              className="flex items-center gap-3 text-gray-900 dark:text-white hover:opacity-80 transition-opacity"
+              data-testid="mindmap-header-logo"
+            >
+              <div className="text-xl font-bold">🕸️ Spider Mind</div>
+            </Link>
 
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {editorState.currentMindmap.title}
-                </h1>
-              </div>
-              <div className="flex items-center gap-4">
-                {/* 保存按钮 */}
-                <SaveButton
-                  mindmapId={editorState.currentMindmap.short_id}
-                  onSaveSuccess={() => {
-                    console.log("[MindmapEditor] 保存成功");
-                  }}
-                  onSaveError={(error) => {
-                    console.error("[MindmapEditor] 保存失败:", error);
-                  }}
-                  onConflict={handleConflict}
-                />
+            {/* 中间：思维导图标题 */}
+            <h1 className="absolute left-1/2 transform -translate-x-1/2 text-xl font-semibold text-gray-900 dark:text-white">
+              {editorState.currentMindmap.title}
+            </h1>
 
-                {/* 状态指示器 */}
-                <div className="flex items-center gap-2 text-sm">
-                  {!editorState.isSaved ? (
-                    <span className="text-orange-600">● 未保存</span>
-                  ) : (
-                    <span className="text-green-600">✓ 已保存</span>
-                  )}
-                </div>
+            {/* 右侧：工具栏 */}
+            <div className="flex items-center gap-2">
+              {/* Undo 按钮 */}
+              <CommandButton
+                commandId="global.undo"
+                icon={Undo2}
+                testId="undo-button"
+                disabled={!historyManager?.canUndo()}
+              />
+
+              {/* Redo 按钮 */}
+              <CommandButton
+                commandId="global.redo"
+                icon={Redo2}
+                testId="redo-button"
+                disabled={!historyManager?.canRedo()}
+              />
+
+              {/* 分隔线 */}
+              <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1" />
+
+              {/* Save 按钮 */}
+              <CommandButton
+                commandId="global.save"
+                icon={Save}
+                testId="save-button"
+                disabled={editorState.isSaved}
+              />
+
+              {/* 状态指示器 */}
+              <div className="flex items-center gap-2 text-sm ml-2">
+                {!editorState.isSaved ? (
+                  <span className="text-orange-600 dark:text-orange-400">
+                    ● 未保存
+                  </span>
+                ) : (
+                  <span className="text-green-600 dark:text-green-400">
+                    ✓ 已保存
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -158,14 +139,6 @@ export function MindmapEditor({ mindmapId }: MindmapEditorProps) {
           <MindmapEditorLayout />
         </div>
       </div>
-
-      {/* 冲突对话框 */}
-      <ConflictDialog
-        open={showConflictDialog}
-        localVersion={conflictInfo?.localUpdatedAt || ""}
-        serverVersion={conflictInfo?.serverUpdatedAt || ""}
-        onResolve={handleConflictResolve}
-      />
     </>
   );
 }
