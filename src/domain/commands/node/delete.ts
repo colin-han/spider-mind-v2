@@ -2,7 +2,7 @@ import { MindmapStore } from "../../mindmap-store.types";
 import { CommandDefinition, registerCommand } from "../../command-registry";
 import { RemoveNodeAction } from "../../actions/remove-node";
 import { SetCurrentNodeAction } from "../../actions/set-current-node";
-import { getDescendantNodes } from "../../editor-utils";
+import { getDescendantNodes, getChildNodes } from "../../editor-utils";
 
 type DeleteNodeParams = [string?];
 
@@ -37,11 +37,41 @@ export const deleteNodeCommand: CommandDefinition = {
     // 最后删除目标节点本身
     actions.push(new RemoveNodeAction(targetNodeId));
 
-    // 切换焦点到父节点
+    // 智能选择下一个焦点节点
+    // 优先级：下一个兄弟节点 > 上一个兄弟节点 > 父节点
+    const siblings = getChildNodes(
+      root.currentEditor!,
+      targetNode.parent_short_id
+    );
+
+    let nextNodeId = targetNode.parent_short_id; // 默认选择父节点
+
+    if (siblings.length > 1) {
+      // 有兄弟节点
+      // 找到下一个兄弟节点（order_index比当前节点大的最小节点）
+      const nextSibling = siblings
+        .filter((node) => node.order_index > targetNode.order_index)
+        .sort((a, b) => a.order_index - b.order_index)[0];
+
+      if (nextSibling) {
+        nextNodeId = nextSibling.short_id;
+      } else {
+        // 没有下一个兄弟节点，找上一个兄弟节点（order_index比当前节点小的最大节点）
+        const prevSibling = siblings
+          .filter((node) => node.order_index < targetNode.order_index)
+          .sort((a, b) => b.order_index - a.order_index)[0];
+
+        if (prevSibling) {
+          nextNodeId = prevSibling.short_id;
+        }
+      }
+    }
+
+    // 切换焦点到选定的节点
     actions.push(
       new SetCurrentNodeAction({
         oldNodeId: targetNodeId,
-        newNodeId: targetNode.parent_short_id,
+        newNodeId: nextNodeId,
       })
     );
 

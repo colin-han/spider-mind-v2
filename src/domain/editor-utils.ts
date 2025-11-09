@@ -88,3 +88,63 @@ export function isDescendant(
 
   return false;
 }
+
+/**
+ * 获取节点的深度（根节点深度为 0）
+ */
+export function getNodeDepth(state: EditorState, nodeId: string): number {
+  const node = state.nodes.get(nodeId);
+  if (!node) return -1;
+
+  let depth = 0;
+  let currentNode = node;
+
+  while (currentNode.parent_short_id) {
+    depth++;
+    const parent = state.nodes.get(currentNode.parent_short_id);
+    if (!parent) break;
+    currentNode = parent;
+  }
+
+  return depth;
+}
+
+/**
+ * 深度优先遍历获取所有节点（按遍历顺序）
+ */
+function traverseDepthFirst(state: EditorState, rootId: string): MindmapNode[] {
+  const result: MindmapNode[] = [];
+  const root = state.nodes.get(rootId);
+  if (!root) return result;
+
+  result.push(root);
+  const children = getChildNodes(state, rootId);
+  for (const child of children) {
+    result.push(...traverseDepthFirst(state, child.short_id));
+  }
+
+  return result;
+}
+
+/**
+ * 获取所有同深度的节点，按深度优先遍历顺序排列
+ */
+export function getNodesAtDepth(
+  state: EditorState,
+  depth: number
+): MindmapNode[] {
+  // 找到根节点
+  const rootNode = Array.from(state.nodes.values()).find(
+    (node) => !node.parent_short_id
+  );
+  if (!rootNode) return [];
+
+  // 深度优先遍历所有节点
+  const allNodes = traverseDepthFirst(state, rootNode.short_id);
+
+  // 过滤出指定深度的节点
+  return allNodes.filter((node) => {
+    const nodeDepth = getNodeDepth(state, node.short_id);
+    return nodeDepth === depth;
+  });
+}

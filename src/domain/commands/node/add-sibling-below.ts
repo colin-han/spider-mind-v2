@@ -3,6 +3,7 @@ import { CommandDefinition, registerCommand } from "../../command-registry";
 import { generateShortId } from "@/lib/utils/short-id";
 import { AddNodeAction } from "../../actions/add-node";
 import { UpdateNodeAction } from "../../actions/update-node";
+import { SetCurrentNodeAction } from "../../actions/set-current-node";
 import { getChildNodes } from "../../editor-utils";
 
 type AddSiblingNodeParams = [
@@ -72,6 +73,14 @@ export const addSiblingBelowCommand: CommandDefinition = {
           })
         );
       });
+
+    // 自动选中新创建的节点
+    actions.push(
+      new SetCurrentNodeAction({
+        newNodeId: shortId,
+        oldNodeId: root.currentEditor!.currentNode,
+      })
+    );
 
     return actions;
   },

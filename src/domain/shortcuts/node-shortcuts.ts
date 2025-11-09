@@ -16,6 +16,9 @@ registerNonEditShortcut("tab", "node.addChild");
 // Enter - 在下方添加兄弟节点
 registerNonEditShortcut("enter", "node.addSiblingBelow");
 
+// Shift+Enter - 在上方添加兄弟节点
+registerNonEditShortcut("shift+enter", "node.addSiblingAbove");
+
 // Delete - 删除节点
 registerNonEditShortcut("delete", "node.delete", true);
 
