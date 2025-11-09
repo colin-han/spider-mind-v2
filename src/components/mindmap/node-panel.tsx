@@ -18,6 +18,7 @@ import { useEffect, useRef, useState } from "react";
 import { useMindmapEditorState, useCommand } from "@/domain/mindmap-store";
 import { ResizablePanel } from "./resizable-panel";
 import { NodeToolbar } from "./node-toolbar";
+import { MarkdownEditor } from "@/components/common/markdown-editor";
 
 /**
  * NodePanel 组件
@@ -86,9 +87,9 @@ export const NodePanel = () => {
       defaultWidth={384}
       minWidth={300}
       maxWidth={600}
-      className="border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900"
+      className="border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex flex-col"
     >
-      <div className="p-4 flex flex-col h-full gap-4" ref={panelRef}>
+      <div className="flex-1 flex flex-col p-4 gap-4 min-h-0" ref={panelRef}>
         {/* 工具栏 */}
         <NodeToolbar node={node} />
 
@@ -121,48 +122,50 @@ export const NodePanel = () => {
 
         {/* 笔记编辑 */}
         <div className="flex-1 flex flex-col min-h-0">
-          <label
-            htmlFor="node-note-input"
-            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-          >
-            笔记
-          </label>
-          <textarea
-            id="node-note-input"
-            data-testid="node-panel-note-input"
-            value={editingNote}
-            onChange={(e) => setEditingNote(e.target.value)}
-            onBlur={() => {
-              const trimmedNote = editingNote.trim();
-              const newNote = trimmedNote === "" ? null : editingNote;
-              if (newNote !== node.note) {
-                updateNote(node.short_id, newNote);
-              }
-            }}
-            onFocus={() => setFocusedArea("panel")}
-            maxLength={10000}
-            className="flex-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 outline-none text-gray-900 dark:text-white bg-white dark:bg-gray-800 resize-none"
-            placeholder="节点详细说明（支持 Markdown）"
-          />
-          {/* 字符计数 */}
-          <div
-            className={`text-xs mt-1 ${
-              isAtLimit
-                ? "text-red-600 dark:text-red-400"
-                : isNearLimit
-                  ? "text-yellow-600 dark:text-yellow-400"
-                  : "text-gray-500 dark:text-gray-400"
-            }`}
-          >
-            {charCount.toLocaleString()} / {maxChars.toLocaleString()}
+          <div className="flex items-center justify-between mb-1">
+            <label
+              htmlFor="node-note-input"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+            >
+              笔记
+            </label>
+            {/* 字符计数 */}
+            <div
+              className={`text-xs ${
+                isAtLimit
+                  ? "text-red-600 dark:text-red-400"
+                  : isNearLimit
+                    ? "text-yellow-600 dark:text-yellow-400"
+                    : "text-gray-500 dark:text-gray-400"
+              }`}
+            >
+              {charCount.toLocaleString()} / {maxChars.toLocaleString()}
+            </div>
+          </div>
+          <div className="flex-1 flex flex-col min-h-0">
+            <MarkdownEditor
+              value={editingNote}
+              onChange={(val) => setEditingNote(val || "")}
+              onBlur={() => {
+                const trimmedNote = editingNote.trim();
+                const newNote = trimmedNote === "" ? null : editingNote;
+                if (newNote !== node.note) {
+                  updateNote(node.short_id, newNote);
+                }
+              }}
+              placeholder="节点详细说明（支持 Markdown）"
+              maxLength={10000}
+              testId="node-panel-note-input"
+              className="h-full"
+            />
           </div>
         </div>
+      </div>
 
-        {/* 状态栏 */}
-        <div className="px-3 py-2 bg-gray-100 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-400 text-center">
-          ID: {node.short_id} · 更新时间:{" "}
-          {new Date(node.updated_at).toLocaleString("zh-CN")}
-        </div>
+      {/* 状态栏 - 紧贴底部，水平填满 */}
+      <div className="py-2 bg-gray-100 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-400 text-center">
+        ID: {node.short_id} · 更新时间:{" "}
+        {new Date(node.updated_at).toLocaleString("zh-CN")}
       </div>
     </ResizablePanel>
   );

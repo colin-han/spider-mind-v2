@@ -20,7 +20,6 @@ import { Undo2, Redo2, Save } from "lucide-react";
 import { useMindmapStore, useMindmapEditorState } from "@/domain/mindmap-store";
 import { MindmapEditorLayout } from "./mindmap-editor-layout";
 import { CommandButton } from "@/components/common/command-button";
-import { OfflineBanner } from "./offline-banner";
 
 /**
  * MindmapEditor Props
@@ -66,9 +65,6 @@ export function MindmapEditor({ mindmapId }: MindmapEditorProps) {
 
   return (
     <>
-      {/* 离线提示横幅 */}
-      <OfflineBanner mindmapId={editorState.currentMindmap.short_id} />
-
       <div
         className="min-h-screen bg-gray-50 dark:bg-gray-900"
         data-testid="mindmap-editor"

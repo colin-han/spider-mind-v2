@@ -118,7 +118,7 @@ export function ResizablePanel({
       />
 
       {/* 内容区域 */}
-      <div className="h-full overflow-y-auto">{children}</div>
+      <div className="h-full flex flex-col overflow-y-auto">{children}</div>
     </div>
   );
 }

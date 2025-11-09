@@ -53,6 +53,7 @@
     "@ai-sdk/react": "^2.0.89",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.45.4",
+    "@uiw/react-md-editor": "^4.0.8",
     "@xyflow/react": "^12.8.6",
     "ai": "^5.0.89",
     "clsx": "^2.1.1",

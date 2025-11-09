@@ -1,0 +1,150 @@
+/**
+ * Markdown Editor 和 Preview 的样式定义
+ * 包括暗色模式、等宽字体、列表样式等
+ */
+
+/* ============================================
+   编辑器基础样式
+   ============================================ */
+
+.w-md-editor-text {
+  height: 100%;
+}
+
+/* ============================================
+   暗色模式 - 背景色
+   ============================================ */
+
+/* Markdown Editor - dark mode background customization */
+[data-color-mode="dark"] .w-md-editor {
+  background-color: rgb(
+    31 41 55 / var(--tw-bg-opacity, 1)
+  ) !important; /* gray-800 */
+}
+
+/* 工具栏背景 */
+[data-color-mode="dark"] .w-md-editor-toolbar {
+  background-color: rgb(
+    31 41 55 / var(--tw-bg-opacity, 1)
+  ) !important; /* gray-800 */
+  border-bottom-color: rgb(
+    55 65 81 / var(--tw-border-opacity, 1)
+  ) !important; /* gray-700 */
+}
+
+/* 编辑区和预览区背景 */
+[data-color-mode="dark"] .w-md-editor-text-pre,
+[data-color-mode="dark"] .w-md-editor-preview {
+  background-color: rgb(
+    31 41 55 / var(--tw-bg-opacity, 1)
+  ) !important; /* gray-800 */
+}
+
+/* 编辑器内容区域 */
+[data-color-mode="dark"] .w-md-editor-content,
+[data-color-mode="dark"] .w-md-editor-area,
+[data-color-mode="dark"] .w-md-editor-input {
+  background-color: rgb(
+    31 41 55 / var(--tw-bg-opacity, 1)
+  ) !important; /* gray-800 */
+}
+
+/* ============================================
+   暗色模式 - 文字颜色
+   ============================================ */
+
+/* 编辑器文字颜色 */
+[data-color-mode="dark"] .w-md-editor-text-pre,
+[data-color-mode="dark"] .w-md-editor-text,
+[data-color-mode="dark"] .w-md-editor-input {
+  color: rgb(229 231 235 / var(--tw-text-opacity, 1)) !important; /* gray-200 */
+}
+
+/* 编辑器 textarea 文字颜色 - 更高优先级 */
+[data-color-mode="dark"] .w-md-editor textarea.w-md-editor-text-input,
+[data-color-mode="dark"] textarea.w-md-editor-text-input {
+  color: rgb(229 231 235 / var(--tw-text-opacity, 1)) !important; /* gray-200 */
+  caret-color: rgb(
+    229 231 235 / var(--tw-text-opacity, 1)
+  ) !important; /* 光标颜色也设置为亮色 */
+}
+
+/* 编辑器代码预览层文字颜色 */
+[data-color-mode="dark"] .w-md-editor-text-pre > code,
+[data-color-mode="dark"] .w-md-editor-text-pre {
+  color: rgb(229 231 235 / var(--tw-text-opacity, 1)) !important; /* gray-200 */
+}
+
+/* ============================================
+   暗色模式 - Preview 样式
+   ============================================ */
+
+/* Markdown Preview - dark mode background customization */
+[data-color-mode="dark"] .wmde-markdown {
+  background-color: transparent !important;
+  color: rgb(229 231 235 / var(--tw-text-opacity, 1)) !important; /* gray-200 */
+}
+
+/* Code blocks in dark mode */
+[data-color-mode="dark"] .wmde-markdown pre {
+  background-color: rgb(
+    17 24 39 / var(--tw-bg-opacity, 1)
+  ) !important; /* gray-900 */
+}
+
+[data-color-mode="dark"] .wmde-markdown code {
+  background-color: rgb(
+    17 24 39 / var(--tw-bg-opacity, 1)
+  ) !important; /* gray-900 */
+}
+
+/* ============================================
+   等宽字体设置
+   ============================================ */
+
+/* Markdown Editor - 等宽字体设置 */
+.w-md-editor-text-input,
+.w-md-editor-text-pre,
+textarea.w-md-editor-text-input {
+  font-family:
+    ui-monospace, "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas,
+    "Courier New", monospace !important;
+}
+
+.w-md-editor-text-pre > code {
+  font-family:
+    ui-monospace, "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas,
+    "Courier New", monospace !important;
+}
+
+/* ============================================
+   列表样式
+   ============================================ */
+
+/* Markdown Preview - 列表样式 */
+.wmde-markdown ul {
+  list-style-type: disc !important;
+  padding-left: 2rem !important;
+}
+
+.wmde-markdown ol {
+  list-style-type: decimal !important;
+  padding-left: 2rem !important;
+}
+
+/* 嵌套列表样式 */
+.wmde-markdown ul ul {
+  list-style-type: circle !important;
+}
+
+.wmde-markdown ul ul ul {
+  list-style-type: square !important;
+}
+
+.wmde-markdown ol ol {
+  list-style-type: lower-alpha !important;
+}
+
+.wmde-markdown ol ol ol {
+  list-style-type: lower-roman !important;
+}
