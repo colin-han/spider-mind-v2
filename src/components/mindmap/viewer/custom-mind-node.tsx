@@ -163,16 +163,16 @@ function CustomMindNodeComponent({ data }: NodeProps) {
           />
         )}
 
-        {/* React Flow Handles (连接点) - 从左到右布局 */}
+        {/* React Flow Handles (连接点) - 从左到右布局，隐藏但保留用于连线计算 */}
         <Handle
           type="target"
           position={Position.Left}
-          className="!w-2 !h-2 !bg-blue-500"
+          className="!w-2 !h-2 !bg-transparent !border-0"
         />
         <Handle
           type="source"
           position={Position.Right}
-          className="!w-2 !h-2 !bg-blue-500"
+          className="!w-2 !h-2 !bg-transparent !border-0"
         />
 
         {/* 展开/折叠按钮 - 右侧连接点位置 */}
