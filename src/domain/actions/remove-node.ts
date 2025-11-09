@@ -3,6 +3,7 @@ import { EditorAction, EditorState } from "../mindmap-store.types";
 import { IDBPDatabase } from "idb";
 import { MindmapDB } from "@/lib/db/schema";
 import { AddNodeAction } from "./add-node";
+import { current } from "immer";
 
 export class RemoveNodeAction implements EditorAction {
   type = "removeNode";
@@ -17,7 +18,8 @@ export class RemoveNodeAction implements EditorAction {
     if (!this.deletedNode) {
       const node = draft.nodes.get(this.nodeId);
       if (node) {
-        this.deletedNode = node;
+        // ✅ 使用 current() 获取快照，避免保存 revoked proxy
+        this.deletedNode = current(node);
       }
     }
 

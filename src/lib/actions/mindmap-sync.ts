@@ -160,7 +160,7 @@ export async function uploadMindmapChanges(data: {
       updatedAt = currentMindmap.updated_at;
     }
 
-    // 2. 批量更新节点
+    // 2. 批量上传节点（使用 UPSERT）
     if (data.nodes.length > 0) {
       // 获取 mindmap.id 用于节点更新
       const { data: mindmap, error: mindmapError } = await supabase
@@ -174,44 +174,37 @@ export async function uploadMindmapChanges(data: {
         throw new Error(`Failed to fetch mindmap: ${mindmapError?.message}`);
       }
 
-      // 更新每个节点
-      for (const node of data.nodes) {
-        // 构建更新对象，只包含非 undefined 的字段
-        const nodeUpdateData: Record<string, string | number | null> = {
-          updated_at: new Date().toISOString(),
-        };
+      const currentTime = new Date().toISOString();
 
-        if (node.title !== undefined) {
-          nodeUpdateData["title"] = node.title;
-        }
-        if (node.note !== undefined) {
-          nodeUpdateData["note"] = node.note;
-        }
-        if (node.parent_short_id !== undefined) {
-          nodeUpdateData["parent_short_id"] = node.parent_short_id;
-        }
-        if (node.order_index !== undefined) {
-          nodeUpdateData["order_index"] = node.order_index;
-        }
+      // ✅ 使用 UPSERT 批量上传节点（支持新增和更新）
+      const nodesToUpsert = data.nodes.map((node) => ({
+        id: node.id!,
+        short_id: node.short_id!,
+        mindmap_id: mindmap.id,
+        parent_id: node.parent_id!,
+        parent_short_id: node.parent_short_id!,
+        title: node.title!,
+        note: node.note ?? null,
+        order_index: node.order_index!,
+        created_at: node.created_at!,
+        updated_at: currentTime,
+      }));
 
-        const { error: nodeError } = await supabase
-          .from("mindmap_nodes")
-          .update(nodeUpdateData)
-          .eq("short_id", node.short_id!)
-          .eq("mindmap_id", mindmap.id);
+      const { error: nodesError } = await supabase
+        .from("mindmap_nodes")
+        .upsert(nodesToUpsert, {
+          onConflict: "id", // 根据 id 判断是插入还是更新
+        });
 
-        if (nodeError) {
-          throw new Error(
-            `Failed to update node ${node.short_id}: ${nodeError.message}`
-          );
-        }
+      if (nodesError) {
+        throw new Error(`Failed to upsert nodes: ${nodesError.message}`);
       }
 
       // 更新 mindmap 的 updated_at（因为节点有变化）
       const { data: finalMindmap, error: finalError } = await supabase
         .from("mindmaps")
         .update({
-          updated_at: new Date().toISOString(),
+          updated_at: currentTime,
         })
         .eq("short_id", data.mindmapId)
         .eq("user_id", user.id)

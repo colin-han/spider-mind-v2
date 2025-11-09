@@ -57,6 +57,10 @@ export const saveMindmapCommand: CommandDefinition = {
       .getAll(currentMindmap.id);
 
     const dirtyNodes = allNodes.filter((node) => node.dirty);
+    if (dirtyNodes.length === 0) {
+      console.log("No dirty nodes found, nothing to save");
+      return;
+    }
 
     console.log(`Found ${dirtyNodes.length} dirty nodes to save`);
 
