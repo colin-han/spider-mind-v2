@@ -142,6 +142,19 @@ export const useMindmapStore = create<MindmapStore>()(
           );
         }
 
+        // 3.5. 过滤掉已删除的节点（仅从 IndexedDB 加载时需要）
+        if (!loadedFromServer) {
+          const originalNodesCount = nodesToLoad.length;
+          nodesToLoad = nodesToLoad.filter(
+            (node) => !(node as { deleted?: boolean }).deleted
+          );
+          if (originalNodesCount !== nodesToLoad.length) {
+            console.log(
+              `[openMindmap] Filtered out ${originalNodesCount - nodesToLoad.length} deleted nodes`
+            );
+          }
+        }
+
         // 4. 验证数据
         if (!mindmapToLoad) {
           throw new Error(`Mindmap ${mindmapId} not found`);

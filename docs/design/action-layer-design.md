@@ -58,7 +58,7 @@ interface EditorAction {
 
 #### AddNodeAction
 
-**职责**: 添加新节点到思维导图
+**职责**: 添加新节点到思维导图（或恢复已删除的节点）
 
 **参数**:
 
@@ -72,13 +72,27 @@ interface EditorAction {
 **状态变更**:
 
 - 将节点添加到 `EditorState.nodes` Map
-- 标记节点为 dirty（需要同步）
+- 标记 `isSaved = false`
 - 可选：设置为当前节点
 
 **数据库操作**:
 
-- 在 `mindmap_nodes` 表中插入新记录
-- 设置 `dirty = true`
+```typescript
+await db.put("mindmap_nodes", {
+  ...this.node,
+  dirty: true, // ✅ 标记为需要同步
+  deleted: false, // ✅ 确保清除删除标记（用于 undo 删除）
+  local_updated_at: new Date().toISOString(),
+});
+```
+
+**为什么要清除 deleted 标记？**
+
+当 `AddNodeAction` 作为 `RemoveNodeAction` 的逆操作时（Undo 删除），被恢复的节点可能仍带有 `deleted: true` 标记。显式设置 `deleted: false` 确保：
+
+- ✅ Undo 删除操作后节点正常显示
+- ✅ 加载逻辑不会过滤掉恢复的节点
+- ✅ 保存时将节点同步到服务器（而不是删除）
 
 **逆操作**: `RemoveNodeAction`
 
@@ -86,19 +100,20 @@ interface EditorAction {
 
 - 添加子节点 (Tab)
 - 添加兄弟节点 (Enter)
+- Undo 删除操作（恢复节点）
 
 ---
 
 #### RemoveNodeAction
 
-**职责**: 删除节点（软删除）
+**职责**: 删除节点（软删除机制）
 
 **参数**:
 
 ```typescript
 {
   nodeId: string,                 // 节点的 short_id
-  originalNode: MindmapNode       // 保存原节点数据用于恢复
+  originalNode?: MindmapNode      // 保存原节点数据用于恢复（自动捕获）
 }
 ```
 
@@ -107,17 +122,38 @@ interface EditorAction {
 - 从 `EditorState.nodes` Map 中移除节点
 - 从 `collapsedNodes` Set 中移除
 - 如果是当前节点，切换到父节点或兄弟节点
+- 标记 `isSaved = false`
 
-**数据库操作**:
+**数据库操作（软删除）**:
 
-- 标记 `deleted = true`
-- 更新 `dirty = true`
+```typescript
+await db.put("mindmap_nodes", {
+  ...this.deletedNode,
+  deleted: true, // ✅ 标记为已删除
+  dirty: true, // ✅ 标记为需要同步
+  local_updated_at: new Date().toISOString(),
+});
+```
 
-**逆操作**: `AddNodeAction`
+**软删除机制说明**:
+
+1. **内存层**: 立即从 `EditorState.nodes` 中移除，UI 不再显示
+2. **IndexedDB 层**: 标记 `deleted: true` 和 `dirty: true`，不立即删除
+3. **同步层**: 保存时找到这些已删除节点，同步到服务器删除
+4. **清理层**: 同步成功后，从 IndexedDB 中真正删除
+
+**为什么使用软删除？**
+
+- ✅ 支持离线删除：删除操作可以稍后同步到服务器
+- ✅ 支持 Undo：撤销时可以恢复已删除的节点
+- ✅ 数据安全：避免未同步时意外刷新导致数据丢失
+
+**逆操作**: `AddNodeAction`（清除 deleted 标记）
 
 **使用场景**:
 
 - 删除节点 (Delete/Backspace)
+- 批量删除子树
 
 **⚠️ 约束**:
 

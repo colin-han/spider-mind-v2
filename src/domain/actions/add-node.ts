@@ -18,6 +18,7 @@ export class AddNodeAction implements EditorAction {
     db.put("mindmap_nodes", {
       ...this.node,
       dirty: true,
+      deleted: false, // ✅ 确保清除删除标记（用于 undo 删除操作）
       local_updated_at: new Date().toISOString(),
     });
   }

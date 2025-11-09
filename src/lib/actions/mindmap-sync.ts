@@ -102,6 +102,7 @@ export async function uploadMindmapChanges(data: {
   mindmapId: string;
   mindmap?: Partial<Mindmap> | undefined;
   nodes: Partial<MindmapNode>[];
+  deletedNodeIds?: string[]; // 需要删除的节点 ID 列表
 }): Promise<{
   updated_at: string;
 }> {
@@ -205,6 +206,37 @@ export async function uploadMindmapChanges(data: {
         .from("mindmaps")
         .update({
           updated_at: currentTime,
+        })
+        .eq("short_id", data.mindmapId)
+        .eq("user_id", user.id)
+        .select("updated_at")
+        .single();
+
+      if (finalError || !finalMindmap) {
+        throw new Error(
+          `Failed to update mindmap timestamp: ${finalError?.message}`
+        );
+      }
+
+      updatedAt = finalMindmap.updated_at;
+    }
+
+    // 3. 删除已标记删除的节点
+    if (data.deletedNodeIds && data.deletedNodeIds.length > 0) {
+      const { error: deleteError } = await supabase
+        .from("mindmap_nodes")
+        .delete()
+        .in("id", data.deletedNodeIds);
+
+      if (deleteError) {
+        throw new Error(`Failed to delete nodes: ${deleteError.message}`);
+      }
+
+      // 更新 mindmap 的 updated_at（因为节点有删除）
+      const { data: finalMindmap, error: finalError } = await supabase
+        .from("mindmaps")
+        .update({
+          updated_at: new Date().toISOString(),
         })
         .eq("short_id", data.mindmapId)
         .eq("user_id", user.id)

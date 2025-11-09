@@ -62,7 +62,13 @@ export const saveMindmapCommand: CommandDefinition = {
       return;
     }
 
-    console.log(`Found ${dirtyNodes.length} dirty nodes to save`);
+    // 分离已删除和未删除的节点
+    const deletedNodes = dirtyNodes.filter((node) => node.deleted);
+    const updatedNodes = dirtyNodes.filter((node) => !node.deleted);
+
+    console.log(
+      `Found ${dirtyNodes.length} dirty nodes to save (${updatedNodes.length} updated, ${deletedNodes.length} deleted)`
+    );
 
     // 2. 查询服务器版本
     const serverVersion = await fetchServerVersion(currentMindmap.short_id);
@@ -84,7 +90,8 @@ export const saveMindmapCommand: CommandDefinition = {
       mindmap: dirtyMindmap.dirty
         ? (currentMindmap as Partial<typeof currentMindmap>)
         : undefined,
-      nodes: dirtyNodes,
+      nodes: updatedNodes,
+      deletedNodeIds: deletedNodes.map((node) => node.id),
     });
 
     // 5. 更新 IndexedDB
@@ -98,13 +105,18 @@ export const saveMindmapCommand: CommandDefinition = {
       local_updated_at: new Date().toISOString(),
     });
 
-    // 更新所有 dirty 节点
-    for (const node of dirtyNodes) {
+    // 更新所有已修改的节点
+    for (const node of updatedNodes) {
       await tx.objectStore("mindmap_nodes").put({
         ...node,
         dirty: false,
         local_updated_at: new Date().toISOString(),
       });
+    }
+
+    // ✅ 真正删除已删除的节点（已同步到服务器）
+    for (const node of deletedNodes) {
+      await tx.objectStore("mindmap_nodes").delete(node.short_id);
     }
 
     await tx.done;

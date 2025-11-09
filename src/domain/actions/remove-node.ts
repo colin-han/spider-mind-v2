@@ -34,7 +34,14 @@ export class RemoveNodeAction implements EditorAction {
 
   async applyToIndexedDB(db: IDBPDatabase<MindmapDB>): Promise<void> {
     if (this.deletedNode) {
-      await db.delete("mindmap_nodes", this.deletedNode.id);
+      // ✅ 不直接删除，而是标记为已删除和 dirty
+      // 这样保存命令可以找到它并同步到服务器
+      await db.put("mindmap_nodes", {
+        ...this.deletedNode,
+        deleted: true,
+        dirty: true,
+        local_updated_at: new Date().toISOString(),
+      });
     }
   }
 

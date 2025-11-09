@@ -37,6 +37,7 @@ export interface MindmapDB extends DBSchema {
     value: MindmapNode & {
       // 持久化相关字段
       dirty: boolean; // 是否有未保存的修改
+      deleted?: boolean; // 是否已被删除（标记删除，待同步）
       local_updated_at: string; // 本地最后修改时间
     };
     indexes: {
