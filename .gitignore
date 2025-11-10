@@ -2,6 +2,9 @@
 node_modules
 .claude.backup-*
 .next/
+dist/
+out/
+build/
 *.local.json
 
 
