@@ -1,18 +1,205 @@
 -- ============================================================================
--- Mind Map Schema Migration
--- 创建思维导图相关表: mindmaps 和 mindmap_nodes
+-- Initial Schema Migration
+-- 创建完整的数据库 schema
 -- ============================================================================
--- 合并自以下 migrations:
--- - 20251001203015_create_mindmap_schema.sql (初始创建)
--- - 20251003000000_add_parent_short_id.sql (添加 parent_short_id)
--- - 20251011000001_remove_node_type.sql (删除 node_type)
--- - 20251011000002_fix_one_root_per_map_index.sql (修复 root 索引)
--- - 20251011000003_add_explicit_unique_indexes.sql (添加显式唯一索引)
--- - 20251011000004_cleanup_legacy_indexes.sql (清理遗留索引)
+-- 版本: v1.0.0
+-- 日期: 2025-01-10
+-- 描述: 合并所有历史 migrations，创建初始 schema
 -- ============================================================================
 
 -- ============================================================================
--- 1. 创建 mindmaps 表
+-- PART 1: User Profiles Schema
+-- ============================================================================
+
+-- ============================================================================
+-- 1.1 创建 handle_updated_at 公共函数
+-- ============================================================================
+
+CREATE OR REPLACE FUNCTION public.handle_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+COMMENT ON FUNCTION public.handle_updated_at() IS '触发器函数: 自动更新 updated_at 时间戳';
+
+-- ============================================================================
+-- 1.2 创建 user_profiles 表
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS public.user_profiles (
+  -- 主键: 关联 auth.users
+  id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
+
+  -- 用户标识
+  username TEXT UNIQUE NOT NULL,
+  display_name TEXT,
+
+  -- 扩展信息
+  avatar_url TEXT,
+  bio TEXT,
+
+  -- 时间戳
+  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+
+  -- 约束: username 长度 (3-20 字符)
+  CONSTRAINT username_length CHECK (
+    char_length(username) >= 3 AND char_length(username) <= 20
+  ),
+
+  -- 约束: username 格式 (小写字母、数字、连字符，不能以连字符开头或结尾)
+  CONSTRAINT username_format CHECK (
+    username ~ '^[a-z0-9]([a-z0-9-]{1,18}[a-z0-9])?$'
+  ),
+
+  -- 约束: username 必须小写
+  CONSTRAINT username_lowercase CHECK (
+    username = lower(username)
+  )
+);
+
+-- 表注释
+COMMENT ON TABLE public.user_profiles IS '用户扩展资料表';
+COMMENT ON COLUMN public.user_profiles.id IS '用户ID, 关联 auth.users';
+COMMENT ON COLUMN public.user_profiles.username IS '用户名, 唯一标识, 3-20字符, 小写字母、数字、连字符, 不能以连字符开头或结尾, 用于URL: /@{username}';
+COMMENT ON COLUMN public.user_profiles.display_name IS '显示名称';
+COMMENT ON COLUMN public.user_profiles.avatar_url IS '头像 URL';
+COMMENT ON COLUMN public.user_profiles.bio IS '个人简介';
+COMMENT ON COLUMN public.user_profiles.created_at IS '创建时间';
+COMMENT ON COLUMN public.user_profiles.updated_at IS '最后更新时间';
+
+-- ============================================================================
+-- 1.3 创建索引
+-- ============================================================================
+
+CREATE INDEX IF NOT EXISTS user_profiles_username_idx
+  ON public.user_profiles(username);
+
+-- ============================================================================
+-- 1.4 启用 RLS 并创建策略
+-- ============================================================================
+
+ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
+
+-- RLS 策略: 所有人可以查看 profiles
+CREATE POLICY "用户可以查看所有 profiles"
+  ON public.user_profiles
+  FOR SELECT
+  USING (true);
+
+-- RLS 策略: 允许创建 profile (用户或触发器)
+CREATE POLICY "允许创建 profile"
+  ON public.user_profiles
+  FOR INSERT
+  WITH CHECK (
+    -- 允许用户创建自己的 profile
+    auth.uid() = id
+    -- 或者允许 service role (触发器) 创建任何 profile
+    OR current_setting('request.jwt.claims', true)::json->>'role' = 'service_role'
+  );
+
+-- RLS 策略: 用户只能更新自己的 profile
+CREATE POLICY "用户只能更新自己的 profile"
+  ON public.user_profiles
+  FOR UPDATE
+  USING (auth.uid() = id)
+  WITH CHECK (auth.uid() = id);
+
+-- ============================================================================
+-- 1.5 创建 updated_at 自动更新触发器
+-- ============================================================================
+
+CREATE TRIGGER set_updated_at
+  BEFORE UPDATE ON public.user_profiles
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_updated_at();
+
+-- ============================================================================
+-- 1.6 创建用户注册时自动创建 profile 的触发器
+-- ============================================================================
+
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+DECLARE
+  generated_username TEXT;
+BEGIN
+  -- 从 user_metadata 或 email 生成 username
+  generated_username := COALESCE(
+    NEW.raw_user_meta_data->>'username',
+    split_part(NEW.email, '@', 1)
+  );
+
+  -- 清理 username:
+  -- 1. 转换为小写
+  -- 2. 将下划线替换为连字符
+  -- 3. 移除非法字符（只保留小写字母、数字、连字符）
+  -- 4. 移除开头和结尾的连字符
+  generated_username := lower(generated_username);
+  generated_username := replace(generated_username, '_', '-');
+  generated_username := regexp_replace(generated_username, '[^a-z0-9-]', '', 'g');
+  generated_username := regexp_replace(generated_username, '^-+|-+$', '', 'g');
+
+  -- 如果处理后的 username 太短，添加后缀
+  IF length(generated_username) < 3 THEN
+    generated_username := generated_username || '-user';
+  END IF;
+
+  -- 如果处理后的 username 太长，截断
+  IF length(generated_username) > 20 THEN
+    generated_username := substring(generated_username, 1, 20);
+    -- 确保不以连字符结尾
+    generated_username := regexp_replace(generated_username, '-+$', '', 'g');
+  END IF;
+
+  -- 插入 user profile
+  INSERT INTO public.user_profiles (id, username, display_name)
+  VALUES (
+    NEW.id,
+    generated_username,
+    COALESCE(NEW.raw_user_meta_data->>'display_name', split_part(NEW.email, '@', 1))
+  );
+
+  RETURN NEW;
+EXCEPTION
+  WHEN unique_violation THEN
+    -- 如果 username 冲突，添加随机后缀重试
+    BEGIN
+      generated_username := substring(generated_username, 1, 14) || '-' || substring(md5(random()::text), 1, 5);
+      INSERT INTO public.user_profiles (id, username, display_name)
+      VALUES (
+        NEW.id,
+        generated_username,
+        COALESCE(NEW.raw_user_meta_data->>'display_name', split_part(NEW.email, '@', 1))
+      );
+      RETURN NEW;
+    EXCEPTION
+      WHEN OTHERS THEN
+        RAISE WARNING 'Failed to create user profile with random suffix: %', SQLERRM;
+        RETURN NEW;
+    END;
+  WHEN OTHERS THEN
+    -- 记录其他错误但不阻止用户创建
+    RAISE WARNING 'Failed to create user profile: %', SQLERRM;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+COMMENT ON FUNCTION public.handle_new_user() IS '自动为新用户创建 profile，确保 username 符合约束（小写字母、数字、连字符），使用 SECURITY DEFINER 绕过 RLS';
+
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_new_user();
+
+-- ============================================================================
+-- PART 2: Mind Map Schema
+-- ============================================================================
+
+-- ============================================================================
+-- 2.1 创建 mindmaps 表
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS public.mindmaps (
@@ -54,7 +241,7 @@ COMMENT ON COLUMN public.mindmaps.updated_at IS '最后更新时间';
 COMMENT ON COLUMN public.mindmaps.deleted_at IS '软删除时间戳, 非NULL表示已删除';
 
 -- ============================================================================
--- 2. 创建 mindmap_nodes 表
+-- 2.2 创建 mindmap_nodes 表
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS public.mindmap_nodes (
@@ -75,7 +262,7 @@ CREATE TABLE IF NOT EXISTS public.mindmap_nodes (
 
   -- 内容
   title text NOT NULL,
-  content text,
+  note text,
 
   -- 排序
   order_index integer NOT NULL DEFAULT 0,
@@ -90,6 +277,7 @@ CREATE TABLE IF NOT EXISTS public.mindmap_nodes (
   CONSTRAINT short_id_lowercase CHECK (short_id = lower(short_id)),
   CONSTRAINT title_not_empty CHECK (char_length(trim(title)) > 0),
   CONSTRAINT no_self_reference CHECK (id != parent_id),
+  CONSTRAINT note_length_check CHECK (note IS NULL OR char_length(note) <= 10000),
 
   -- parent_short_id 约束
   CONSTRAINT parent_short_id_length CHECK (
@@ -111,11 +299,11 @@ COMMENT ON COLUMN public.mindmap_nodes.parent_id IS '父节点UUID。NULL表示�
 COMMENT ON COLUMN public.mindmap_nodes.parent_short_id IS '父节点的 short_id, 根节点为 NULL';
 COMMENT ON COLUMN public.mindmap_nodes.short_id IS '短ID, 6位base36, 在mindmap范围内唯一, 用于内容引用';
 COMMENT ON COLUMN public.mindmap_nodes.title IS '节点标题';
-COMMENT ON COLUMN public.mindmap_nodes.content IS '节点内容, 支持Markdown格式';
+COMMENT ON COLUMN public.mindmap_nodes.note IS '可选的详细描述字段，支持 Markdown 格式，最大长度 10000 字符';
 COMMENT ON COLUMN public.mindmap_nodes.order_index IS '同级节点排序索引';
 
 -- ============================================================================
--- 3. 创建索引
+-- 2.3 创建索引
 -- ============================================================================
 
 -- mindmaps 表索引
@@ -178,7 +366,7 @@ CREATE INDEX IF NOT EXISTS idx_nodes_parent_order
   ON public.mindmap_nodes(parent_id, order_index);
 
 -- ============================================================================
--- 4. 创建触发器 (自动更新 updated_at)
+-- 2.4 创建触发器 (自动更新 updated_at)
 -- ============================================================================
 
 -- mindmaps 表的 updated_at 触发器
@@ -194,7 +382,7 @@ CREATE TRIGGER set_mindmap_nodes_updated_at
   EXECUTE FUNCTION public.handle_updated_at();
 
 -- ============================================================================
--- 5. 创建循环引用检查和 parent_short_id 自动维护触发器
+-- 2.5 创建循环引用检查和 parent_short_id 自动维护触发器
 -- ============================================================================
 
 -- 创建触发器函数: 检查节点不能是自己的祖先, 并自动维护 parent_short_id
@@ -270,7 +458,7 @@ CREATE TRIGGER check_node_circular_reference_trigger
   EXECUTE FUNCTION public.check_node_circular_reference();
 
 -- ============================================================================
--- 6. 创建辅助函数
+-- 2.6 创建辅助函数
 -- ============================================================================
 
 -- 获取某个节点的所有子孙节点 (递归查询)
@@ -373,21 +561,25 @@ COMMENT ON FUNCTION public.get_node_ancestors IS '获取某个节点的所有祖
 -- Migration 完成
 -- ============================================================================
 -- 功能清单:
+--
+-- User Profiles:
+-- 1. ✅ 创建 user_profiles 表
+-- 2. ✅ username 约束: 3-20字符, 小写字母/数字/连字符, 不能以连字符开头或结尾
+-- 3. ✅ 启用 RLS 并创建策略 (查看所有, 创建/更新自己的)
+-- 4. ✅ 自动更新 updated_at 触发器
+-- 5. ✅ 用户注册时自动创建 profile 触发器
+-- 6. ✅ username 生成逻辑: 清理非法字符, 处理冲突
+--
+-- Mind Maps:
 -- 1. ✅ 创建 mindmaps 表 (包含 soft delete 支持)
 -- 2. ✅ 创建 mindmap_nodes 表 (支持树形结构)
 -- 3. ✅ short_id 机制: 6位 base36, 在范围内唯一
 -- 4. ✅ parent_short_id 字段: 优化查询性能, 自动维护
--- 5. ✅ 索引策略: 唯一索引 + 性能优化索引
--- 6. ✅ 循环引用检查: 防止节点成为自己的祖先
--- 7. ✅ 自动更新 updated_at 触发器
--- 8. ✅ 辅助函数: 获取子孙节点和祖先节点
--- 9. ✅ 每个 mindmap 只能有一个根节点 (部分唯一索引)
--- 10. ✅ 显式命名的唯一索引 (便于运维监控)
--- ============================================================================
--- 注意:
--- 1. 本 migration 不包含 RLS 策略, 权限控制在应用层实现
--- 2. 未来如需协同编辑, 需要单独添加 RLS 策略
--- 3. mindmaps.user_id 引用 user_profiles(id)
--- 4. 根节点判断: parent_id IS NULL
--- 5. parent_short_id 通过触发器自动维护, 确保与 parent_id 一致
+-- 5. ✅ note 字段: 支持 Markdown 格式的详细描述 (最大 10000 字符)
+-- 6. ✅ 索引策略: 唯一索引 + 性能优化索引
+-- 7. ✅ 循环引用检查: 防止节点成为自己的祖先
+-- 8. ✅ 自动更新 updated_at 触发器
+-- 9. ✅ 辅助函数: 获取子孙节点和祖先节点
+-- 10. ✅ 每个 mindmap 只能有一个根节点 (部分唯一索引)
+-- 11. ✅ 显式命名的唯一索引 (便于运维监控)
 -- ============================================================================
