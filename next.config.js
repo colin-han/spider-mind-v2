@@ -32,8 +32,13 @@ const nextConfig = {
 
   // 图片优化配置
   images: {
-    // 允许的图片域名
-    domains: [],
+    // 允许的图片域名（添加 Supabase 域名）
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "*.supabase.co",
+      },
+    ],
     // 图片格式优化
     formats: ["image/webp", "image/avif"],
     // 设备尺寸配置
@@ -89,18 +94,13 @@ const nextConfig = {
   // 2. Next.js 15 的默认配置已经足够优化
   // 3. 移除此配置可消除 Turbopack 警告
 
-  // 输出配置
-  output: "standalone",
-
   // 跟踪文件配置
   trailingSlash: false,
 
-  // 静态导出配置（如需要）
-  // output: 'export',
-  // distDir: 'dist',
-  // trailingSlash: true,
-  // skipTrailingSlashRedirect: true,
-  // images: { unoptimized: true },
+  // 输出配置说明：
+  // - Vercel 部署：不需要任何 output 配置
+  // - Docker 部署：使用 output: 'standalone'
+  // - 静态托管 (OSS/CDN)：使用 output: 'export'（需移除 Server Actions）
 };
 
 module.exports = nextConfig;

@@ -15,10 +15,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { FileText, Sparkles } from "lucide-react";
 import { useMindmapEditorState, useCommand } from "@/domain/mindmap-store";
 import { ResizablePanel } from "./resizable-panel";
 import { NodeToolbar } from "./node-toolbar";
 import { MarkdownEditor } from "@/components/common/markdown-editor";
+import { Tabs, TabItem } from "@/components/common/tabs";
+import { AIChatPanel } from "@/components/ai/ai-chat-panel";
 
 /**
  * NodePanel 组件
@@ -35,6 +38,9 @@ export const NodePanel = () => {
   // 本地编辑状态
   const [editingTitle, setEditingTitle] = useState("");
   const [editingNote, setEditingNote] = useState("");
+
+  // Tab 状态
+  const [activeTab, setActiveTab] = useState<string>("note");
 
   useEffect(() => {
     if (
@@ -64,6 +70,62 @@ export const NodePanel = () => {
   const maxChars = 10000;
   const isNearLimit = charCount > 9000;
   const isAtLimit = charCount >= maxChars;
+
+  // Tab 配置
+  const tabItems: TabItem[] = [
+    {
+      id: "note",
+      label: "笔记",
+      icon: <FileText size={16} />,
+      content: (
+        <div className="flex flex-col h-full p-4 min-h-0">
+          <div className="flex items-center justify-between mb-1">
+            <label
+              htmlFor="node-note-input"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+            >
+              笔记内容
+            </label>
+            {/* 字符计数 */}
+            <div
+              className={`text-xs ${
+                isAtLimit
+                  ? "text-red-600 dark:text-red-400"
+                  : isNearLimit
+                    ? "text-yellow-600 dark:text-yellow-400"
+                    : "text-gray-500 dark:text-gray-400"
+              }`}
+            >
+              {charCount.toLocaleString()} / {maxChars.toLocaleString()}
+            </div>
+          </div>
+          <div className="flex-1 flex flex-col min-h-0">
+            <MarkdownEditor
+              value={editingNote}
+              onChange={(val) => setEditingNote(val || "")}
+              onBlur={() => {
+                const trimmedNote = editingNote.trim();
+                const newNote = trimmedNote === "" ? null : editingNote;
+                if (newNote !== node?.note) {
+                  updateNote(node!.short_id, newNote);
+                }
+              }}
+              placeholder="节点详细说明（支持 Markdown）"
+              maxLength={10000}
+              testId="node-panel-note-input"
+              className="h-full"
+            />
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: "ai-chat",
+      label: "AI 助手",
+      icon: <Sparkles size={16} />,
+      content: node ? <AIChatPanel nodeId={node.short_id} /> : null,
+    },
+  ];
 
   if (!node) {
     return (
@@ -120,45 +182,13 @@ export const NodePanel = () => {
           />
         </div>
 
-        {/* 笔记编辑 */}
-        <div className="flex-1 flex flex-col min-h-0">
-          <div className="flex items-center justify-between mb-1">
-            <label
-              htmlFor="node-note-input"
-              className="block text-sm font-medium text-gray-700 dark:text-gray-300"
-            >
-              笔记
-            </label>
-            {/* 字符计数 */}
-            <div
-              className={`text-xs ${
-                isAtLimit
-                  ? "text-red-600 dark:text-red-400"
-                  : isNearLimit
-                    ? "text-yellow-600 dark:text-yellow-400"
-                    : "text-gray-500 dark:text-gray-400"
-              }`}
-            >
-              {charCount.toLocaleString()} / {maxChars.toLocaleString()}
-            </div>
-          </div>
-          <div className="flex-1 flex flex-col min-h-0">
-            <MarkdownEditor
-              value={editingNote}
-              onChange={(val) => setEditingNote(val || "")}
-              onBlur={() => {
-                const trimmedNote = editingNote.trim();
-                const newNote = trimmedNote === "" ? null : editingNote;
-                if (newNote !== node.note) {
-                  updateNote(node.short_id, newNote);
-                }
-              }}
-              placeholder="节点详细说明（支持 Markdown）"
-              maxLength={10000}
-              testId="node-panel-note-input"
-              className="h-full"
-            />
-          </div>
+        {/* Tabs - 笔记和 AI 助手 */}
+        <div className="flex-1 min-h-0">
+          <Tabs
+            items={tabItems}
+            activeTab={activeTab}
+            onChange={setActiveTab}
+          />
         </div>
       </div>
 
