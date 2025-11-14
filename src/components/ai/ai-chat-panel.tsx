@@ -2,11 +2,13 @@
 
 "use client";
 
-import { useEffect, useRef, useState, useMemo } from "react";
-import { Sparkles, Send, XCircle } from "lucide-react";
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
+import { useEffect, useRef, useState } from "react";
+import { Sparkles, Send } from "lucide-react";
+import { buildNodeContext } from "@/lib/ai/node-context";
 import { MessageBubble } from "./message-bubble";
-import { useAIConversationStore } from "@/domain/ai-conversation-store";
-import { toMindmapMessage } from "@/lib/types/ai-conversation";
+import { getEnvConfig } from "@/lib/env";
 
 interface AIChatPanelProps {
   nodeId: string;
@@ -15,62 +17,51 @@ interface AIChatPanelProps {
 export function AIChatPanel({ nodeId }: AIChatPanelProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // 手动管理输入状态
+  // 构建节点上下文
+  let nodeContext;
+  try {
+    nodeContext = buildNodeContext(nodeId);
+  } catch (error) {
+    console.error("Failed to build node context:", error);
+    nodeContext = null;
+  }
+
+  // AI SDK v5: 手动管理输入状态
   const [input, setInput] = useState("");
 
-  // 使用 AI 会话 Store
-  const {
-    getConversation,
-    sendMessage,
-    loadConversation,
-    isStreaming,
-    abortStream,
-    setActiveNode,
-  } = useAIConversationStore();
+  // 🔑 核心：使用 Vercel AI SDK 的 useChat hook
+  // useChat 自动处理：
+  // - 流式响应（SSE）
+  // - 消息状态管理（messages, status, error）
+  const { messages, sendMessage, status, error } = useChat({
+    // AI SDK v5: use DefaultChatTransport
+    transport: new DefaultChatTransport({
+      api: "/api/ai/chat",
+      // Pass nodeContext and modelKey in the request body
+      body: {
+        nodeContext,
+        modelKey: getEnvConfig().NEXT_PUBLIC_DEFAULT_AI_MODEL,
+      },
+    }),
+    // TODO: Phase 2 - 从 IndexedDB 加载初始消息
+    // initialMessages: useAIConversationStore.getState().getMessages(nodeId),
+    // TODO: Phase 2 - 消息更新时保存到 IndexedDB
+    // onFinish: (message) => {
+    //   saveConversation(nodeId, messages);
+    // },
+  });
 
-  // 获取当前会话
-  const conversation = getConversation(nodeId);
-  const streaming = isStreaming(nodeId);
-  const messages = useMemo(
-    () => conversation?.messages || [],
-    [conversation?.messages]
-  );
-  const error = conversation?.error;
-
-  // 加载会话（初始化）
-  useEffect(() => {
-    loadConversation(nodeId);
-  }, [nodeId, loadConversation]);
-
-  // 设置当前活跃节点
-  useEffect(() => {
-    setActiveNode(nodeId);
-  }, [nodeId, setActiveNode]);
+  // AI SDK v5: status values are "ready" | "submitted" | "streaming" | "error"
+  const isLoading = status !== "ready";
 
   // 自动滚动到底部
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // 处理发送消息
-  const handleSend = async () => {
-    if (!input.trim() || streaming) return;
-
-    const message = input.trim();
-    setInput("");
-
-    // 发送消息（异步，不阻塞）
-    await sendMessage(nodeId, message);
-  };
-
-  // 处理取消流式响应
-  const handleAbort = () => {
-    abortStream(nodeId);
-  };
-
   return (
     <div
-      className="flex flex-col h-full bg-white dark:bg-gray-900"
+      className="ai-panel-expanded flex flex-col h-full"
       data-testid="ai-chat-panel"
     >
       {/* Messages */}
@@ -100,30 +91,20 @@ export function AIChatPanel({ nodeId }: AIChatPanelProps) {
         )}
 
         {messages.map((message) => (
-          <MessageBubble key={message.id} message={toMindmapMessage(message)} />
+          <MessageBubble key={message.id} message={message} />
         ))}
 
-        {streaming && (
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-              <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" />
-              AI 正在思考...
-            </div>
-            <button
-              onClick={handleAbort}
-              className="text-xs text-red-500 hover:text-red-600 flex items-center gap-1"
-              data-testid="ai-abort-button"
-            >
-              <XCircle size={14} />
-              取消
-            </button>
+        {isLoading && (
+          <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+            <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" />
+            AI 正在思考...
           </div>
         )}
 
         {error && (
           <div className="text-sm text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-3 rounded border border-red-200 dark:border-red-800">
             <p className="font-medium mb-1">⚠️ 出错了</p>
-            <p className="text-xs">{error}</p>
+            <p className="text-xs">{error.message}</p>
           </div>
         )}
 
@@ -134,29 +115,26 @@ export function AIChatPanel({ nodeId }: AIChatPanelProps) {
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          handleSend();
+          if (input.trim() && !isLoading && nodeContext) {
+            sendMessage({ text: input }); // AI SDK v5: sendMessage takes an object with text property
+            setInput(""); // Clear input after sending
+          }
         }}
-        className="border-t dark:border-gray-700 p-3 bg-gray-50 dark:bg-gray-900"
+        className="border-t dark:border-gray-700 p-3"
         data-testid="ai-chat-input"
       >
         <div className="flex gap-2">
           <input
             value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleSend();
-              }
-            }}
+            onChange={(e) => setInput(e.target.value)} // AI SDK v5: manually manage input state
             placeholder="输入消息..."
-            disabled={streaming}
+            disabled={isLoading || !nodeContext}
             className="flex-1 px-3 py-2 border dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed"
             data-testid="ai-input-textarea"
           />
           <button
             type="submit"
-            disabled={!input.trim() || streaming}
+            disabled={!input.trim() || isLoading || !nodeContext}
             className="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 disabled:opacity-50 dark:disabled:bg-gray-700 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
             data-testid="ai-send-button"
           >
@@ -164,6 +142,11 @@ export function AIChatPanel({ nodeId }: AIChatPanelProps) {
             发送
           </button>
         </div>
+        {!nodeContext && (
+          <p className="text-xs text-red-500 dark:text-red-400 mt-1">
+            无法加载节点上下文，请刷新页面重试
+          </p>
+        )}
       </form>
     </div>
   );

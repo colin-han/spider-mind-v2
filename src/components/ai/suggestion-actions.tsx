@@ -3,7 +3,7 @@
 "use client";
 
 import { NodeSuggestion } from "@/lib/types/ai";
-import { useMindmapStore } from "@/domain/mindmap-store";
+import { useMindmapStore, useCommandManager } from "@/domain/mindmap-store";
 import { Check } from "lucide-react";
 import { useState } from "react";
 
@@ -16,6 +16,7 @@ export function SuggestionActions({ suggestions }: SuggestionActionsProps) {
     new Set()
   );
   const store = useMindmapStore();
+  const commandManager = useCommandManager();
 
   const applySuggestion = async (suggestion: NodeSuggestion) => {
     try {
@@ -29,7 +30,7 @@ export function SuggestionActions({ suggestions }: SuggestionActionsProps) {
         case "create_children":
           // 批量创建子节点
           if (
-            suggestion.params.children &&
+            suggestion.params?.children &&
             suggestion.params.children.length > 0
           ) {
             // 使用命令系统来创建节点
@@ -39,24 +40,24 @@ export function SuggestionActions({ suggestions }: SuggestionActionsProps) {
             // 临时方案：逐个创建
             for (const child of suggestion.params.children) {
               const childNode = child as { title: string };
-              // node.addChild params: [parentId?, position?, title?]
-              await store.executeCommand("node.addChild", [
-                undefined,
-                undefined,
-                childNode.title,
-              ]);
+              // node.addChild params: [parentId, position?, title?]
+              // 使用 currentNode 作为 parentId
+              await commandManager.executeCommand({
+                commandId: "node.addChild",
+                params: [editor.currentNode, undefined, childNode.title],
+              });
             }
           }
           break;
 
         case "update_title":
           // 更新节点标题
-          if (suggestion.params.newTitle) {
-            // node.updateTitle params: [nodeId?, newTitle?]
-            await store.executeCommand("node.updateTitle", [
-              undefined,
-              suggestion.params.newTitle,
-            ]);
+          if (suggestion.params?.newTitle) {
+            // node.updateTitle params: [nodeId, newTitle]
+            await commandManager.executeCommand({
+              commandId: "node.updateTitle",
+              params: [editor.currentNode, suggestion.params.newTitle],
+            });
           }
           break;
 
@@ -108,7 +109,7 @@ export function SuggestionActions({ suggestions }: SuggestionActionsProps) {
                   {suggestion.description}
                 </div>
                 {suggestion.type === "create_children" &&
-                  suggestion.params.children && (
+                  suggestion.params?.children && (
                     <div
                       className={`text-xs mt-1 ${
                         isApplied

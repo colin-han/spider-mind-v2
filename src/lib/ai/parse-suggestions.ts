@@ -20,11 +20,13 @@ export function parseAISuggestions(content: string): NodeSuggestion[] {
       return [];
     }
 
-    // 为每个建议生成 ID
+    // 为每个建议生成 ID，并确保 params 字段存在
     return parsed.suggestions.map(
       (s: Omit<NodeSuggestion, "id">, index: number) => ({
         id: `suggestion-${Date.now()}-${index}`,
-        ...s,
+        type: s.type,
+        description: s.description,
+        params: s.params || {}, // 确保 params 字段存在
       })
     );
   } catch (error) {
