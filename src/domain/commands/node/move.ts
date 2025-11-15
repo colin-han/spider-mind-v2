@@ -17,6 +17,7 @@ export const moveNodeCommand: CommandDefinition = {
   name: "移动节点",
   description: "移动节点到新位置",
   category: "node",
+  actionBased: true,
 
   handler: (root: MindmapStore, params?: unknown[]) => {
     const [nodeId, newParentId, position] = (params as MoveNodeParams) || [];

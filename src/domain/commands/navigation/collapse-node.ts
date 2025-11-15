@@ -11,6 +11,7 @@ export const collapseNodeCommand: CommandDefinition = {
   name: "折叠节点",
   description: "折叠当前节点的子节点",
   category: "navigation",
+  actionBased: true,
   undoable: false,
 
   handler: (root: MindmapStore) => {

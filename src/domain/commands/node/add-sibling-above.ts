@@ -20,6 +20,7 @@ export const addSiblingAboveCommand: CommandDefinition = {
   name: "在上方添加兄弟节点",
   description: "在当前节点上方添加兄弟节点",
   category: "node",
+  actionBased: true,
 
   handler: (root: MindmapStore, params?: unknown[]) => {
     const [nodeId, , title] = (params as AddSiblingNodeParams) || [];

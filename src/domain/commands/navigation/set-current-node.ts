@@ -10,6 +10,7 @@ export const setCurrentNode: CommandDefinition = {
   name: "设置当前节点",
   description: "设置当前节点",
   category: "navigation",
+  actionBased: true,
   undoable: false,
   handler: (root: MindmapStore, params?: unknown[]) => {
     const [nodeId] = (params as SetCurrentNodeParams) || [];

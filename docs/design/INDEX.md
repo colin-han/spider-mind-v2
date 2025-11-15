@@ -9,7 +9,9 @@
 | [ID 设计规范](./id-design.md)                               | 系统 ID 生成和管理机制   | ✅ 已确认 | 2025-01-07 |
 | [数据库设计](./database-schema.md)                          | 数据库表结构和约束设计   | ✅ 已确认 | 2025-11-06 |
 | [思维导图编辑器布局设计](./mindmap-editor-layout-design.md) | 编辑器界面布局和组件协作 | ✅ 已确认 | 2025-10-19 |
-| [命令参考手册](./command-reference.md)                      | 所有命令和快捷键快速查询 | ✅ 已确认 | 2025-10-19 |
+| [Command 层架构设计](./command-layer-design.md)             | 命令系统架构和实现       | ✅ 已确认 | 2025-11-15 |
+| [命令参考手册](./command-reference.md)                      | 所有命令和快捷键快速查询 | ✅ 已确认 | 2025-11-15 |
+| [CompositeCommand 设计](./composite-command.md)             | 组合命令系统设计和实现   | ✅ 已确认 | 2025-11-15 |
 
 ## 🏗️ 按模块分类
 
@@ -45,11 +47,24 @@
 
 #### 命令系统和快捷键
 
+- **[Command 层架构设计](./command-layer-design.md)**
+  - 命令模式（Command Pattern）实现
+  - ActionBasedCommandDefinition 和 ImperativeCommandDefinition
+  - CommandManager 和执行流程
+  - 条件执行（when）和撤销支持
+
 - **[命令参考手册](./command-reference.md)**
-  - 16个已实现命令
-  - 命令系统架构（Command Pattern）
+  - 20个已实现命令
+  - 命令分类（节点操作、导航操作、全局操作）
   - 快捷键绑定和上下文感知
   - 完整的命令列表和使用说明
+  - 添加新命令的最佳实践
+
+- **[CompositeCommand 设计](./composite-command.md)**
+  - 组合命令（批量操作）实现
+  - 原子性和可撤销性保证
+  - AI 批量操作集成
+  - 严格的全或无错误处理
 
 ## 🔗 文档关系图
 
@@ -57,19 +72,22 @@
 graph TD
     A[ID 设计规范] --> B[数据库设计]
     B --> C[编辑器布局设计]
-    C --> D[命令参考手册]
+    C --> D[Command 层架构设计]
+    D --> E[命令参考手册]
+    D --> F[CompositeCommand 设计]
 
-    B -.->|定义| E[数据模型]
-    C -.->|使用| F[react-arborist]
-    C -.->|使用| G[React Flow]
-    D -.->|实现| H[Command Pattern]
-    D -.->|使用| I[react-hotkeys-hook]
+    B -.->|定义| G[数据模型]
+    C -.->|使用| H[react-arborist]
+    C -.->|使用| I[React Flow]
+    D -.->|实现| J[Command Pattern]
+    D -.->|使用| K[react-hotkeys-hook]
+    F -.->|扩展| D
 
-    style E fill:#e8f5e9
-    style F fill:#e1f5fe
-    style G fill:#e1f5fe
-    style H fill:#e8f5e9
+    style G fill:#e8f5e9
+    style H fill:#e1f5fe
     style I fill:#e1f5fe
+    style J fill:#e8f5e9
+    style K fill:#e1f5fe
 ```
 
 **图例**:
@@ -145,50 +163,60 @@ graph TD
 
 ### 按关键词索引
 
-| 关键词                                  | 相关文档                                      |
-| --------------------------------------- | --------------------------------------------- |
-| UUID, short_id, 唯一性, base36          | [ID 设计](./id-design.md)                     |
-| 数据库, Schema, PostgreSQL, Supabase    | [数据库设计](./database-schema.md)            |
-| mindmaps, mindmap_nodes, user_profiles  | [数据库设计](./database-schema.md)            |
-| 约束, 索引, 触发器, 外键                | [数据库设计](./database-schema.md)            |
-| Command Pattern, 命令模式, 业务逻辑解耦 | [命令参考](./command-reference.md)            |
-| 快捷键, react-hotkeys-hook, 键盘事件    | [命令参考](./command-reference.md)            |
-| 节点操作, 导航, 编辑命令                | [命令参考](./command-reference.md)            |
-| 布局, 三栏, 大纲视图, 图形视图          | [布局设计](./mindmap-editor-layout-design.md) |
-| react-arborist, 虚拟化, Tree            | [布局设计](./mindmap-editor-layout-design.md) |
-| React Flow, 图形渲染                    | [布局设计](./mindmap-editor-layout-design.md) |
-| ResizeObserver, 响应式                  | [布局设计](./mindmap-editor-layout-design.md) |
-| localStorage, 布局持久化                | [布局设计](./mindmap-editor-layout-design.md) |
-| 折叠节点, 高亮, 导航                    | [布局设计](./mindmap-editor-layout-design.md) |
-| Zustand, Immer, 状态管理                | [布局设计](./mindmap-editor-layout-design.md) |
+| 关键词                                 | 相关文档                                        |
+| -------------------------------------- | ----------------------------------------------- |
+| UUID, short_id, 唯一性, base36         | [ID 设计](./id-design.md)                       |
+| 数据库, Schema, PostgreSQL, Supabase   | [数据库设计](./database-schema.md)              |
+| mindmaps, mindmap_nodes, user_profiles | [数据库设计](./database-schema.md)              |
+| 约束, 索引, 触发器, 外键               | [数据库设计](./database-schema.md)              |
+| Command Pattern, 命令模式              | [Command 层架构](./command-layer-design.md)     |
+| ActionBased, ImperativeCommand         | [Command 层架构](./command-layer-design.md)     |
+| CommandManager, 命令执行               | [Command 层架构](./command-layer-design.md)     |
+| 快捷键, react-hotkeys-hook, 键盘事件   | [命令参考](./command-reference.md)              |
+| 节点操作, 导航, 编辑命令               | [命令参考](./command-reference.md)              |
+| CompositeCommand, 组合命令, 批量操作   | [CompositeCommand 设计](./composite-command.md) |
+| 原子性, 可撤销性, AI 批量操作          | [CompositeCommand 设计](./composite-command.md) |
+| 布局, 三栏, 大纲视图, 图形视图         | [布局设计](./mindmap-editor-layout-design.md)   |
+| react-arborist, 虚拟化, Tree           | [布局设计](./mindmap-editor-layout-design.md)   |
+| React Flow, 图形渲染                   | [布局设计](./mindmap-editor-layout-design.md)   |
+| ResizeObserver, 响应式                 | [布局设计](./mindmap-editor-layout-design.md)   |
+| localStorage, 布局持久化               | [布局设计](./mindmap-editor-layout-design.md)   |
+| 折叠节点, 高亮, 导航                   | [布局设计](./mindmap-editor-layout-design.md)   |
+| Zustand, Immer, 状态管理               | [布局设计](./mindmap-editor-layout-design.md)   |
 
 ### 常见问题对应文档
 
-| 问题                     | 查看文档                                      |
-| ------------------------ | --------------------------------------------- |
-| 如何生成唯一 ID？        | [ID 设计](./id-design.md)                     |
-| 数据库表结构是什么？     | [数据库设计](./database-schema.md)            |
-| 如何设计数据模型？       | [数据库设计](./database-schema.md)            |
-| 有哪些可用的命令？       | [命令参考](./command-reference.md)            |
-| 如何实现快捷键？         | [命令参考](./command-reference.md)            |
-| 如何添加新命令？         | [命令参考](./command-reference.md)            |
-| 如何实现编辑器布局？     | [布局设计](./mindmap-editor-layout-design.md) |
-| 如何实现虚拟化大纲视图？ | [布局设计](./mindmap-editor-layout-design.md) |
-| 如何实现图形视图？       | [布局设计](./mindmap-editor-layout-design.md) |
-| 如何实现可调整宽度面板？ | [布局设计](./mindmap-editor-layout-design.md) |
-| 如何实现折叠节点高亮？   | [布局设计](./mindmap-editor-layout-design.md) |
-| 如何保存用户布局偏好？   | [布局设计](./mindmap-editor-layout-design.md) |
-| 如何管理思维导图状态？   | [布局设计](./mindmap-editor-layout-design.md) |
-| 如何优化大量节点的性能？ | [布局设计](./mindmap-editor-layout-design.md) |
+| 问题                                   | 查看文档                                        |
+| -------------------------------------- | ----------------------------------------------- |
+| 如何生成唯一 ID？                      | [ID 设计](./id-design.md)                       |
+| 数据库表结构是什么？                   | [数据库设计](./database-schema.md)              |
+| 如何设计数据模型？                     | [数据库设计](./database-schema.md)              |
+| 命令系统如何设计？                     | [Command 层架构](./command-layer-design.md)     |
+| ActionBased 和 Imperative 命令的区别？ | [Command 层架构](./command-layer-design.md)     |
+| 有哪些可用的命令？                     | [命令参考](./command-reference.md)              |
+| 如何实现快捷键？                       | [命令参考](./command-reference.md)              |
+| 如何添加新命令？                       | [命令参考](./command-reference.md)              |
+| 如何实现批量操作？                     | [CompositeCommand 设计](./composite-command.md) |
+| 如何保证批量操作的原子性？             | [CompositeCommand 设计](./composite-command.md) |
+| AI 批量操作如何集成？                  | [CompositeCommand 设计](./composite-command.md) |
+| 如何实现编辑器布局？                   | [布局设计](./mindmap-editor-layout-design.md)   |
+| 如何实现虚拟化大纲视图？               | [布局设计](./mindmap-editor-layout-design.md)   |
+| 如何实现图形视图？                     | [布局设计](./mindmap-editor-layout-design.md)   |
+| 如何实现可调整宽度面板？               | [布局设计](./mindmap-editor-layout-design.md)   |
+| 如何实现折叠节点高亮？                 | [布局设计](./mindmap-editor-layout-design.md)   |
+| 如何保存用户布局偏好？                 | [布局设计](./mindmap-editor-layout-design.md)   |
+| 如何管理思维导图状态？                 | [布局设计](./mindmap-editor-layout-design.md)   |
+| 如何优化大量节点的性能？               | [布局设计](./mindmap-editor-layout-design.md)   |
 
 ## 📅 更新记录
 
-| 日期       | 更新内容                                       | 更新者      |
-| ---------- | ---------------------------------------------- | ----------- |
-| 2025-10-19 | 添加命令系统、快捷键系统设计文档和命令参考手册 | Claude Code |
-| 2025-10-19 | 添加思维导图编辑器布局设计文档                 | Claude Code |
-| 2025-10-18 | 添加思维导图持久化系统设计文档                 | Claude Code |
-| 2025-01-07 | 创建索引文档                                   | Claude Code |
+| 日期       | 更新内容                                                              | 更新者      |
+| ---------- | --------------------------------------------------------------------- | ----------- |
+| 2025-11-15 | 添加 CompositeCommand 设计文档、更新 Command 层架构设计和命令参考手册 | Claude Code |
+| 2025-10-19 | 添加命令系统、快捷键系统设计文档和命令参考手册                        | Claude Code |
+| 2025-10-19 | 添加思维导图编辑器布局设计文档                                        | Claude Code |
+| 2025-10-18 | 添加思维导图持久化系统设计文档                                        | Claude Code |
+| 2025-01-07 | 创建索引文档                                                          | Claude Code |
 
 ---
 

@@ -12,6 +12,7 @@ export const updateTitleCommand: CommandDefinition = {
   name: "更新节点标题",
   description: "更新节点标题",
   category: "node",
+  actionBased: true,
 
   handler: (root: MindmapStore, params?: unknown[]) => {
     const [nodeId, newTitle] = (params as UpdateTitleParams) || [];

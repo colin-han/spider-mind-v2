@@ -10,6 +10,7 @@ export const selectParentCommand: CommandDefinition = {
   name: "选择父节点",
   description: "跳转到父节点",
   category: "navigation",
+  actionBased: true,
   undoable: false,
 
   handler: (root: MindmapStore) => {

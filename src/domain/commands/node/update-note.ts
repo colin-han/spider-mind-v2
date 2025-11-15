@@ -12,6 +12,7 @@ export const updateNoteCommand: CommandDefinition = {
   name: "更新节点笔记",
   description: "更新节点的详细说明（note）",
   category: "node",
+  actionBased: true,
 
   handler: (root: MindmapStore, params?: unknown[]) => {
     const [nodeId, newNote] = (params as UpdateNoteParams) || [];

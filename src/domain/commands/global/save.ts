@@ -22,6 +22,7 @@ export const saveMindmapCommand: CommandDefinition = {
   name: "保存思维导图",
   description: "将未保存的修改同步到服务器",
   category: "global",
+  actionBased: false,
   undoable: false, // 保存操作不可撤销
 
   handler: async (root: MindmapStore) => {

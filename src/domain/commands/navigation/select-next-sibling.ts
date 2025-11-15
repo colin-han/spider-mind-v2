@@ -12,6 +12,7 @@ export const selectNextSiblingCommand: CommandDefinition = {
   name: "选择下一个节点",
   description: "跳转到下一个同深度的节点",
   category: "navigation",
+  actionBased: true,
   undoable: false,
 
   handler: (root: MindmapStore) => {

@@ -9,6 +9,7 @@ export const undoCommand: CommandDefinition = {
   name: "撤销",
   description: "撤销上一次操作",
   category: "global",
+  actionBased: false,
   undoable: false, // 撤销操作本身不可撤销
 
   handler: (root: MindmapStore) => {

@@ -12,26 +12,49 @@ export type CommandCategory =
   | "global" // 全局操作
   | "ai"; // AI 相关操作
 
-export interface CommandDefinition {
-  // 基本信息
-  id: string; // 唯一标识，如 'node.addChild'
-  name: string; // 显示名称，如 '添加子节点'
-  description: string; // 描述
-  category: CommandCategory; // 命令分类
+/**
+ * 基于 Action 的命令 - 返回 EditorAction[]，支持 undo/redo
+ */
+export interface ActionBasedCommandDefinition {
+  id: string;
+  name: string;
+  description: string;
+  category: CommandCategory;
+  actionBased: true; // 类型标记
+  undoable?: boolean; // 是否可撤销，默认为 true
 
-  undoable?: boolean; // 是否可以撤销, 如果handler返回EditorAction[], 则默认为true，否则默认为false
-
-  // 执行逻辑
   handler: (
     root: MindmapStore,
     params?: unknown[]
-  ) => void | Promise<void> | EditorAction[] | Promise<EditorAction[]>;
+  ) => EditorAction[] | Promise<EditorAction[]> | void | Promise<void>;
 
-  // 上下文条件（可选）
   when?: (root: MindmapStore, params?: unknown[]) => boolean;
-
   getDescription?: (root: MindmapStore, params?: unknown[]) => string;
 }
+
+/**
+ * 命令式命令 - 直接执行，不返回 actions
+ */
+export interface ImperativeCommandDefinition {
+  id: string;
+  name: string;
+  description: string;
+  category: CommandCategory;
+  actionBased: false; // 类型标记
+  undoable?: boolean;
+
+  handler: (root: MindmapStore, params?: unknown[]) => void | Promise<void>;
+
+  when?: (root: MindmapStore, params?: unknown[]) => boolean;
+  getDescription?: (root: MindmapStore, params?: unknown[]) => string;
+}
+
+/**
+ * 命令定义联合类型
+ */
+export type CommandDefinition =
+  | ActionBasedCommandDefinition
+  | ImperativeCommandDefinition;
 
 export function registerCommand(def: CommandDefinition) {
   commandRegistry.set(def.id, def);

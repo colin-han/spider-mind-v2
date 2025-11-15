@@ -9,6 +9,7 @@ export const redoCommand: CommandDefinition = {
   name: "重做",
   description: "重做上一次撤销的操作",
   category: "global",
+  actionBased: false,
   undoable: false, // 重做操作本身不可撤销
 
   handler: (root: MindmapStore) => {

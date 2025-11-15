@@ -26,6 +26,7 @@ export const addChildNodeCommand: CommandDefinition = {
   name: "添加子节点",
   description: "添加子节点",
   category: "node",
+  actionBased: true,
   handler: (root: MindmapStore, params?: unknown[]) => {
     const [parentId, position, title] = params as AddChildNodeParams;
     const normalizedParentId = parentId || root.currentEditor!.currentNode;

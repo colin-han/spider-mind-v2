@@ -14,6 +14,7 @@ export const deleteNodeCommand: CommandDefinition = {
   name: "删除节点",
   description: "删除当前节点及其子节点",
   category: "node",
+  actionBased: true,
 
   handler: (root: MindmapStore, params?: unknown[]) => {
     const [nodeId] = (params as DeleteNodeParams) || [];

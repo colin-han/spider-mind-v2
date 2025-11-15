@@ -10,6 +10,7 @@ export const expandNodeCommand: CommandDefinition = {
   name: "展开节点",
   description: "展开当前节点的子节点",
   category: "navigation",
+  actionBased: true,
   undoable: false,
 
   handler: (root: MindmapStore) => {

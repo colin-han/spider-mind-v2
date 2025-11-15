@@ -11,6 +11,7 @@ export const setFocusedArea: CommandDefinition = {
   name: "设置焦点区域",
   description: "设置当前焦点区域",
   category: "global",
+  actionBased: true,
   undoable: false,
   handler: async (root: MindmapStore, params?: unknown[]) => {
     const [area] = params as [FocusedArea];

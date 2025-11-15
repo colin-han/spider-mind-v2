@@ -25,40 +25,95 @@ Command 层是领域层中负责**业务逻辑**的核心层，它将用户意�
 
 ### CommandDefinition
 
-每个命令通过 `CommandDefinition` 类定义：
+命令定义使用判别联合类型（Discriminated Union），通过 `actionBased` 字段区分两种命令类型：
+
+#### ActionBasedCommandDefinition
+
+返回 EditorAction[] 的命令，支持 undo/redo：
 
 ```typescript
-class CommandDefinition {
+export interface ActionBasedCommandDefinition {
   id: string; // 唯一标识符
-  description: string | (() => string); // 命令描述
-  undoable: boolean; // 是否可撤销
-  when?: () => boolean; // 执行条件
+  name: string; // 命令名称
+  description: string; // 命令描述
+  category: CommandCategory; // 命令分类
+  actionBased: true; // 类型标记
+  undoable?: boolean; // 是否可撤销，默认为 true
   handler: (
-    ...args: any[]
-  ) => EditorAction[] | void | Promise<EditorAction[] | void>;
+    root: MindmapStore,
+    params?: unknown[]
+  ) => EditorAction[] | Promise<EditorAction[]> | void | Promise<void>;
+  when?: (root: MindmapStore, params?: unknown[]) => boolean;
+  getDescription?: (root: MindmapStore, params?: unknown[]) => string;
 }
+```
+
+**特点**：
+
+- 返回 EditorAction 数组
+- 默认可撤销（undoable 默认为 true）
+- 适用于修改数据的命令（如节点操作）
+
+#### ImperativeCommandDefinition
+
+直接执行、不返回 actions 的命令：
+
+```typescript
+export interface ImperativeCommandDefinition {
+  id: string; // 唯一标识符
+  name: string; // 命令名称
+  description: string; // 命令描述
+  category: CommandCategory; // 命令分类
+  actionBased: false; // 类型标记
+  undoable?: boolean; // 是否可撤销
+  handler: (root: MindmapStore, params?: unknown[]) => void | Promise<void>;
+  when?: (root: MindmapStore, params?: unknown[]) => boolean;
+  getDescription?: (root: MindmapStore, params?: unknown[]) => string;
+}
+```
+
+**特点**：
+
+- 直接执行，不返回值
+- 适用于 UI 操作或系统级操作（如 undo/redo、save）
+
+#### 联合类型
+
+```typescript
+export type CommandDefinition =
+  | ActionBasedCommandDefinition
+  | ImperativeCommandDefinition;
 ```
 
 ### 关键特性
 
 - **id**: 使用分层命名空间（如 `node.addChild`, `navigation.selectParent`）
-- **description**: 可以是静态字符串或动态函数
+- **name**: 命令的显示名称
+- **description**: 命令的详细描述
+- **category**: 命令分类（node、navigation、global、ai）
+- **actionBased**: 类型标记，用于编译时和运行时类型区分
 - **undoable**: 控制是否记录到历史栈
 - **when**: 可选的前置条件检查
-- **handler**: 执行逻辑，返回 Action 数组或 void
+- **handler**: 执行逻辑，根据 actionBased 返回不同类型
+- **getDescription**: 可选的动态描述生成函数
 
 ## Command 分类
 
 ### 命令分布统计
 
-| 分类                | 命令数 | 特点         | 是否可撤销 |
-| ------------------- | ------ | ------------ | ---------- |
-| Node Commands       | 8      | 修改节点数据 | ✅ 是      |
-| Navigation Commands | 8      | 改变 UI 状态 | ❌ 否      |
-| Global Commands     | 4      | 系统级操作   | 部分       |
-| AI Commands         | 1      | AI 辅助功能  | ⏳ 待实现  |
+| 分类                | 命令数 | actionBased | 特点         | 是否可撤销 |
+| ------------------- | ------ | ----------- | ------------ | ---------- |
+| Node Commands       | 8      | ✅ true     | 修改节点数据 | ✅ 是      |
+| Navigation Commands | 8      | ✅ true     | 改变 UI 状态 | ❌ 否      |
+| Global Commands     | 4      | ❌ false    | 系统级操作   | 部分       |
+| AI Commands         | 1      | ❌ false    | AI 辅助功能  | ⏳ 待实现  |
 
 **总计**: 21 个命令（20 个已实现 + 1 个待实现）
+
+**说明**：
+
+- **actionBased: true** - 返回 EditorAction[]，适用于数据修改和 UI 状态变化
+- **actionBased: false** - 直接执行，适用于系统级操作（undo/redo/save）
 
 ### 1. Node Commands（节点操作）
 

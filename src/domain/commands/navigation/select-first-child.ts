@@ -11,6 +11,7 @@ export const selectFirstChildCommand: CommandDefinition = {
   name: "选择第一个子节点",
   description: "跳转到第一个子节点",
   category: "navigation",
+  actionBased: true,
   undoable: false,
 
   handler: (root: MindmapStore) => {
