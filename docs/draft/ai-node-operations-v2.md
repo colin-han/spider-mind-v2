@@ -13,7 +13,7 @@
 
 ## 2. 数据结构设计
 
-### 2.1 AI Operation（简化版）
+### 2.1 AI Operation
 
 ```typescript
 /**
@@ -63,88 +63,34 @@ interface AIOperationBatch {
 }
 ```
 
-## 3. CompositeCommand 设计
+## 3. CompositeCommand 集成
 
-### 3.1 核心实现
+### 3.1 使用已实现的 CompositeCommand
+
+我们已经实现了 `createCompositeCommand` 工厂函数，详见 [CompositeCommand 设计文档](../design/composite-command.md)。
+
+AI 批量操作可以直接使用这个功能：
 
 ```typescript
-/**
- * 组合命令
- * 将多个子命令组合为一个原子操作
- * 一次 undo 可以撤销所有子命令的效果
- */
-export interface CompositeCommandDefinition extends CommandDefinition {
-  id: string;
-  name: string;
-  description: string;
-  category: "ai"; // 属于 AI 分类
+import { createCompositeCommand } from "@/domain/commands/composite";
 
-  // 子命令列表
-  subCommands: {
-    commandId: string;
-    params: unknown[];
-  }[];
+// 创建组合命令
+const compositeCommand = createCompositeCommand(
+  batch.description,
+  batch.operations.map((op) => ({
+    commandId: op.commandId,
+    params: op.params,
+  }))
+);
 
-  handler: (root: MindmapStore, params?: unknown[]) => Promise<EditorAction[]>;
-}
-
-/**
- * 创建组合命令
- */
-function createCompositeCommand(
-  id: string,
-  description: string,
-  subCommands: { commandId: string; params: unknown[] }[]
-): CompositeCommandDefinition {
-  return {
-    id,
-    name: description,
-    description,
-    category: "ai",
-    subCommands,
-
-    handler: async (root: MindmapStore) => {
-      const allActions: EditorAction[] = [];
-
-      // 顺序执行所有子命令，收集所有 actions
-      for (const { commandId, params } of subCommands) {
-        const command = getCommand(commandId);
-        if (!command) {
-          throw new Error(`Command ${commandId} not found`);
-        }
-
-        // 检查前置条件
-        if (command.when && !command.when(root, params)) {
-          console.warn(`Command ${commandId} precondition not met, skipping`);
-          continue;
-        }
-
-        // 执行子命令获取 actions
-        const actions = await command.handler(root, params);
-        if (actions && Array.isArray(actions)) {
-          allActions.push(...actions);
-        }
-      }
-
-      return allActions;
-    },
-
-    // 组合命令的描述可以聚合子命令的描述
-    getDescription: (root: MindmapStore) => {
-      const subDescriptions = subCommands
-        .map(({ commandId, params }) => {
-          const cmd = getCommand(commandId);
-          if (cmd?.getDescription) {
-            return cmd.getDescription(root, params);
-          }
-          return cmd?.description || commandId;
-        })
-        .filter(Boolean);
-
-      return `${description} (${subDescriptions.length} 个操作)`;
-    },
-  };
-}
+// 执行
+await root.commandManager!.executeCommand(
+  {
+    commandId: compositeCommand.id,
+    params: [],
+  },
+  compositeCommand
+);
 ```
 
 ### 3.2 执行流程
@@ -174,7 +120,7 @@ AIOperationBatch
 3. **类型安全**: 完全复用现有的 command 参数类型
 4. **无缝集成**: 不需要修改现有的 command 系统
 
-## 4. AI Operation 到 Command 的映射
+## 4. 可用命令清单
 
 ### 4.1 已有命令映射
 
@@ -237,53 +183,65 @@ AIOperationBatch
 }
 ```
 
-### 4.2 需要新增的命令
+### 4.2 批量创建子节点树 ✅
 
-为了支持 AI 的高级操作，需要新增以下命令：
+**已实现**: `node.addChildTrees`
 
 ```typescript
-// 1. 批量创建子节点
+// 批量创建子节点（扁平列表）
 {
-  id: "node.addChildren",
-  params: [parentId, children: { title: string; note?: string }[]]
+  commandId: "node.addChildTrees",
+  params: [
+    parentId,
+    [
+      { title: "节点1" },
+      { title: "节点2", note: "笔记" },
+      { title: "节点3" }
+    ]
+  ]
 }
 
-// 2. 创建多级节点树
+// 创建多级节点树
 {
-  id: "node.createTree",
-  params: [parentId, tree: NodeTree]
+  commandId: "node.addChildTrees",
+  params: [
+    parentId,
+    [
+      {
+        title: "前端",
+        children: [
+          { title: "React" },
+          { title: "TypeScript" }
+        ]
+      },
+      {
+        title: "后端",
+        children: [
+          { title: "Next.js" },
+          { title: "Supabase" }
+        ]
+      }
+    ]
+  ]
 }
+```
 
+**接口定义**:
+
+```typescript
 interface NodeTree {
   title: string;
   note?: string;
   children?: NodeTree[];
 }
-
-// 3. 批量移动节点
-{
-  id: "node.moveNodes",
-  params: [nodeIds: string[], targetParentId: string]
-}
-
-// 4. 重组子节点
-{
-  id: "node.reorderChildren",
-  params: [parentId, newOrder: { nodeId: string; position: number }[]]
-}
-
-// 5. 合并节点
-{
-  id: "node.mergeNodes",
-  params: [sourceNodeIds: string[], targetNodeId: string]
-}
-
-// 6. 拆分节点
-{
-  id: "node.splitNode",
-  params: [nodeId, splits: { title: string; note?: string }[]]
-}
 ```
+
+**特性**:
+
+- 支持扁平列表（批量创建子节点）
+- 支持嵌套结构（创建多级树）
+- 自动选中第一个创建的节点
+- 一次 undo 撤销所有节点
 
 ## 5. AI 侧实现
 
@@ -300,10 +258,9 @@ const SYSTEM_PROMPT = `
 
 ### 节点创建
 - node.addChild(parentId, position?, title?) - 添加单个子节点
-- node.addChildren(parentId, children[]) - 批量添加子节点
+- node.addChildTrees(parentId, children: NodeTree[]) - 批量添加子节点或创建多级树
 - node.addSiblingAbove(nodeId, title?) - 添加上方兄弟节点
 - node.addSiblingBelow(nodeId, title?) - 添加下方兄弟节点
-- node.createTree(parentId, tree) - 创建多级节点树
 
 ### 节点更新
 - node.updateTitle(nodeId, newTitle) - 更新标题
@@ -313,14 +270,21 @@ const SYSTEM_PROMPT = `
 - node.move(nodeId, targetParentId, position) - 移动节点
 - node.moveUp(nodeId) - 向上移动
 - node.moveDown(nodeId) - 向下移动
-- node.reorderChildren(parentId, newOrder[]) - 重组子节点
 
 ### 节点删除
 - node.delete(nodeId) - 删除节点
 
-### 批量操作
-- node.mergeNodes(sourceNodeIds[], targetNodeId) - 合并节点
-- node.splitNode(nodeId, splits[]) - 拆分节点
+## NodeTree 接口
+
+对于 node.addChildTrees 命令，children 参数格式：
+
+\`\`\`typescript
+interface NodeTree {
+  title: string;        // 节点标题
+  note?: string;        // 节点笔记（可选）
+  children?: NodeTree[]; // 子节点（可选，支持递归）
+}
+\`\`\`
 
 ## 返回格式
 
@@ -329,7 +293,7 @@ const SYSTEM_PROMPT = `
 {
   "operations": [
     {
-      "commandId": "node.addChildren",
+      "commandId": "node.addChildTrees",
       "params": ["abc123", [
         {"title": "子节点1"},
         {"title": "子节点2"}
@@ -350,7 +314,7 @@ const SYSTEM_PROMPT = `
 ## 原则
 
 1. **优先使用简单命令**: 能用单个命令就不用多个
-2. **批量操作**: 多个相同类型的操作使用批量命令
+2. **批量操作**: 多个相同类型的操作使用批量命令（node.addChildTrees）
 3. **明确影响**: 删除、移动等操作标记为 medium/high impact
 4. **保持顺序**: 如果操作有依赖关系，按正确顺序排列
 `;
@@ -419,17 +383,20 @@ export async function POST(req: Request) {
 ### 6.1 执行器实现
 
 ```typescript
+import { createCompositeCommand } from "@/domain/commands/composite";
+import { useMindmapStore } from "@/domain/mindmap-store";
+
 /**
  * AI 操作执行器
  */
 class AIOperationExecutor {
-  constructor(private commandManager: CommandManager) {}
-
   /**
    * 执行单个操作
    */
   async executeOperation(operation: AIOperation): Promise<void> {
-    await this.commandManager.executeCommand({
+    const root = useMindmapStore.getState();
+
+    await root.commandManager!.executeCommand({
       commandId: operation.commandId,
       params: operation.params,
     });
@@ -439,9 +406,10 @@ class AIOperationExecutor {
    * 执行批量操作（作为一个组合命令）
    */
   async executeBatch(batch: AIOperationBatch): Promise<void> {
-    // 创建临时的组合命令
+    const root = useMindmapStore.getState();
+
+    // 创建组合命令
     const compositeCommand = createCompositeCommand(
-      `ai.batch.${batch.id}`,
       batch.description,
       batch.operations.map((op) => ({
         commandId: op.commandId,
@@ -449,14 +417,14 @@ class AIOperationExecutor {
       }))
     );
 
-    // 临时注册（执行后可选择性清理）
-    registerCommand(compositeCommand);
-
     // 执行组合命令
-    await this.commandManager.executeCommand({
-      commandId: compositeCommand.id,
-      params: [],
-    });
+    await root.commandManager!.executeCommand(
+      {
+        commandId: compositeCommand.id,
+        params: [],
+      },
+      compositeCommand
+    );
   }
 }
 ```
@@ -474,11 +442,16 @@ interface OperationPreviewProps {
   status: "pending" | "approved" | "rejected" | "applied";
 }
 
-function OperationPreview({ operation, onApprove, onReject, status }: OperationPreviewProps) {
+function OperationPreview({
+  operation,
+  onApprove,
+  onReject,
+  status,
+}: OperationPreviewProps) {
   const impactColor = {
     low: "green",
     medium: "yellow",
-    high: "red"
+    high: "red",
   }[operation.preview?.impact ?? "low"];
 
   return (
@@ -486,9 +459,7 @@ function OperationPreview({ operation, onApprove, onReject, status }: OperationP
       <div className="font-medium">{operation.description}</div>
 
       {operation.preview && (
-        <div className="text-sm text-gray-600">
-          {operation.preview.summary}
-        </div>
+        <div className="text-sm text-gray-600">{operation.preview.summary}</div>
       )}
 
       {operation.metadata && (
@@ -523,7 +494,7 @@ function BatchManager({ batch, onApprove, onReject }: BatchManagerProps) {
       <p>共 {batch.operations.length} 个操作</p>
 
       <div className="space-y-2">
-        {batch.operations.map(op => (
+        {batch.operations.map((op) => (
           <div key={op.id} className="text-sm">
             • {op.description}
           </div>
@@ -541,7 +512,7 @@ function BatchManager({ batch, onApprove, onReject }: BatchManagerProps) {
 
 ## 7. 典型使用场景
 
-### 7.1 场景1: 创建子节点
+### 7.1 场景1: 批量创建子节点
 
 **用户输入**: "帮我为'产品规划'生成5个规划步骤"
 
@@ -551,7 +522,7 @@ function BatchManager({ batch, onApprove, onReject }: BatchManagerProps) {
 {
   "operations": [
     {
-      "commandId": "node.addChildren",
+      "commandId": "node.addChildTrees",
       "params": [
         "node-123",
         [
@@ -578,12 +549,65 @@ function BatchManager({ batch, onApprove, onReject }: BatchManagerProps) {
 **执行流程**:
 
 1. 用户点击"应用"
-2. 执行 `node.addChildren` 命令
-3. 命令返回 5 个 `AddNodeAction`
+2. 执行 `node.addChildTrees` 命令
+3. 命令返回 5 个 `AddNodeAction` 和 1 个 `SetCurrentNodeAction`
 4. 所有 action 组合成一个 `HistoryItem`
 5. 一次 undo 可以撤销所有 5 个节点的创建
 
-### 7.2 场景2: 复杂重组
+### 7.2 场景2: 创建多级树
+
+**用户输入**: "展开'技术架构'这个节点，生成完整的技术栈结构"
+
+**AI 返回**:
+
+```json
+{
+  "operations": [
+    {
+      "commandId": "node.addChildTrees",
+      "params": [
+        "node-arch",
+        [
+          {
+            "title": "前端",
+            "children": [
+              { "title": "React" },
+              { "title": "TypeScript" },
+              { "title": "Tailwind CSS" }
+            ]
+          },
+          {
+            "title": "后端",
+            "children": [
+              { "title": "Next.js" },
+              { "title": "Supabase" },
+              { "title": "PostgreSQL" }
+            ]
+          },
+          {
+            "title": "部署",
+            "children": [{ "title": "Vercel" }, { "title": "Docker" }]
+          }
+        ]
+      ],
+      "description": "为'技术架构'创建完整的技术栈结构",
+      "preview": {
+        "impact": "medium",
+        "summary": "将创建3个一级节点和8个二级节点"
+      }
+    }
+  ]
+}
+```
+
+**执行**:
+
+- 执行 `node.addChildTrees` 命令
+- 递归创建所有节点
+- 返回 11 个 `AddNodeAction`
+- 一次 undo 撤销整棵树
+
+### 7.3 场景3: 复杂重组操作
 
 **用户输入**: "把这些节点按重要性排序，并把相关的归到一起"
 
@@ -608,22 +632,11 @@ function BatchManager({ batch, onApprove, onReject }: BatchManagerProps) {
       "commandId": "node.move",
       "params": ["node-b", "node-group-1", 1],
       "description": "移动'功能B'到'重要功能'"
-    },
-    {
-      "commandId": "node.reorderChildren",
-      "params": [
-        "node-parent",
-        [
-          { "nodeId": "node-group-1", "position": 0 },
-          { "nodeId": "node-other", "position": 1 }
-        ]
-      ],
-      "description": "调整子节点顺序"
     }
   ],
   "preview": {
     "impact": "medium",
-    "totalOperations": 4,
+    "totalOperations": 3,
     "affectedNodes": ["node-parent", "node-a", "node-b", "node-group-1"]
   }
 }
@@ -634,226 +647,14 @@ function BatchManager({ batch, onApprove, onReject }: BatchManagerProps) {
 1. 用户预览批量操作
 2. 点击"全部应用"
 3. 创建 `CompositeCommand`
-4. 顺序执行 4 个子命令
-5. 收集所有 actions (可能 10+ 个)
+4. 顺序执行 3 个子命令
+5. 收集所有 actions
 6. 组合成一个 `HistoryItem`
 7. 一次 undo 撤销整个重组操作
 
-### 7.3 场景3: 创建多级树
+## 8. 安全性和验证
 
-**用户输入**: "展开'技术架构'这个节点，生成完整的技术栈结构"
-
-**AI 返回**:
-
-```json
-{
-  "operations": [
-    {
-      "commandId": "node.createTree",
-      "params": [
-        "node-arch",
-        {
-          "children": [
-            {
-              "title": "前端",
-              "children": [
-                { "title": "React" },
-                { "title": "TypeScript" },
-                { "title": "Tailwind CSS" }
-              ]
-            },
-            {
-              "title": "后端",
-              "children": [
-                { "title": "Next.js" },
-                { "title": "Supabase" },
-                { "title": "PostgreSQL" }
-              ]
-            },
-            {
-              "title": "部署",
-              "children": [{ "title": "Vercel" }, { "title": "Docker" }]
-            }
-          ]
-        }
-      ],
-      "description": "为'技术架构'创建完整的技术栈结构",
-      "preview": {
-        "impact": "medium",
-        "summary": "将创建3个一级节点和8个二级节点"
-      }
-    }
-  ]
-}
-```
-
-**执行**:
-
-- 执行 `node.createTree` 命令
-- 递归创建所有节点
-- 返回 11 个 `AddNodeAction`
-- 一次 undo 撤销整棵树
-
-## 8. 新增命令实现
-
-### 8.1 批量创建子节点
-
-```typescript
-// src/domain/commands/node/add-children.ts
-
-interface AddChildrenParams {
-  parentId: string;
-  children: { title: string; note?: string }[];
-}
-
-export const addChildrenCommand: CommandDefinition = {
-  id: "node.addChildren",
-  name: "批量添加子节点",
-  description: "批量添加子节点",
-  category: "node",
-
-  handler: (root: MindmapStore, params?: unknown[]) => {
-    const [parentId, children] = params as [
-      string,
-      { title: string; note?: string }[],
-    ];
-
-    const parentNode = root.currentEditor?.nodes.get(parentId);
-    if (!parentNode) return [];
-
-    const siblings = getChildNodes(root.currentEditor!, parentId);
-    let nextPosition = siblings.length;
-
-    const actions: EditorAction[] = [];
-
-    // 为每个子节点创建 AddNodeAction
-    for (const child of children) {
-      const shortId = generateShortId();
-
-      actions.push(
-        new AddNodeAction({
-          id: crypto.randomUUID(),
-          short_id: shortId,
-          mindmap_id: root.currentEditor!.currentMindmap.id,
-          parent_id: parentNode.id,
-          parent_short_id: parentId,
-          title: child.title,
-          note: child.note ?? null,
-          order_index: nextPosition++,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-      );
-    }
-
-    // 如果需要，选中第一个创建的节点
-    if (actions.length > 0) {
-      const firstNode = (actions[0] as AddNodeAction)["node"];
-      actions.push(
-        new SetCurrentNodeAction({
-          newNodeId: firstNode.short_id,
-          oldNodeId: root.currentEditor!.currentNode,
-        })
-      );
-    }
-
-    return actions;
-  },
-
-  getDescription: (root, params) => {
-    const children = params?.[1] as { title: string }[] | undefined;
-    return `批量创建 ${children?.length ?? 0} 个子节点`;
-  },
-};
-
-registerCommand(addChildrenCommand);
-```
-
-### 8.2 创建多级树
-
-```typescript
-// src/domain/commands/node/create-tree.ts
-
-interface NodeTreeNode {
-  title: string;
-  note?: string;
-  children?: NodeTreeNode[];
-}
-
-export const createTreeCommand: CommandDefinition = {
-  id: "node.createTree",
-  name: "创建节点树",
-  description: "创建多级节点树",
-  category: "node",
-
-  handler: (root: MindmapStore, params?: unknown[]) => {
-    const [parentId, tree] = params as [string, { children: NodeTreeNode[] }];
-
-    const parentNode = root.currentEditor?.nodes.get(parentId);
-    if (!parentNode) return [];
-
-    const actions: EditorAction[] = [];
-
-    // 递归创建节点树
-    function createNodes(
-      parent: MindmapNode,
-      nodes: NodeTreeNode[],
-      startPosition: number
-    ): void {
-      nodes.forEach((node, index) => {
-        const shortId = generateShortId();
-        const position = startPosition + index;
-
-        // 创建当前节点
-        const newNode: MindmapNode = {
-          id: crypto.randomUUID(),
-          short_id: shortId,
-          mindmap_id: root.currentEditor!.currentMindmap.id,
-          parent_id: parent.id,
-          parent_short_id: parent.short_id,
-          title: node.title,
-          note: node.note ?? null,
-          order_index: position,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
-
-        actions.push(new AddNodeAction(newNode));
-
-        // 递归创建子节点
-        if (node.children && node.children.length > 0) {
-          createNodes(newNode, node.children, 0);
-        }
-      });
-    }
-
-    const siblings = getChildNodes(root.currentEditor!, parentId);
-    createNodes(parentNode, tree.children, siblings.length);
-
-    return actions;
-  },
-
-  getDescription: (root, params) => {
-    const tree = params?.[1] as { children: NodeTreeNode[] } | undefined;
-
-    // 计算节点总数
-    function countNodes(nodes: NodeTreeNode[]): number {
-      return nodes.reduce((sum, node) => {
-        return sum + 1 + (node.children ? countNodes(node.children) : 0);
-      }, 0);
-    }
-
-    const total = tree ? countNodes(tree.children) : 0;
-    return `创建节点树 (${total} 个节点)`;
-  },
-};
-
-registerCommand(createTreeCommand);
-```
-
-## 9. 安全性和验证
-
-### 9.1 命令验证
+### 8.1 命令验证
 
 ```typescript
 /**
@@ -869,10 +670,7 @@ function validateOperation(operation: AIOperation): ValidationResult {
     };
   }
 
-  // 2. 检查参数数量
-  // （可以根据命令定义的参数规范进行验证）
-
-  // 3. 检查节点是否存在
+  // 2. 检查节点是否存在
   const root = useMindmapStore.getState();
   const nodeIds = extractNodeIds(operation);
   for (const nodeId of nodeIds) {
@@ -884,7 +682,7 @@ function validateOperation(operation: AIOperation): ValidationResult {
     }
   }
 
-  // 4. 检查前置条件
+  // 3. 检查前置条件
   if (command.when && !command.when(root, operation.params)) {
     return {
       valid: false,
@@ -904,7 +702,7 @@ function extractNodeIds(operation: AIOperation): string[] {
   // 根据命令类型提取节点ID
   switch (operation.commandId) {
     case "node.addChild":
-    case "node.addChildren":
+    case "node.addChildTrees":
       nodeIds.push(operation.params[0] as string); // parentId
       break;
     case "node.updateTitle":
@@ -923,7 +721,7 @@ function extractNodeIds(operation: AIOperation): string[] {
 }
 ```
 
-### 9.2 执行前确认
+### 8.2 执行前确认
 
 ```typescript
 /**
@@ -946,13 +744,8 @@ function needsConfirmation(operation: AIOperation): boolean {
  * 判断命令的影响程度
  */
 function getCommandImpact(commandId: string): "low" | "medium" | "high" {
-  const highImpactCommands = ["node.delete", "node.mergeNodes"];
-
-  const mediumImpactCommands = [
-    "node.move",
-    "node.moveNodes",
-    "node.reorderChildren",
-  ];
+  const highImpactCommands = ["node.delete"];
+  const mediumImpactCommands = ["node.move"];
 
   if (highImpactCommands.includes(commandId)) {
     return "high";
@@ -964,45 +757,29 @@ function getCommandImpact(commandId: string): "low" | "medium" | "high" {
 }
 ```
 
-## 10. 实现路线图
+## 9. 实现状态
 
-### Phase 1: 基础设施 ✅
+### 已完成 ✅
 
-- [x] Command 系统已完成
-- [x] HistoryManager 已完成
-- [x] 基础命令已实现
+- [x] Command 系统完整实现
+- [x] HistoryManager 完整实现
+- [x] CompositeCommand 工厂函数实现
+- [x] `node.addChildTrees` 命令实现（支持扁平和嵌套）
+- [x] 所有基础节点操作命令（add/update/move/delete）
+- [x] 所有导航命令
+- [x] 完整的 undo/redo 支持
 
-### Phase 2: CompositeCommand 支持
+### 待实现 ⏳
 
-- [ ] 实现 `createCompositeCommand` 工厂函数
-- [ ] 实现 `AIOperationExecutor`
-- [ ] 更新 UI 组件支持批量操作
+- [ ] AI 侧实现（提示词、API）
+- [ ] 前端执行器（AIOperationExecutor）
+- [ ] UI 组件（操作预览、批量管理）
+- [ ] 操作验证和安全检查
+- [ ] 确认机制和影响评估
 
-### Phase 3: 新增命令
+## 10. 总结
 
-- [ ] `node.addChildren` - 批量创建子节点
-- [ ] `node.createTree` - 创建多级树
-- [ ] `node.reorderChildren` - 重组子节点
-- [ ] `node.mergeNodes` - 合并节点
-- [ ] `node.splitNode` - 拆分节点
-
-### Phase 4: AI 集成
-
-- [ ] 更新 AI 提示词
-- [ ] 实现操作验证
-- [ ] 实现预览 UI
-- [ ] 添加确认机制
-
-### Phase 5: 体验优化
-
-- [ ] 操作历史记录
-- [ ] 批量操作进度显示
-- [ ] 错误处理和回滚
-- [ ] 性能优化
-
-## 11. 总结
-
-### 11.1 核心优势
+### 10.1 核心优势
 
 1. **完全基于 Command**: 不重复造轮子，复用所有基础设施
 2. **原子性保证**: CompositeCommand 确保批量操作的事务性
@@ -1010,22 +787,20 @@ function getCommandImpact(commandId: string): "low" | "medium" | "high" {
 4. **简化实现**: AI 只需返回 `{commandId, params}`，极简设计
 5. **一致性**: AI 操作和手动操作完全一致的行为
 
-### 11.2 与 V1 的对比
-
-| 方面      | V1 (独立 Action 系统)     | V2 (基于 Command)          |
-| --------- | ------------------------- | -------------------------- |
-| 数据结构  | 复杂的 AIAction 类型      | 简单的 {commandId, params} |
-| 执行器    | 需要 AIActionExecutor     | 复用 CommandManager        |
-| 转换层    | 需要 action->command 转换 | 无需转换                   |
-| 批量操作  | 需要自定义批处理逻辑      | CompositeCommand 原生支持  |
-| Undo/Redo | 需要额外集成              | 自动支持                   |
-| 维护成本  | 高（两套系统）            | 低（一套系统）             |
-
-### 11.3 关键设计点
+### 10.2 关键设计点
 
 1. **AIOperation 本质上就是 CommandRun**: 简化为 `{commandId, params, metadata}`
 2. **CompositeCommand 是批量操作的关键**: 保证原子性
 3. **完全复用现有基础设施**: 无需重新发明
 4. **AI 只需了解命令接口**: 提示词更简单清晰
+
+### 10.3 下一步
+
+实现前端部分：
+
+1. 创建 AIOperationExecutor 类
+2. 实现操作预览 UI 组件
+3. 集成到 Chat Panel
+4. 添加操作验证和确认机制
 
 这个设计更加优雅、简洁，充分利用了现有的架构优势！
