@@ -13,6 +13,7 @@ export const toggleCollapseCommand: CommandDefinition = {
   description: "切换节点的展开/折叠状态",
   category: "navigation",
   actionBased: true,
+  undoable: false,
 
   handler: (root: MindmapStore) => {
     const currentNode = root.currentEditor?.nodes.get(
