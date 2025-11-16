@@ -1,4 +1,4 @@
-import { getCommand } from "./command-registry";
+import { getCommand, CommandDefinition } from "./command-registry";
 import { useMindmapStore } from "./mindmap-store";
 
 export interface CommandRun {
@@ -9,9 +9,14 @@ export interface CommandRun {
 export class CommandManager {
   constructor() {}
 
-  async executeCommand(run: CommandRun): Promise<void> {
+  async executeCommand(
+    run: CommandRun,
+    commandDefinition?: CommandDefinition
+  ): Promise<void> {
     const root = useMindmapStore.getState();
-    const command = getCommand(run.commandId);
+    // 优先使用传入的 commandDefinition（用于动态创建的命令，如 CompositeCommand）
+    // 否则从 registry 中获取
+    const command = commandDefinition || getCommand(run.commandId);
     if (!command) {
       throw new Error(`Command ${run.commandId} not found`);
     }

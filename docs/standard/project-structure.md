@@ -277,12 +277,11 @@ docs/
 │   ├── mindmap-editor-store-design.md  # 已整合到 mindmap-editor-layout-design.md
 │   ├── mindmap-persistence-design.md   # 已废弃
 │   └── shortcut-system-design.md       # 已整合到 command-reference.md
-├── standard/                  # 标准规范
-│   ├── project-structure.md  # 项目结构（本文档）
-│   ├── coding-standards.md   # 代码规范
-│   ├── css-standards.md      # CSS规范
-│   └── testing-guide.md      # 测试指南
-└── .claude_summary/          # Claude 工作过程中的临时总结文档
+└── standard/                  # 标准规范
+    ├── project-structure.md  # 项目结构（本文档）
+    ├── coding-standards.md   # 代码规范
+    ├── css-standards.md      # CSS规范
+    └── testing-guide.md      # 测试指南
 ```
 
 **职责:**
@@ -291,7 +290,6 @@ docs/
 - **`draft/`**: 设计文档草稿，讨论中的设计方案
 - **`obsolete❌/`**: 已废弃的设计文档（保留以供参考）
 - **`standard/`**: 开发规范和最佳实践
-- **`.claude_summary/`**: Claude 工作过程中的临时总结文档
 
 **规范:**
 

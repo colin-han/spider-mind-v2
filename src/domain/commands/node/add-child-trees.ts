@@ -57,7 +57,7 @@ export interface NodeTree {
  * ]);
  * ```
  */
-export const createTreeCommand: CommandDefinition = {
+export const addChildTreesCommand: CommandDefinition = {
   id: "node.addChildTrees",
   name: "批量添加子树",
   description: "批量添加子节点或创建多级树",
@@ -187,4 +187,4 @@ export const createTreeCommand: CommandDefinition = {
   },
 };
 
-registerCommand(createTreeCommand);
+registerCommand(addChildTreesCommand);

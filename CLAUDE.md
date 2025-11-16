@@ -6,7 +6,7 @@
 
 - `docs/design/draft/` - 设计文档草稿，讨论中的设计方案
 - `docs/design/` - 已确认的设计文档
-- `.claude_summary/` - Claude 工作过程中的临时总结文档
+- `.claude/logs/` - Claude 工作过程中的临时总结文档
 
 ## 核心模块
 

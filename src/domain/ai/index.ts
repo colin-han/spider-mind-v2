@@ -1,11 +1,15 @@
 /**
  * AI 操作模块
  *
- * 提供 AI 操作相关的类型定义和验证功能
+ * 提供 AI 操作相关的类型定义、验证功能和执行器
  *
  * @example
  * ```typescript
- * import { AIOperation, validateOperation } from "@/domain/ai";
+ * import {
+ *   AIOperation,
+ *   validateOperation,
+ *   createAIOperationExecutor,
+ * } from "@/domain/ai";
  *
  * // 使用类型
  * const operation: AIOperation = {
@@ -19,7 +23,12 @@
  * const result = validateOperation(operation);
  * if (!result.valid) {
  *   console.error(result.error);
+ *   return;
  * }
+ *
+ * // 执行操作
+ * const executor = createAIOperationExecutor();
+ * await executor.executeOperation(operation);
  * ```
  */
 
@@ -37,3 +46,6 @@ export {
   validateOperations,
   extractNodeIds,
 } from "./validation";
+
+// 导出执行器
+export { AIOperationExecutor, createAIOperationExecutor } from "./executor";

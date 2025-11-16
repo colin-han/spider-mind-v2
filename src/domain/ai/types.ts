@@ -8,7 +8,7 @@
  */
 
 // 重新导出 NodeTree 类型，方便统一引用
-export type { NodeTree } from "../commands/node/create-tree";
+export type { NodeTree } from "../commands/node/add-child-trees";
 
 /**
  * AI 返回的操作建议

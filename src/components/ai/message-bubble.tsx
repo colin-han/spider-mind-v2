@@ -12,6 +12,14 @@ import {
   removeJSONSuggestions,
 } from "@/lib/ai/parse-suggestions";
 import { SuggestionActions } from "./suggestion-actions";
+import {
+  extractOperations,
+  extractExplanation,
+  hasOperationsTag,
+  hasCompleteOperations,
+} from "@/lib/ai/parse-operations";
+import { OperationsPanel } from "./operations-panel";
+import { useState } from "react";
 
 interface MessageBubbleProps {
   message: UIMessage;
@@ -19,6 +27,7 @@ interface MessageBubbleProps {
 
 export function MessageBubble({ message }: MessageBubbleProps) {
   const isUser = message.role === "user";
+  const [operationsPanelVisible, setOperationsPanelVisible] = useState(true);
 
   // AI SDK v5: Extract text from parts array
   const getTextContent = () => {
@@ -30,13 +39,36 @@ export function MessageBubble({ message }: MessageBubbleProps) {
 
   const textContent = getTextContent();
 
-  // 解析 AI 响应中的结构化建议
-  const suggestions = !isUser ? parseAISuggestions(textContent) : null;
+  // 检测是否包含 operations
+  const hasOperations = !isUser && hasOperationsTag(textContent);
+  const operationsComplete =
+    hasOperations && hasCompleteOperations(textContent);
+  const operations = operationsComplete ? extractOperations(textContent) : [];
+  const operationsLoading = hasOperations && !operationsComplete;
 
-  // 移除 JSON 建议块，只显示文本内容
-  const displayContent = !isUser
-    ? removeJSONSuggestions(textContent)
-    : textContent;
+  // 解析 AI 响应中的结构化建议（仅当不是 operations 时）
+  const suggestions =
+    !isUser && !hasOperations ? parseAISuggestions(textContent) : null;
+
+  // 确定显示内容
+  let displayContent: string;
+  if (isUser) {
+    displayContent = textContent;
+  } else if (hasOperations) {
+    // 如果包含 operations，只显示 explanation 部分
+    displayContent = extractExplanation(textContent);
+  } else {
+    // 否则移除 JSON 建议块
+    displayContent = removeJSONSuggestions(textContent);
+  }
+
+  const handleAccept = (_selectedIds: string[]) => {
+    setOperationsPanelVisible(false);
+  };
+
+  const handleReject = () => {
+    setOperationsPanelVisible(false);
+  };
 
   return (
     <div
@@ -116,6 +148,18 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         {suggestions && suggestions.length > 0 && (
           <div className="mt-2">
             <SuggestionActions suggestions={suggestions} />
+          </div>
+        )}
+
+        {/* Operations Panel */}
+        {hasOperations && operationsPanelVisible && (
+          <div className="mt-2">
+            <OperationsPanel
+              operations={operations}
+              loading={operationsLoading}
+              onAccept={handleAccept}
+              onReject={handleReject}
+            />
           </div>
         )}
 

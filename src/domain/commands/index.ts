@@ -5,6 +5,7 @@
  */
 
 // 节点操作命令
+import "./node/add-child-trees";
 import "./node/add-child";
 import "./node/add-sibling-above";
 import "./node/add-sibling-below";
