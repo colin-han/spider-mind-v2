@@ -4,6 +4,7 @@ import { Mindmap, MindmapNode } from "@/lib/types";
 import { CommandManager } from "./command-manager";
 import { ShortcutManager } from "./shortcut-manager";
 import { HistoryManager } from "./history-manager";
+import { FocusedAreaId } from "./focused-area.types";
 
 export interface EditorAction {
   type: string;
@@ -26,8 +27,6 @@ export interface EditorAction {
   reverse(): EditorAction;
 }
 
-export type FocusedArea = "graph" | "panel" | "outline" | "search";
-
 export interface EditorState {
   // 核心数据
   currentMindmap: Mindmap;
@@ -37,7 +36,7 @@ export interface EditorState {
   collapsedNodes: Set<string>; // 折叠的节点 short_id 集合
 
   // 焦点状态
-  focusedArea: FocusedArea; // UI 焦点区域
+  focusedArea: FocusedAreaId; // UI 焦点区域
   currentNode: string; // short_id
 
   // 状态

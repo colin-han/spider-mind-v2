@@ -12,3 +12,6 @@ import "./navigation-shortcuts";
 
 // 全局操作快捷键
 import "./global-shortcuts";
+
+// 焦点区域快捷键
+import "./focused-area-shortcuts";

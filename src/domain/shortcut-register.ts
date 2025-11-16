@@ -1,7 +1,15 @@
 import { CommandRun } from "./command-manager";
 import { MindmapStore } from "./mindmap-store.types";
+import { FocusedAreaId } from "./focused-area.types";
 
 const shortcutDefinitions = new Map<string, ShortcutDefinition[]>();
+
+// 定义哪些区域是编辑模式（需要禁用快捷键）
+const EDITING_AREAS: FocusedAreaId[] = [
+  "title-editor",
+  "note-editor",
+  "ai-chat",
+];
 
 export interface ShortcutDefinition {
   key: string;
@@ -14,21 +22,39 @@ export function registerShortcut(
   commandId: string,
   preventDefault?: boolean
 ): void;
+export function registerShortcut(
+  key: string,
+  commandId: string,
+  params?: unknown[],
+  preventDefault?: boolean
+): void;
 export function registerShortcut(def: ShortcutDefinition): void;
 export function registerShortcut(
   arg: string | ShortcutDefinition,
   commandId?: string,
+  params?: unknown[] | boolean,
   preventDefault?: boolean
 ) {
   if (typeof arg === "string") {
-    registerShortcutImpl({
-      key: arg,
-      run: () => ({
-        commandId: commandId!,
-        params: [],
-        preventDefault: preventDefault ?? false,
-      }),
-    });
+    if (Array.isArray(params)) {
+      registerShortcutImpl({
+        key: arg,
+        run: () => ({
+          commandId: commandId!,
+          params: params,
+          preventDefault: preventDefault ?? false,
+        }),
+      });
+    } else {
+      registerShortcutImpl({
+        key: arg,
+        run: () => ({
+          commandId: commandId!,
+          params: [],
+          preventDefault: preventDefault ?? false,
+        }),
+      });
+    }
   } else {
     registerShortcutImpl(arg);
   }
@@ -47,8 +73,9 @@ export function registerNonEditShortcut(
       preventDefault: preventDefault ?? false,
     }),
     when: (root) => {
-      // 检查焦点是否在 panel 内
-      if (root.currentEditor!.focusedArea === "panel") {
+      // 检查焦点是否在编辑区域内
+      const currentArea = root.currentEditor!.focusedArea as FocusedAreaId;
+      if (EDITING_AREAS.includes(currentArea)) {
         return false;
       }
 
@@ -59,6 +86,32 @@ export function registerNonEditShortcut(
         (activeElement.tagName === "INPUT" ||
           activeElement.tagName === "TEXTAREA")
       ) {
+        return false;
+      }
+
+      return true;
+    },
+  });
+}
+
+export function registerShortcutForArea(
+  areaId: FocusedAreaId,
+  key: string,
+  commandId: string,
+  params?: unknown[],
+  preventDefault?: boolean
+) {
+  registerShortcutImpl({
+    key,
+    run: () => ({
+      commandId,
+      params: params ?? [],
+      preventDefault: preventDefault ?? false,
+    }),
+    when: (root) => {
+      // 检查焦点是否在编辑区域内
+      const currentArea = root.currentEditor!.focusedArea;
+      if (currentArea !== areaId) {
         return false;
       }
 
