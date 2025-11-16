@@ -7,6 +7,7 @@
  */
 import { DBSchema, IDBPDatabase, openDB } from "idb";
 import type { Mindmap, MindmapNode } from "@/lib/types";
+import type { AIMessage } from "@/lib/types/ai";
 
 /**
  * IndexedDB Schema 定义
@@ -47,6 +48,19 @@ export interface MindmapDB extends DBSchema {
       "by-updated": string; // updated_at
     };
   };
+
+  /**
+   * AI 对话消息表
+   */
+  ai_messages: {
+    key: string; // message.id
+    value: AIMessage;
+    indexes: {
+      "by-node": string; // nodeId - 用于查询特定节点的所有消息
+      "by-mindmap": string; // mindmapId - 用于查询特定思维导图的所有消息
+      "by-created": string; // createdAt - 用于按时间排序
+    };
+  };
 }
 
 /**
@@ -58,7 +72,7 @@ let dbInstance: IDBPDatabase<MindmapDB> | null = null;
  * 数据库配置
  */
 const DB_NAME = "spider-mark-mindmap";
-const DB_VERSION = 4;
+const DB_VERSION = 5; // 升级版本以添加 ai_messages 表
 
 /**
  * 初始化并打开数据库
@@ -114,6 +128,19 @@ export async function initDB(): Promise<IDBPDatabase<MindmapDB>> {
         nodesStore.createIndex("by-updated", "updated_at", { unique: false });
 
         console.log("Created mindmap_nodes object store");
+      }
+
+      // 创建 ai_messages 表
+      if (!db.objectStoreNames.contains("ai_messages")) {
+        const messagesStore = db.createObjectStore("ai_messages", {
+          keyPath: "id",
+        });
+
+        messagesStore.createIndex("by-node", "nodeId", { unique: false });
+        messagesStore.createIndex("by-mindmap", "mindmapId", { unique: false });
+        messagesStore.createIndex("by-created", "createdAt", { unique: false });
+
+        console.log("Created ai_messages object store");
       }
     },
 

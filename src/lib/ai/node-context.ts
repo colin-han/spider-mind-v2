@@ -31,7 +31,7 @@ export function buildNodeContext(nodeId: string): AINodeContext {
 
     // 插入到数组开头，保持从根到当前的顺序
     parentChain.unshift({
-      id: parent.short_id,
+      id: parent.id,
       title: parent.title,
     });
 
@@ -45,7 +45,7 @@ export function buildNodeContext(nodeId: string): AINodeContext {
     Array.from(editor.nodes.values()).forEach((n) => {
       if (n.parent_short_id === node.parent_short_id && n.short_id !== nodeId) {
         siblings.push({
-          id: n.short_id,
+          id: n.id,
           title: n.title,
         });
       }
@@ -57,7 +57,7 @@ export function buildNodeContext(nodeId: string): AINodeContext {
   Array.from(editor.nodes.values()).forEach((n) => {
     if (n.parent_short_id === nodeId) {
       children.push({
-        id: n.short_id,
+        id: n.id,
         title: n.title,
       });
     }
@@ -65,7 +65,7 @@ export function buildNodeContext(nodeId: string): AINodeContext {
 
   return {
     currentNode: {
-      id: node.short_id,
+      id: node.id,
       title: node.title,
     },
     parentChain,
