@@ -24,9 +24,28 @@ function normalizePosition(siblingsCount: number, position?: number) {
 export const addChildNodeCommand: CommandDefinition = {
   id: "node.addChild",
   name: "添加子节点",
-  description: "添加子节点",
+  description: "添加单个子节点",
   category: "node",
   actionBased: true,
+  parameters: [
+    {
+      name: "parentId",
+      type: "string",
+      description: "父节点的 ID",
+    },
+    {
+      name: "position",
+      type: "number",
+      description: "插入位置（在兄弟节点中的索引）",
+      optional: true,
+    },
+    {
+      name: "title",
+      type: "string",
+      description: "节点标题",
+      optional: true,
+    },
+  ],
   handler: (root: MindmapStore, params?: unknown[]) => {
     const [parentId, position, title] = params as AddChildNodeParams;
     const normalizedParentId = parentId || root.currentEditor!.currentNode;

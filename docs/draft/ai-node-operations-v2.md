@@ -1,5 +1,16 @@
 # AI Chat 节点编辑能力设计 V2 (基于 Command 系统)
 
+## 元信息
+
+- 作者：Claude Code
+- 创建日期：2025-11-15
+- 最后更新：2025-11-15
+- 状态：草稿
+- 相关文档：
+  - [CompositeCommand 设计](../design/composite-command.md)
+  - [Command 层架构设计](../design/command-layer-design.md)
+  - [AI 操作 UI 设计](./ai-operations-ui-design.md)
+
 ## 1. 设计原则
 
 **核心理念**: AI 操作应该完全基于现有的 Command 系统，而不是重新发明一套动作系统。
@@ -30,7 +41,6 @@ interface AIOperation {
 
   // 预览信息
   preview?: {
-    impact: "low" | "medium" | "high";
     summary: string; // 简短总结
   };
 
@@ -56,7 +66,6 @@ interface AIOperationBatch {
 
   // 批次级别的预览
   preview?: {
-    impact: "low" | "medium" | "high";
     totalOperations: number;
     affectedNodes: string[]; // 受影响的节点ID列表
   };
@@ -247,7 +256,16 @@ interface NodeTree {
 
 ### 5.1 提示词设计
 
+系统提示词现在可以从 `commandRegistry` 动态生成，确保与实际可用命令保持同步。
+
+**生成方式**:
+
 ```typescript
+import { generateAICommandsPrompt } from "@/domain/command-registry";
+
+// 生成可用命令列表（默认包含 node 和 navigation 分类）
+const availableCommands = generateAICommandsPrompt(["node"]);
+
 const SYSTEM_PROMPT = `
 你是一个思维导图编辑助手。
 
@@ -256,23 +274,7 @@ const SYSTEM_PROMPT = `
 
 ## 可用命令
 
-### 节点创建
-- node.addChild(parentId, position?, title?) - 添加单个子节点
-- node.addChildTrees(parentId, children: NodeTree[]) - 批量添加子节点或创建多级树
-- node.addSiblingAbove(nodeId, title?) - 添加上方兄弟节点
-- node.addSiblingBelow(nodeId, title?) - 添加下方兄弟节点
-
-### 节点更新
-- node.updateTitle(nodeId, newTitle) - 更新标题
-- node.updateNote(nodeId, newNote) - 更新笔记
-
-### 节点移动
-- node.move(nodeId, targetParentId, position) - 移动节点
-- node.moveUp(nodeId) - 向上移动
-- node.moveDown(nodeId) - 向下移动
-
-### 节点删除
-- node.delete(nodeId) - 删除节点
+${availableCommands}
 
 ## NodeTree 接口
 
@@ -288,37 +290,70 @@ interface NodeTree {
 
 ## 返回格式
 
-返回一个包含操作列表的JSON对象：
+当用户请求执行操作时，按以下格式返回：
 
+1. **自然语言说明**：先用自然语言解释要执行的操作及其目的
+2. **操作概要**：简要说明将执行哪些操作
+3. **操作定义**：使用 `<operations>` 标签包裹 JSON 格式的操作列表
+
+**格式示例**:
+
+```
+
+好的！我为你的产品规划创建了5个关键步骤，涵盖了产品规划的核心环节。
+
+**操作概要**：
+
+- 创建 5 个子节点（市场调研、需求分析、竞品分析、功能规划、时间规划）
+
+<operations>
+\`\`\`json
 {
   "operations": [
     {
+      "id": "op-1",
       "commandId": "node.addChildTrees",
       "params": ["abc123", [
-        {"title": "子节点1"},
-        {"title": "子节点2"}
+        {"title": "市场调研"},
+        {"title": "需求分析"},
+        {"title": "竞品分析"},
+        {"title": "功能规划"},
+        {"title": "时间规划"}
       ]],
-      "description": "为'产品规划'创建2个子节点",
+      "description": "为'产品规划'创建5个规划步骤",
       "preview": {
-        "impact": "low",
-        "summary": "将创建2个新节点"
+        "summary": "将创建5个新子节点"
       },
       "metadata": {
-        "confidence": 0.9,
+        "confidence": 0.95,
         "reasoning": "基于产品规划的常见步骤"
       }
     }
   ]
 }
+\`\`\`
+</operations>
+```
+
+**重要**:
+
+- 操作定义必须放在回复的最后
+- 使用 `<operations>` 和 `</operations>` 标签包裹 JSON 代码块
+- 在操作定义前应包含操作概要说明
+- 这样设计是为了：
+  - 流式输出时，先显示完整的自然语言说明
+  - 前端遇到 `<operations>` 标签时切换为确认卡片样式
+  - 避免显示不完整的 JSON 造成困扰
 
 ## 原则
 
 1. **优先使用简单命令**: 能用单个命令就不用多个
 2. **批量操作**: 多个相同类型的操作使用批量命令（node.addChildTrees）
-3. **明确影响**: 删除、移动等操作标记为 medium/high impact
-4. **保持顺序**: 如果操作有依赖关系，按正确顺序排列
-`;
-```
+3. **保持顺序**: 如果操作有依赖关系，按正确顺序排列
+4. **友好说明**: 在 JSON 前后添加自然语言说明，解释操作的目的
+   `;
+
+````
 
 ### 5.2 API 实现
 
@@ -333,182 +368,24 @@ export async function POST(req: Request) {
     model: getModel(modelKey),
     system: systemPrompt,
     messages,
-
-    // 使用 tool 生成操作
-    tools: {
-      generateOperations: {
-        description: "生成思维导图编辑操作",
-        parameters: z.object({
-          operations: z.array(
-            z.object({
-              commandId: z.string(),
-              params: z.array(z.unknown()),
-              description: z.string(),
-              preview: z
-                .object({
-                  impact: z.enum(["low", "medium", "high"]),
-                  summary: z.string(),
-                })
-                .optional(),
-              metadata: z
-                .object({
-                  confidence: z.number().min(0).max(1),
-                  reasoning: z.string().optional(),
-                })
-                .optional(),
-            })
-          ),
-        }),
-        execute: async ({ operations }) => {
-          // 验证命令是否存在
-          for (const op of operations) {
-            const cmd = getCommand(op.commandId);
-            if (!cmd) {
-              throw new Error(`Unknown command: ${op.commandId}`);
-            }
-          }
-
-          return { operations };
-        },
-      },
-    },
   });
 
   return response.toDataStreamResponse();
 }
-```
+````
 
-## 6. 前端执行流程
+**说明**:
 
-### 6.1 执行器实现
+- AI 会在回复内容中直接包含 JSON 格式的操作列表
+- 前端解析 markdown 中的 ```json 代码块
+- 用户可以选择执行哪些操作
+- 不使用 AI SDK 的 tools 功能，保持简单灵活
 
-```typescript
-import { createCompositeCommand } from "@/domain/commands/composite";
-import { useMindmapStore } from "@/domain/mindmap-store";
+## 6. 后端流程
 
-/**
- * AI 操作执行器
- */
-class AIOperationExecutor {
-  /**
-   * 执行单个操作
-   */
-  async executeOperation(operation: AIOperation): Promise<void> {
-    const root = useMindmapStore.getState();
+> **注**: 前端相关实现（包括解析 AI 返回、流式输出处理、执行器实现等）已移至 [AI 操作 UI 设计](./ai-operations-ui-design.md) 文档的第 3 章节。
 
-    await root.commandManager!.executeCommand({
-      commandId: operation.commandId,
-      params: operation.params,
-    });
-  }
-
-  /**
-   * 执行批量操作（作为一个组合命令）
-   */
-  async executeBatch(batch: AIOperationBatch): Promise<void> {
-    const root = useMindmapStore.getState();
-
-    // 创建组合命令
-    const compositeCommand = createCompositeCommand(
-      batch.description,
-      batch.operations.map((op) => ({
-        commandId: op.commandId,
-        params: op.params,
-      }))
-    );
-
-    // 执行组合命令
-    await root.commandManager!.executeCommand(
-      {
-        commandId: compositeCommand.id,
-        params: [],
-      },
-      compositeCommand
-    );
-  }
-}
-```
-
-### 6.2 UI 组件
-
-```typescript
-/**
- * 操作预览卡片
- */
-interface OperationPreviewProps {
-  operation: AIOperation;
-  onApprove: () => void;
-  onReject: () => void;
-  status: "pending" | "approved" | "rejected" | "applied";
-}
-
-function OperationPreview({
-  operation,
-  onApprove,
-  onReject,
-  status,
-}: OperationPreviewProps) {
-  const impactColor = {
-    low: "green",
-    medium: "yellow",
-    high: "red",
-  }[operation.preview?.impact ?? "low"];
-
-  return (
-    <div className={`border-${impactColor}-200 bg-${impactColor}-50`}>
-      <div className="font-medium">{operation.description}</div>
-
-      {operation.preview && (
-        <div className="text-sm text-gray-600">{operation.preview.summary}</div>
-      )}
-
-      {operation.metadata && (
-        <div className="text-xs">
-          置信度: {(operation.metadata.confidence * 100).toFixed(0)}%
-        </div>
-      )}
-
-      {status === "pending" && (
-        <div className="flex gap-2">
-          <button onClick={onApprove}>应用</button>
-          <button onClick={onReject}>取消</button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/**
- * 批量操作管理器
- */
-interface BatchManagerProps {
-  batch: AIOperationBatch;
-  onApprove: () => void;
-  onReject: () => void;
-}
-
-function BatchManager({ batch, onApprove, onReject }: BatchManagerProps) {
-  return (
-    <div>
-      <h3>{batch.description}</h3>
-      <p>共 {batch.operations.length} 个操作</p>
-
-      <div className="space-y-2">
-        {batch.operations.map((op) => (
-          <div key={op.id} className="text-sm">
-            • {op.description}
-          </div>
-        ))}
-      </div>
-
-      <div className="flex gap-2">
-        <button onClick={onApprove}>全部应用</button>
-        <button onClick={onReject}>取消</button>
-      </div>
-    </div>
-  );
-}
-```
+本章节聚焦于后端的 AI 相关逻辑，前端的操作执行、UI 组件等内容请参考 UI 设计文档。
 
 ## 7. 典型使用场景
 
@@ -518,10 +395,18 @@ function BatchManager({ batch, onApprove, onReject }: BatchManagerProps) {
 
 **AI 返回**:
 
-```json
+```
+好的！我为你的产品规划创建了5个关键步骤，涵盖了产品规划的核心环节。
+
+**操作概要**：
+- 创建 5 个子节点（市场调研、需求分析、竞品分析、功能规划、时间规划）
+
+<operations>
+\`\`\`json
 {
   "operations": [
     {
+      "id": "op-1",
       "commandId": "node.addChildTrees",
       "params": [
         "node-123",
@@ -535,7 +420,6 @@ function BatchManager({ batch, onApprove, onReject }: BatchManagerProps) {
       ],
       "description": "为'产品规划'创建5个规划步骤",
       "preview": {
-        "impact": "low",
         "summary": "将创建5个新子节点"
       },
       "metadata": {
@@ -544,6 +428,8 @@ function BatchManager({ batch, onApprove, onReject }: BatchManagerProps) {
     }
   ]
 }
+\`\`\`
+</operations>
 ```
 
 **执行流程**:
@@ -560,10 +446,19 @@ function BatchManager({ batch, onApprove, onReject }: BatchManagerProps) {
 
 **AI 返回**:
 
-```json
+```
+好的！我为你的技术架构生成了一个完整的技术栈结构，这个结构涵盖了一个现代化 Web 应用的主要技术组件。
+
+**操作概要**：
+- 创建 3 个一级节点（前端、后端、部署）
+- 创建 8 个二级节点（各技术栈组件）
+
+<operations>
+\`\`\`json
 {
   "operations": [
     {
+      "id": "op-1",
       "commandId": "node.addChildTrees",
       "params": [
         "node-arch",
@@ -592,12 +487,16 @@ function BatchManager({ batch, onApprove, onReject }: BatchManagerProps) {
       ],
       "description": "为'技术架构'创建完整的技术栈结构",
       "preview": {
-        "impact": "medium",
         "summary": "将创建3个一级节点和8个二级节点"
+      },
+      "metadata": {
+        "confidence": 0.92
       }
     }
   ]
 }
+\`\`\`
+</operations>
 ```
 
 **执行**:
@@ -613,44 +512,134 @@ function BatchManager({ batch, onApprove, onReject }: BatchManagerProps) {
 
 **AI 返回** (批量操作):
 
-```json
+```
+明白了！我会帮你重组这些节点，按照重要性创建分组并重新组织结构。
+
+**操作概要**：
+- 创建 1 个分组节点（"重要功能"）
+- 移动 2 个节点到新分组
+
+<operations>
+\`\`\`json
 {
   "id": "batch-456",
   "description": "重组节点结构",
   "operations": [
     {
+      "id": "op-1",
       "commandId": "node.addChild",
       "params": ["node-parent", 0, "重要功能"],
-      "description": "创建分组'重要功能'"
+      "description": "创建分组'重要功能'",
+      "metadata": {
+        "confidence": 0.85
+      }
     },
     {
+      "id": "op-2",
       "commandId": "node.move",
       "params": ["node-a", "node-group-1", 0],
-      "description": "移动'功能A'到'重要功能'"
+      "description": "移动'功能A'到'重要功能'",
+      "metadata": {
+        "confidence": 0.88
+      }
     },
     {
+      "id": "op-3",
       "commandId": "node.move",
       "params": ["node-b", "node-group-1", 1],
-      "description": "移动'功能B'到'重要功能'"
+      "description": "移动'功能B'到'重要功能'",
+      "metadata": {
+        "confidence": 0.88
+      }
     }
   ],
   "preview": {
-    "impact": "medium",
-    "totalOperations": 3,
-    "affectedNodes": ["node-parent", "node-a", "node-b", "node-group-1"]
+    "summary": "将创建1个分组节点并移动2个节点"
   }
 }
+\`\`\`
+</operations>
 ```
 
 **执行流程**:
 
 1. 用户预览批量操作
 2. 点击"全部应用"
-3. 创建 `CompositeCommand`
-4. 顺序执行 3 个子命令
-5. 收集所有 actions
-6. 组合成一个 `HistoryItem`
-7. 一次 undo 撤销整个重组操作
+3. **分组阶段**: 所有操作都是 `undoable=true` (节点操作)
+4. **执行阶段**:
+   - 将 3 个操作组合成 `CompositeCommand`
+   - 顺序执行并收集所有 actions
+   - 组合成一个 `HistoryItem`
+5. **结果**: 一次 undo 撤销整个重组操作
+
+### 7.4 场景4: 混合操作（创建+保存）
+
+**用户输入**: "创建这些节点，然后保存"
+
+**AI 返回** (混合 undoable 和 non-undoable):
+
+```
+好的！我会为你创建这些节点，并在创建成功后自动保存到云端。
+
+**操作概要**：
+- 创建 2 个子节点（任务1、任务2）
+- 保存到云端
+
+**执行顺序**：先创建节点，成功后再保存。如果创建失败，保存操作不会执行。
+
+<operations>
+\`\`\`json
+{
+  "id": "batch-789",
+  "description": "创建节点并保存",
+  "operations": [
+    {
+      "id": "op-1",
+      "commandId": "node.addChildTrees",
+      "params": ["parent-id", [
+        { "title": "任务1" },
+        { "title": "任务2" }
+      ]],
+      "description": "创建2个子节点",
+      "metadata": {
+        "confidence": 0.95
+      }
+    },
+    {
+      "id": "op-2",
+      "commandId": "global.save",
+      "params": [],
+      "description": "保存到云端",
+      "metadata": {
+        "confidence": 1.0
+      }
+    }
+  ],
+  "preview": {
+    "summary": "将创建2个节点并保存"
+  }
+}
+\`\`\`
+</operations>
+```
+
+**执行流程**:
+
+1. 用户点击"应用"
+2. **分组阶段**:
+   - `undoable=true`: `node.addChildTrees` (节点创建)
+   - `undoable=false`: `global.save` (系统操作)
+3. **执行阶段1** (undoable 操作):
+   - 创建 `CompositeCommand` 包含 `node.addChildTrees`
+   - 执行并返回 `AddNodeAction[]`
+   - 加入历史记录，可以 undo
+4. **执行阶段2** (non-undoable 操作):
+   - 执行 `global.save`
+   - 保存到云端（系统级操作，不可 undo）
+5. **优势**:
+   - 节点创建失败时，不会触发保存
+   - 保存操作不会被包含在 undo 历史中
+   - 保证了操作的正确顺序
 
 ## 8. 安全性和验证
 
@@ -721,42 +710,6 @@ function extractNodeIds(operation: AIOperation): string[] {
 }
 ```
 
-### 8.2 执行前确认
-
-```typescript
-/**
- * 根据影响程度决定是否需要确认
- */
-function needsConfirmation(operation: AIOperation): boolean {
-  const impact = operation.preview?.impact ?? "low";
-
-  switch (impact) {
-    case "low":
-      return false; // 自动执行
-    case "medium":
-      return true; // 需要确认
-    case "high":
-      return true; // 需要二次确认
-  }
-}
-
-/**
- * 判断命令的影响程度
- */
-function getCommandImpact(commandId: string): "low" | "medium" | "high" {
-  const highImpactCommands = ["node.delete"];
-  const mediumImpactCommands = ["node.move"];
-
-  if (highImpactCommands.includes(commandId)) {
-    return "high";
-  }
-  if (mediumImpactCommands.includes(commandId)) {
-    return "medium";
-  }
-  return "low";
-}
-```
-
 ## 9. 实现状态
 
 ### 已完成 ✅
@@ -773,9 +726,8 @@ function getCommandImpact(commandId: string): "low" | "medium" | "high" {
 
 - [ ] AI 侧实现（提示词、API）
 - [ ] 前端执行器（AIOperationExecutor）
-- [ ] UI 组件（操作预览、批量管理）
 - [ ] 操作验证和安全检查
-- [ ] 确认机制和影响评估
+- [ ] UI 组件集成（详见 [AI 操作 UI 设计](./ai-operations-ui-design.md)）
 
 ## 10. 总结
 
@@ -796,11 +748,12 @@ function getCommandImpact(commandId: string): "low" | "medium" | "high" {
 
 ### 10.3 下一步
 
-实现前端部分：
+**后端/核心逻辑**:
 
-1. 创建 AIOperationExecutor 类
-2. 实现操作预览 UI 组件
-3. 集成到 Chat Panel
-4. 添加操作验证和确认机制
+1. 实现 AI 提示词和 API
+2. 创建 AIOperationExecutor 类
+3. 添加操作验证机制
+
+**UI 设计**: 4. 详见 [AI 操作 UI 设计](./ai-operations-ui-design.md)
 
 这个设计更加优雅、简洁，充分利用了现有的架构优势！

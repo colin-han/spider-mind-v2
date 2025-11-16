@@ -12,6 +12,7 @@ export const selectParentCommand: CommandDefinition = {
   category: "navigation",
   actionBased: true,
   undoable: false,
+  parameters: [],
 
   handler: (root: MindmapStore) => {
     const currentNode = root.currentEditor?.nodes.get(

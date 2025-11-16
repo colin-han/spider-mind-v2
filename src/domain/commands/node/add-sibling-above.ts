@@ -6,11 +6,7 @@ import { UpdateNodeAction } from "../../actions/update-node";
 import { SetCurrentNodeAction } from "../../actions/set-current-node";
 import { getChildNodes } from "../../editor-utils";
 
-type AddSiblingNodeParams = [
-  string | undefined,
-  "above" | "below" | undefined,
-  string | undefined,
-];
+type AddSiblingNodeParams = [string | undefined, string | undefined];
 
 /**
  * 添加兄弟节点（在上方）
@@ -18,12 +14,25 @@ type AddSiblingNodeParams = [
 export const addSiblingAboveCommand: CommandDefinition = {
   id: "node.addSiblingAbove",
   name: "在上方添加兄弟节点",
-  description: "在当前节点上方添加兄弟节点",
+  description: "在指定节点上方添加兄弟节点",
   category: "node",
   actionBased: true,
+  parameters: [
+    {
+      name: "nodeId",
+      type: "string",
+      description: "参考节点的 ID",
+    },
+    {
+      name: "title",
+      type: "string",
+      description: "新节点的标题",
+      optional: true,
+    },
+  ],
 
   handler: (root: MindmapStore, params?: unknown[]) => {
-    const [nodeId, , title] = (params as AddSiblingNodeParams) || [];
+    const [nodeId, title] = (params as AddSiblingNodeParams) || [];
     const targetNodeId = nodeId || root.currentEditor!.currentNode;
     const targetNode = root.currentEditor?.nodes.get(targetNodeId);
 

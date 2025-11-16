@@ -60,9 +60,21 @@ export interface NodeTree {
 export const createTreeCommand: CommandDefinition = {
   id: "node.addChildTrees",
   name: "批量添加子树",
-  description: "创建单级或多级节点树",
+  description: "批量添加子节点或创建多级树",
   category: "node",
   actionBased: true,
+  parameters: [
+    {
+      name: "parentId",
+      type: "string",
+      description: "父节点的 ID",
+    },
+    {
+      name: "children",
+      type: "NodeTree[]",
+      description: "子节点树数组",
+    },
+  ],
 
   when: (root: MindmapStore, params?: unknown[]) => {
     if (!root.currentEditor) return false;

@@ -12,9 +12,16 @@ type DeleteNodeParams = [string?];
 export const deleteNodeCommand: CommandDefinition = {
   id: "node.delete",
   name: "删除节点",
-  description: "删除当前节点及其子节点",
+  description: "删除节点及其所有子节点",
   category: "node",
   actionBased: true,
+  parameters: [
+    {
+      name: "nodeId",
+      type: "string",
+      description: "要删除的节点 ID",
+    },
+  ],
 
   handler: (root: MindmapStore, params?: unknown[]) => {
     const [nodeId] = (params as DeleteNodeParams) || [];

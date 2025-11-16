@@ -14,6 +14,13 @@ export const moveNodeDownCommand: CommandDefinition = {
   description: "在兄弟节点中向下移动",
   category: "node",
   actionBased: true,
+  parameters: [
+    {
+      name: "nodeId",
+      type: "string",
+      description: "要移动的节点 ID",
+    },
+  ],
 
   handler: (root: MindmapStore, params?: unknown[]) => {
     const [nodeId] = (params as MoveNodeParams) || [];

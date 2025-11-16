@@ -15,9 +15,26 @@ type MoveNodeParams = [string?, string?, number?];
 export const moveNodeCommand: CommandDefinition = {
   id: "node.move",
   name: "移动节点",
-  description: "移动节点到新位置",
+  description: "移动节点到新的父节点或位置",
   category: "node",
   actionBased: true,
+  parameters: [
+    {
+      name: "nodeId",
+      type: "string",
+      description: "要移动的节点 ID",
+    },
+    {
+      name: "targetParentId",
+      type: "string",
+      description: "目标父节点 ID",
+    },
+    {
+      name: "position",
+      type: "number",
+      description: "在新父节点下的位置",
+    },
+  ],
 
   handler: (root: MindmapStore, params?: unknown[]) => {
     const [nodeId, newParentId, position] = (params as MoveNodeParams) || [];

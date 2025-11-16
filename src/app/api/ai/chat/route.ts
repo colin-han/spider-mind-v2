@@ -86,6 +86,7 @@ export async function POST(req: NextRequest) {
         children: [],
       }
     );
+    console.log("[API /ai/chat] System prompt:", systemPrompt);
 
     // 调用 streamText
     const result = await streamText({
