@@ -5,6 +5,7 @@ import {
   uploadMindmapChanges,
 } from "@/lib/actions/mindmap-sync";
 import { getDB } from "@/lib/db/schema";
+import { syncAIMessages } from "@/lib/ai/conversation-persistence";
 
 /**
  * 保存思维导图到服务器
@@ -121,6 +122,15 @@ export const saveMindmapCommand: CommandDefinition = {
     }
 
     await tx.done;
+
+    // 6. 同步 AI 消息
+    try {
+      await syncAIMessages(currentMindmap.id);
+      console.log("AI messages synced successfully");
+    } catch (error) {
+      // AI 消息同步失败不影响主流程
+      console.error("Failed to sync AI messages:", error);
+    }
 
     console.log("Mindmap saved successfully");
   },

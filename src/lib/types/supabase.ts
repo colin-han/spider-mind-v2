@@ -34,6 +34,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_messages: {
+        Row: {
+          id: string
+          node_id: string
+          mindmap_id: string
+          user_id: string
+          role: string
+          parts: Json
+          created_at: string
+          metadata: Json | null
+        }
+        Insert: {
+          id?: string
+          node_id: string
+          mindmap_id: string
+          user_id: string
+          role: string
+          parts: Json
+          created_at?: string
+          metadata?: Json | null
+        }
+        Update: {
+          id?: string
+          node_id?: string
+          mindmap_id?: string
+          user_id?: string
+          role?: string
+          parts?: Json
+          created_at?: string
+          metadata?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_messages_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "mindmap_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_messages_mindmap_id_fkey"
+            columns: ["mindmap_id"]
+            isOneToOne: false
+            referencedRelation: "mindmaps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mindmap_nodes: {
         Row: {
           created_at: string
