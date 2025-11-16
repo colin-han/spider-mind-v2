@@ -71,8 +71,14 @@
 
 /* 编辑器代码预览层文字颜色 */
 [data-color-mode="dark"] .w-md-editor-text-pre > code,
-[data-color-mode="dark"] .w-md-editor-text-pre {
+[data-color-mode="dark"] .w-md-editor-text-pre,
+[data-color-mode="dark"] .w-md-editor .w-md-editor-text-pre > code,
+[data-color-mode="dark"] .markdown-editor .w-md-editor-text-pre > code {
   color: rgb(229 231 235 / var(--tw-text-opacity, 1)) !important; /* gray-200 */
+  /* 确保暗色模式下也使用等宽字体 */
+  font-family:
+    ui-monospace, "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas,
+    "Courier New", monospace !important;
 }
 
 /* ============================================
@@ -99,22 +105,39 @@
 }
 
 /* ============================================
-   等宽字体设置
+   等宽字体设置 - 确保输入层和显示层完全一致
    ============================================ */
 
 /* Markdown Editor - 等宽字体设置 */
-.w-md-editor-text-input,
-.w-md-editor-text-pre,
+/* 使用更高优先级的选择器确保字体样式能够覆盖编辑器默认样式 */
+/* 统一设置所有相关元素的字体、大小、行高等属性，确保光标对齐 */
+
+/* 输入层 - textarea */
+.w-md-editor .w-md-editor-text-input,
+.markdown-editor .w-md-editor-text-input,
 textarea.w-md-editor-text-input {
   font-family:
     ui-monospace, "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas,
     "Courier New", monospace !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+  letter-spacing: normal !important;
+  word-spacing: normal !important;
 }
 
+/* 显示层 - pre 和 code */
+.w-md-editor .w-md-editor-text-pre,
+.markdown-editor .w-md-editor-text-pre,
+.w-md-editor .w-md-editor-text-pre > code,
+.markdown-editor .w-md-editor-text-pre > code,
 .w-md-editor-text-pre > code {
   font-family:
     ui-monospace, "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas,
     "Courier New", monospace !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+  letter-spacing: normal !important;
+  word-spacing: normal !important;
 }
 
 /* ============================================

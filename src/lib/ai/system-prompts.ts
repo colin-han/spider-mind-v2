@@ -50,6 +50,8 @@ interface NodeTree {
 
 **格式示例**（创建单层子节点，每个一个 operation）:
 
+假设当前节点 ID 是 "b1520189-176f-4592-b64a-bb60d7420836"：
+
 \`\`\`
 好的！我为你的产品规划创建了5个关键步骤，涵盖了产品规划的核心环节。
 
@@ -63,7 +65,7 @@ interface NodeTree {
     {
       "id": "op-1",
       "commandId": "node.addChild",
-      "params": ["{{currentNodeId}}", null, "市场调研"],
+      "params": ["b1520189-176f-4592-b64a-bb60d7420836", null, "市场调研"],
       "description": "创建子节点'市场调研'",
       "preview": {
         "summary": "添加'市场调研'子节点"
@@ -76,7 +78,7 @@ interface NodeTree {
     {
       "id": "op-2",
       "commandId": "node.addChild",
-      "params": ["{{currentNodeId}}", null, "需求分析"],
+      "params": ["b1520189-176f-4592-b64a-bb60d7420836", null, "需求分析"],
       "description": "创建子节点'需求分析'",
       "preview": {
         "summary": "添加'需求分析'子节点"
@@ -89,7 +91,7 @@ interface NodeTree {
     {
       "id": "op-3",
       "commandId": "node.addChild",
-      "params": ["{{currentNodeId}}", null, "竞品分析"],
+      "params": ["b1520189-176f-4592-b64a-bb60d7420836", null, "竞品分析"],
       "description": "创建子节点'竞品分析'",
       "preview": {
         "summary": "添加'竞品分析'子节点"
@@ -102,7 +104,7 @@ interface NodeTree {
     {
       "id": "op-4",
       "commandId": "node.addChild",
-      "params": ["{{currentNodeId}}", null, "功能规划"],
+      "params": ["b1520189-176f-4592-b64a-bb60d7420836", null, "功能规划"],
       "description": "创建子节点'功能规划'",
       "preview": {
         "summary": "添加'功能规划'子节点"
@@ -115,7 +117,7 @@ interface NodeTree {
     {
       "id": "op-5",
       "commandId": "node.addChild",
-      "params": ["{{currentNodeId}}", null, "时间规划"],
+      "params": ["b1520189-176f-4592-b64a-bb60d7420836", null, "时间规划"],
       "description": "创建子节点'时间规划'",
       "preview": {
         "summary": "添加'时间规划'子节点"
@@ -133,6 +135,8 @@ interface NodeTree {
 
 **格式示例**（创建多层级子树，每棵树一个 operation）:
 
+假设当前节点 ID 是 "c2630290-287g-5703-c75b-cc71e8531947"：
+
 \`\`\`
 我会为你创建一个包含多个层级的功能模块结构。
 
@@ -146,7 +150,7 @@ interface NodeTree {
     {
       "id": "op-1",
       "commandId": "node.addChildTrees",
-      "params": ["{{currentNodeId}}", [
+      "params": ["c2630290-287g-5703-c75b-cc71e8531947", [
         {
           "title": "用户管理",
           "children": [
@@ -168,7 +172,7 @@ interface NodeTree {
     {
       "id": "op-2",
       "commandId": "node.addChildTrees",
-      "params": ["{{currentNodeId}}", [
+      "params": ["c2630290-287g-5703-c75b-cc71e8531947", [
         {
           "title": "订单管理",
           "children": [
@@ -226,10 +230,26 @@ interface NodeTree {
 
 ${contextInfo}
 
-**重要**：在 operations 的 params 参数中使用节点 ID 时，请使用上下文中提供的实际 ID。例如：
-- 为当前节点创建子节点：使用 \`"${nodeContext.currentNode.id}"\` 作为 parentId
-- 操作兄弟节点：使用兄弟节点列表中的 ID
-- 操作子节点：使用子节点列表中的 ID
+**🔴 重要：节点 ID 使用规则**
+
+1. **必须使用上下文中 <id> 标签内的完整 UUID**
+2. **当前节点的 ID 是**：\`"${nodeContext.currentNode.id}"\`（完整 UUID 格式）
+3. **禁止使用占位符**（如 "{{currentNodeId}}"）- 系统不会替换占位符
+4. **禁止使用短ID**（如 "abc123"）- 必须使用完整 UUID
+
+**示例**：为当前节点添加子节点的正确 params：
+\`\`\`json
+"params": ["${nodeContext.currentNode.id}", null, "子节点标题"]
+\`\`\`
+
+**错误示例**（会导致"节点不存在"错误）：
+\`\`\`json
+// ❌ 错误：使用了短ID
+"params": ["abc123", null, "子节点标题"]
+
+// ❌ 错误：使用了占位符
+"params": ["{{currentNodeId}}", null, "子节点标题"]
+\`\`\`
 `;
 }
 
@@ -239,33 +259,50 @@ ${contextInfo}
 function buildContextInfo(context: AINodeContext): string {
   const parts: string[] = [];
 
-  // 当前节点信息
+  // 当前节点信息（只显示 short_id，uuid 用于内部持久化不需要显示给 AI）
   parts.push(`当前节点：
-- 标题：${context.currentNode.title}
-- ID：${context.currentNode.id}`);
+<title>${context.currentNode.title}</title>
+<id>${context.currentNode.id}</id>`);
+
+  // 如果有笔记内容，使用标签格式显示
+  if (context.currentNode.note) {
+    parts.push(`<note>
+${context.currentNode.note}
+</note>`);
+  }
 
   // 父节点链信息
   if (context.parentChain.length > 0) {
-    const chain = context.parentChain
-      .map((node: { id: string; title: string }) => node.title)
-      .join(" > ");
-    parts.push(`\n父节点链：${chain}`);
+    parts.push("\n父节点链（从根到当前）：");
+    context.parentChain.forEach(
+      (node: { id: string; title: string; note?: string }) => {
+        parts.push(`<title>${node.title}</title>`);
+        parts.push(`<id>${node.id}</id>`);
+        if (node.note) {
+          parts.push(`<note>
+${node.note}
+</note>`);
+        }
+      }
+    );
   }
 
   // 兄弟节点信息
   if (context.siblings.length > 0) {
-    const siblings = context.siblings
-      .map((node: { id: string; title: string }) => `- ${node.title}`)
-      .join("\n");
-    parts.push(`\n兄弟节点：\n${siblings}`);
+    parts.push("\n兄弟节点：");
+    context.siblings.forEach((node: { id: string; title: string }) => {
+      parts.push(`<title>${node.title}</title>`);
+      parts.push(`<id>${node.id}</id>`);
+    });
   }
 
   // 子节点信息
   if (context.children.length > 0) {
-    const children = context.children
-      .map((node: { id: string; title: string }) => `- ${node.title}`)
-      .join("\n");
-    parts.push(`\n子节点：\n${children}`);
+    parts.push("\n子节点：");
+    context.children.forEach((node: { id: string; title: string }) => {
+      parts.push(`<title>${node.title}</title>`);
+      parts.push(`<id>${node.id}</id>`);
+    });
   } else {
     parts.push("\n子节点：（无）");
   }

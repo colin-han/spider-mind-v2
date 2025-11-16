@@ -31,12 +31,17 @@ interface MessageBubbleProps {
     selectedIds: string[],
     operations: AIOperation[]
   ) => void;
+  onOperationsCancelled?: (
+    messageId: string,
+    operations: AIOperation[]
+  ) => void;
 }
 
 export function MessageBubble({
   message,
   metadata,
   onOperationsApplied,
+  onOperationsCancelled,
 }: MessageBubbleProps) {
   const isUser = message.role === "user";
   const [operationsPanelVisible, setOperationsPanelVisible] = useState(true);
@@ -58,8 +63,9 @@ export function MessageBubble({
   const operations = operationsComplete ? extractOperations(textContent) : [];
   const operationsLoading = hasOperations && !operationsComplete;
 
-  // 检查操作是否已执行（从 metadata 中读取）
+  // 检查操作是否已执行或已取消（从 metadata 中读取）
   const operationsAlreadyApplied = metadata?.operationsApplied === true;
+  const operationsCancelled = metadata?.operationsCancelled === true;
 
   // 解析 AI 响应中的结构化建议（仅当不是 operations 时）
   const suggestions =
@@ -87,6 +93,10 @@ export function MessageBubble({
 
   const handleReject = () => {
     setOperationsPanelVisible(false);
+    // 通知父组件操作已取消
+    if (onOperationsCancelled) {
+      onOperationsCancelled(message.id, operations);
+    }
   };
 
   return (
@@ -185,13 +195,21 @@ export function MessageBubble({
           )}
 
         {/* 已执行的操作显示状态 */}
-        {hasOperations && operationsAlreadyApplied && (
+        {hasOperations && operationsAlreadyApplied && !operationsCancelled && (
           <div className="mt-2 text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
             <CheckCircle className="w-4 h-4" />
             已执行{" "}
             {(metadata?.["appliedOperationIds"] as string[] | undefined)
               ?.length || operations.length}{" "}
             个操作
+          </div>
+        )}
+
+        {/* 已取消的操作显示状态 */}
+        {hasOperations && operationsCancelled && (
+          <div className="mt-2 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+            <CheckCircle className="w-4 h-4" />
+            已取消 {operations.length} 个操作
           </div>
         )}
 

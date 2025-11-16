@@ -98,7 +98,7 @@ export const AIChatPanel = forwardRef<AIChatPanelHandle, AIChatPanelProps>(
         setIsLoadingHistory(true);
         setHistoryError(null);
         try {
-          // 使用 nodeContext 中的 UUID 而不是 short_id
+          // 使用 nodeContext 中的 UUID 进行对话持久化
           const nodeUUID = nodeContext?.currentNode.id;
           if (!nodeUUID) {
             throw new Error("Node UUID not available");
@@ -148,7 +148,7 @@ export const AIChatPanel = forwardRef<AIChatPanelHandle, AIChatPanelProps>(
           message.id,
           message.role as "user" | "assistant",
           message.parts,
-          nodeContext.currentNode.id, // 使用 UUID
+          nodeContext.currentNode.id, // 使用 UUID 进行数据库持久化
           mindmapId
         );
 
@@ -235,7 +235,7 @@ export const AIChatPanel = forwardRef<AIChatPanelHandle, AIChatPanelProps>(
             userMessageId,
             "user",
             [{ type: "text", text: confirmationText }],
-            nodeContext.currentNode.id,
+            nodeContext.currentNode.id, // 使用 UUID 进行数据库持久化
             mindmapId
           );
           await store.acceptActions([new AddAIMessageAction(userMessage)]);
@@ -244,6 +244,56 @@ export const AIChatPanel = forwardRef<AIChatPanelHandle, AIChatPanelProps>(
           sendMessage({ text: confirmationText });
         } catch (error) {
           console.error("Failed to handle operations applied:", error);
+        }
+      },
+      [mindmapId, nodeContext, store, sendMessage]
+    );
+
+    // 处理操作取消回调
+    const handleOperationsCancelled = useCallback(
+      async (messageId: string, operations: AIOperation[]) => {
+        if (!mindmapId || !nodeContext) return;
+
+        try {
+          // 1. 更新消息的 metadata 标记为已取消
+          const updateAction = new UpdateAIMessageMetadataAction(messageId, {
+            operationsApplied: true, // 也设置为 true，表示用户已处理过这个建议
+            operationsCancelled: true,
+            cancelledAt: new Date().toISOString(),
+          });
+          await store.acceptActions([updateAction]);
+
+          // 2. 更新本地 metadata 映射
+          setMessageMetadataMap((prev) => {
+            const newMap = new Map(prev);
+            const existingMetadata = newMap.get(messageId) || {};
+            newMap.set(messageId, {
+              ...existingMetadata,
+              operationsApplied: true,
+              operationsCancelled: true,
+              cancelledAt: new Date().toISOString(),
+            });
+            return newMap;
+          });
+
+          // 3. 生成并发送取消消息给 LLM
+          const cancellationText = `我已取消了你建议的 ${operations.length} 个操作。`;
+
+          // 保存用户消息
+          const userMessageId = `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          const userMessage = createAIMessage(
+            userMessageId,
+            "user",
+            [{ type: "text", text: cancellationText }],
+            nodeContext.currentNode.id, // 使用 UUID 进行数据库持久化
+            mindmapId
+          );
+          await store.acceptActions([new AddAIMessageAction(userMessage)]);
+
+          // 发送到 AI
+          sendMessage({ text: cancellationText });
+        } catch (error) {
+          console.error("Failed to handle operations cancelled:", error);
         }
       },
       [mindmapId, nodeContext, store, sendMessage]
@@ -311,6 +361,7 @@ export const AIChatPanel = forwardRef<AIChatPanelHandle, AIChatPanelProps>(
               message={message}
               metadata={messageMetadataMap.get(message.id)}
               onOperationsApplied={handleOperationsApplied}
+              onOperationsCancelled={handleOperationsCancelled}
             />
           ))}
 
@@ -345,7 +396,7 @@ export const AIChatPanel = forwardRef<AIChatPanelHandle, AIChatPanelProps>(
                 userMessageId,
                 "user",
                 [{ type: "text", text: userInput }],
-                nodeContext.currentNode.id,
+                nodeContext.currentNode.id, // 使用 UUID 进行数据库持久化
                 mindmapId
               );
 

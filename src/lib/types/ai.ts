@@ -47,12 +47,13 @@ export interface Conversation {
  */
 export interface AINodeContext {
   currentNode: {
-    id: string;
+    id: string; // UUID
     title: string;
+    note?: string; // 当前节点的笔记内容
   };
-  parentChain: { id: string; title: string }[]; // 祖先节点链
-  siblings: { id: string; title: string }[]; // 兄弟节点
-  children: { id: string; title: string }[]; // 子节点
+  parentChain: { id: string; title: string; note?: string }[]; // 祖先节点链（包含笔记），id 是 UUID
+  siblings: { id: string; title: string }[]; // 兄弟节点（仅标题），id 是 UUID
+  children: { id: string; title: string }[]; // 子节点（仅标题），id 是 UUID
 }
 
 /**
@@ -106,6 +107,14 @@ export interface AIMessage {
     operations?: unknown[];
     // 用户是否应用了操作
     operationsApplied?: boolean;
+    // 应用的操作 ID 列表
+    appliedOperationIds?: string[];
+    // 应用操作的时间
+    appliedAt?: string;
+    // 用户是否取消了操作
+    operationsCancelled?: boolean;
+    // 取消操作的时间
+    cancelledAt?: string;
     // 其他元数据
     [key: string]: unknown;
   };

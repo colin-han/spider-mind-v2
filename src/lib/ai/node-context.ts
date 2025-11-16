@@ -21,7 +21,7 @@ export function buildNodeContext(nodeId: string): AINodeContext {
   }
 
   // 构建父节点链（从根节点到当前节点的路径）
-  const parentChain: { id: string; title: string }[] = [];
+  const parentChain: { id: string; title: string; note?: string }[] = [];
   let currentNode = node;
 
   // 向上遍历直到根节点
@@ -30,10 +30,15 @@ export function buildNodeContext(nodeId: string): AINodeContext {
     if (!parent) break;
 
     // 插入到数组开头，保持从根到当前的顺序
-    parentChain.unshift({
-      id: parent.id,
+    const parentNode: { id: string; title: string; note?: string } = {
+      id: parent.id, // 使用 UUID
       title: parent.title,
-    });
+    };
+    // 只在 note 有值时添加该字段
+    if (parent.note) {
+      parentNode.note = parent.note;
+    }
+    parentChain.unshift(parentNode);
 
     currentNode = parent;
   }
@@ -45,7 +50,7 @@ export function buildNodeContext(nodeId: string): AINodeContext {
     Array.from(editor.nodes.values()).forEach((n) => {
       if (n.parent_short_id === node.parent_short_id && n.short_id !== nodeId) {
         siblings.push({
-          id: n.id,
+          id: n.id, // 使用 UUID
           title: n.title,
         });
       }
@@ -57,17 +62,27 @@ export function buildNodeContext(nodeId: string): AINodeContext {
   Array.from(editor.nodes.values()).forEach((n) => {
     if (n.parent_short_id === nodeId) {
       children.push({
-        id: n.id,
+        id: n.id, // 使用 UUID
         title: n.title,
       });
     }
   });
 
+  // 构建 currentNode，只在 note 有值时添加该字段
+  const currentNodeData: {
+    id: string;
+    title: string;
+    note?: string;
+  } = {
+    id: node.id, // UUID
+    title: node.title,
+  };
+  if (node.note) {
+    currentNodeData.note = node.note;
+  }
+
   return {
-    currentNode: {
-      id: node.id,
-      title: node.title,
-    },
+    currentNode: currentNodeData,
     parentChain,
     siblings,
     children,

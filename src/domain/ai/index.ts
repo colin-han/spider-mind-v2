@@ -47,5 +47,11 @@ export {
   extractNodeIds,
 } from "./validation";
 
+// 导出参数转换函数
+export {
+  transformOperationParams,
+  transformOperationsParams,
+} from "./param-transformer";
+
 // 导出执行器
 export { AIOperationExecutor, createAIOperationExecutor } from "./executor";

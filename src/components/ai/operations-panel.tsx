@@ -6,7 +6,11 @@ import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import type { AIOperation } from "@/domain/ai";
-import { createAIOperationExecutor, validateOperations } from "@/domain/ai";
+import {
+  createAIOperationExecutor,
+  validateOperations,
+  transformOperationsParams,
+} from "@/domain/ai";
 
 interface OperationsPanelProps {
   operations: AIOperation[];
@@ -56,17 +60,20 @@ export function OperationsPanel({
         selectedIds.includes(op.id)
       );
 
+      // 转换参数（UUID -> short_id）
+      const transformedOps = transformOperationsParams(selectedOps);
+
       // 验证操作
-      const validationResult = validateOperations(selectedOps);
+      const validationResult = validateOperations(transformedOps);
       if (!validationResult.valid) {
         toast.error(`验证失败: ${validationResult.error}`);
         setIsExecuting(false);
         return;
       }
 
-      // 执行选中的操作
+      // 执行选中的操作（使用转换后的参数）
       const executor = createAIOperationExecutor();
-      await executor.executeSelected(selectedOps, "执行 AI 建议的操作");
+      await executor.executeSelected(transformedOps, "执行 AI 建议的操作");
 
       // 执行成功
       toast.success(`成功执行 ${selectedOps.length} 个操作`);

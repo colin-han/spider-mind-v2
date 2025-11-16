@@ -13,12 +13,13 @@
 
 ## 关键概念
 
-| 概念              | 定义                                                 | 示例/说明                                       |
-| ----------------- | ---------------------------------------------------- | ----------------------------------------------- |
-| AIMessage         | 持久化的 AI 对话消息，包含 AI SDK 标准字段和同步字段 | 用户消息、AI 响应，存储在 IndexedDB 和 Supabase |
-| AIOperation       | AI 返回的操作建议，本质是待执行的 Command            | `{commandId: "node.addChild", params: [...]}`   |
-| operationsApplied | 消息元数据标记，表示用户是否已执行该消息中的操作     | 防止重复执行，状态持久化                        |
-| dirty flag        | 同步状态标记，表示数据是否需要同步到云端             | `dirty: true` 表示待同步                        |
+| 概念              | 定义                                                 | 示例/说明                                                      |
+| ----------------- | ---------------------------------------------------- | -------------------------------------------------------------- |
+| AIMessage         | 持久化的 AI 对话消息，包含 AI SDK 标准字段和同步字段 | 用户消息、AI 响应，存储在 IndexedDB 和 Supabase                |
+| AINodeContext     | 传递给 AI 的节点上下文信息                           | 包含当前节点（含 note）、父节点链（含 note）、兄弟节点、子节点 |
+| AIOperation       | AI 返回的操作建议，本质是待执行的 Command            | `{commandId: "node.addChild", params: [...]}`                  |
+| operationsApplied | 消息元数据标记，表示用户是否已执行该消息中的操作     | 防止重复执行，状态持久化                                       |
+| dirty flag        | 同步状态标记，表示数据是否需要同步到云端             | `dirty: true` 表示待同步                                       |
 
 ## 概述
 
@@ -60,6 +61,11 @@ src/domain/ai/executor.ts                     # 操作执行器
 ```typescript
 // 加载对话历史
 const messages = await loadConversation(nodeUUID);
+
+// 构建节点上下文（包含 note）
+const context = buildNodeContext(nodeId);
+// context.currentNode.note - 当前节点的笔记
+// context.parentChain[].note - 父节点的笔记
 
 // 创建 AI 消息
 const message = createAIMessage(id, role, parts, nodeId, mindmapId);
@@ -445,6 +451,10 @@ A: 失败时 toast 提示错误，不更新 metadata，面板保持可用状态�
 
 A: AI 消息只有新增，没有更新，不会产生冲突。同步时批量插入新消息，更新本地 server_id。
 
+**Q: AI 能看到节点的笔记（note）吗？**
+
+A: 是的。`buildNodeContext` 函数会为 `currentNode` 和 `parentChain` 中的每个节点提取 note 字段。AI 可以根据当前节点和父节点的笔记内容生成更精准的建议。兄弟节点和子节点只包含标题，不包含笔记，以控制上下文大小。
+
 ## 参考资料
 
 - [AI SDK v5 文档](https://ai.vercel.com/docs)
@@ -453,6 +463,7 @@ A: AI 消息只有新增，没有更新，不会产生冲突。同步时批量�
 
 ## 修订历史
 
-| 日期       | 版本 | 修改内容                                    | 作者        |
-| ---------- | ---- | ------------------------------------------- | ----------- |
-| 2025-11-16 | 1.0  | 初始版本，整合对话持久化、操作系统、UI 设计 | Claude Code |
+| 日期       | 版本 | 修改内容                                                             | 作者        |
+| ---------- | ---- | -------------------------------------------------------------------- | ----------- |
+| 2025-11-16 | 1.1  | 为 currentNode 和 parentChain 添加 note 字段，增强 AI 上下文理解能力 | Claude Code |
+| 2025-11-16 | 1.0  | 初始版本，整合对话持久化、操作系统、UI 设计                          | Claude Code |
