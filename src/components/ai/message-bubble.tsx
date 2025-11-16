@@ -3,7 +3,7 @@
 "use client";
 
 import { UIMessage } from "ai"; // AI SDK v5: Message renamed to UIMessage
-import { User, Bot } from "lucide-react";
+import { User, Bot, CheckCircle } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
@@ -20,12 +20,24 @@ import {
 } from "@/lib/ai/parse-operations";
 import { OperationsPanel } from "./operations-panel";
 import { useState } from "react";
+import type { AIMessage } from "@/lib/types/ai";
+import type { AIOperation } from "@/domain/ai";
 
 interface MessageBubbleProps {
   message: UIMessage;
+  metadata?: AIMessage["metadata"]; // 消息的持久化 metadata
+  onOperationsApplied?: (
+    messageId: string,
+    selectedIds: string[],
+    operations: AIOperation[]
+  ) => void;
 }
 
-export function MessageBubble({ message }: MessageBubbleProps) {
+export function MessageBubble({
+  message,
+  metadata,
+  onOperationsApplied,
+}: MessageBubbleProps) {
   const isUser = message.role === "user";
   const [operationsPanelVisible, setOperationsPanelVisible] = useState(true);
 
@@ -46,6 +58,9 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   const operations = operationsComplete ? extractOperations(textContent) : [];
   const operationsLoading = hasOperations && !operationsComplete;
 
+  // 检查操作是否已执行（从 metadata 中读取）
+  const operationsAlreadyApplied = metadata?.operationsApplied === true;
+
   // 解析 AI 响应中的结构化建议（仅当不是 operations 时）
   const suggestions =
     !isUser && !hasOperations ? parseAISuggestions(textContent) : null;
@@ -62,8 +77,12 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     displayContent = removeJSONSuggestions(textContent);
   }
 
-  const handleAccept = (_selectedIds: string[]) => {
+  const handleAccept = (selectedIds: string[]) => {
     setOperationsPanelVisible(false);
+    // 通知父组件操作已执行
+    if (onOperationsApplied) {
+      onOperationsApplied(message.id, selectedIds, operations);
+    }
   };
 
   const handleReject = () => {
@@ -152,14 +171,27 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         )}
 
         {/* Operations Panel */}
-        {hasOperations && operationsPanelVisible && (
-          <div className="mt-2">
-            <OperationsPanel
-              operations={operations}
-              loading={operationsLoading}
-              onAccept={handleAccept}
-              onReject={handleReject}
-            />
+        {hasOperations &&
+          operationsPanelVisible &&
+          !operationsAlreadyApplied && (
+            <div className="mt-2">
+              <OperationsPanel
+                operations={operations}
+                loading={operationsLoading}
+                onAccept={handleAccept}
+                onReject={handleReject}
+              />
+            </div>
+          )}
+
+        {/* 已执行的操作显示状态 */}
+        {hasOperations && operationsAlreadyApplied && (
+          <div className="mt-2 text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+            <CheckCircle className="w-4 h-4" />
+            已执行{" "}
+            {(metadata?.["appliedOperationIds"] as string[] | undefined)
+              ?.length || operations.length}{" "}
+            个操作
           </div>
         )}
 

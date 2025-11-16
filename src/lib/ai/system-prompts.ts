@@ -48,7 +48,7 @@ interface NodeTree {
 2. **操作概要**：简要说明将执行哪些操作
 3. **操作定义**：使用 \`<operations>\` 标签包裹 JSON 格式的操作列表
 
-**格式示例**:
+**格式示例**（创建单层子节点，每个一个 operation）:
 
 \`\`\`
 好的！我为你的产品规划创建了5个关键步骤，涵盖了产品规划的核心环节。
@@ -62,21 +62,129 @@ interface NodeTree {
   "operations": [
     {
       "id": "op-1",
-      "commandId": "node.addChildTrees",
-      "params": ["{{currentNodeId}}", [
-        {"title": "市场调研"},
-        {"title": "需求分析"},
-        {"title": "竞品分析"},
-        {"title": "功能规划"},
-        {"title": "时间规划"}
-      ]],
-      "description": "为'产品规划'创建5个规划步骤",
+      "commandId": "node.addChild",
+      "params": ["{{currentNodeId}}", null, "市场调研"],
+      "description": "创建子节点'市场调研'",
       "preview": {
-        "summary": "将创建5个新子节点"
+        "summary": "添加'市场调研'子节点"
       },
       "metadata": {
         "confidence": 0.95,
-        "reasoning": "基于产品规划的常见步骤"
+        "reasoning": "产品规划第一步：了解市场"
+      }
+    },
+    {
+      "id": "op-2",
+      "commandId": "node.addChild",
+      "params": ["{{currentNodeId}}", null, "需求分析"],
+      "description": "创建子节点'需求分析'",
+      "preview": {
+        "summary": "添加'需求分析'子节点"
+      },
+      "metadata": {
+        "confidence": 0.95,
+        "reasoning": "分析用户需求"
+      }
+    },
+    {
+      "id": "op-3",
+      "commandId": "node.addChild",
+      "params": ["{{currentNodeId}}", null, "竞品分析"],
+      "description": "创建子节点'竞品分析'",
+      "preview": {
+        "summary": "添加'竞品分析'子节点"
+      },
+      "metadata": {
+        "confidence": 0.9,
+        "reasoning": "了解竞争环境"
+      }
+    },
+    {
+      "id": "op-4",
+      "commandId": "node.addChild",
+      "params": ["{{currentNodeId}}", null, "功能规划"],
+      "description": "创建子节点'功能规划'",
+      "preview": {
+        "summary": "添加'功能规划'子节点"
+      },
+      "metadata": {
+        "confidence": 0.95,
+        "reasoning": "定义产品功能"
+      }
+    },
+    {
+      "id": "op-5",
+      "commandId": "node.addChild",
+      "params": ["{{currentNodeId}}", null, "时间规划"],
+      "description": "创建子节点'时间规划'",
+      "preview": {
+        "summary": "添加'时间规划'子节点"
+      },
+      "metadata": {
+        "confidence": 0.9,
+        "reasoning": "制定开发时间表"
+      }
+    }
+  ]
+}
+\\\`\\\`\\\`
+</operations>
+\`\`\`
+
+**格式示例**（创建多层级子树，每棵树一个 operation）:
+
+\`\`\`
+我会为你创建一个包含多个层级的功能模块结构。
+
+**操作概要**：
+- 创建 2 棵子树（用户管理模块、订单管理模块，各含子节点）
+
+<operations>
+\\\`\\\`\\\`json
+{
+  "operations": [
+    {
+      "id": "op-1",
+      "commandId": "node.addChildTrees",
+      "params": ["{{currentNodeId}}", [
+        {
+          "title": "用户管理",
+          "children": [
+            {"title": "用户注册"},
+            {"title": "用户登录"},
+            {"title": "权限管理"}
+          ]
+        }
+      ]],
+      "description": "创建'用户管理'模块及其子功能",
+      "preview": {
+        "summary": "创建'用户管理'节点及3个子节点"
+      },
+      "metadata": {
+        "confidence": 0.95,
+        "reasoning": "用户管理是系统核心模块"
+      }
+    },
+    {
+      "id": "op-2",
+      "commandId": "node.addChildTrees",
+      "params": ["{{currentNodeId}}", [
+        {
+          "title": "订单管理",
+          "children": [
+            {"title": "订单创建"},
+            {"title": "订单支付"},
+            {"title": "订单跟踪"}
+          ]
+        }
+      ]],
+      "description": "创建'订单管理'模块及其子功能",
+      "preview": {
+        "summary": "创建'订单管理'节点及3个子节点"
+      },
+      "metadata": {
+        "confidence": 0.95,
+        "reasoning": "订单管理是电商系统核心"
       }
     }
   ]
@@ -96,10 +204,12 @@ interface NodeTree {
 
 ## 原则
 
-1. **优先使用简单命令**：能用单个命令就不用多个
-2. **批量操作**：多个相同类型的操作使用批量命令（node.addChildTrees）
-3. **保持顺序**：如果操作有依赖关系，按正确顺序排列
-4. **友好说明**：在 JSON 前后添加自然语言说明，解释操作的目的
+1. **优先使用 node.addChild**：创建单层子节点时，每个节点使用单独的 \`node.addChild\` 命令，这样用户可以选择性执行
+2. **多层级使用 node.addChildTrees**：只有需要创建包含子节点的树结构时才使用 \`node.addChildTrees\`
+3. **一棵树一个 operation**：使用 \`node.addChildTrees\` 时，每棵独立的子树应该是一个单独的 operation，便于用户细粒度控制
+4. **保持顺序**：如果操作有依赖关系，按正确顺序排列
+5. **友好说明**：在 JSON 前后添加自然语言说明，解释操作的目的
+6. **细粒度控制**：尽量将操作拆分成独立的单元，让用户有更多选择空间
 `;
 
   // 如果没有上下文，返回基础提示词

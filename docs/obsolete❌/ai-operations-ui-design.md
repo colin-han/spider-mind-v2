@@ -729,14 +729,209 @@ UI 组件需要集成到 Chat Panel 中，具体集成方案待讨论：
 - 多个操作建议的展示方式（如果 AI 返回多组操作）
 - 操作状态的持久化（已执行的操作如何标记）
 
-## 7. 下一步
+## 7. 操作执行反馈与状态持久化
+
+### 7.1 问题描述
+
+当用户执行 AI 建议的操作后，需要：
+
+1. **向 LLM 发送确认消息**：让 LLM 知道用户执行了哪些操作，以便后续对话中参考用户的选择
+2. **防止重复执行**：避免用户多次点击同一组操作，或页面刷新后重新显示已执行的操作面板
+
+### 7.2 解决方案
+
+#### 7.2.1 消息元数据持久化
+
+在 AI 消息的 `metadata` 中记录操作执行状态：
+
+```typescript
+interface AIMessage {
+  // ... 其他字段
+  metadata?: {
+    operations?: AIOperation[]; // AI 返回的原始操作
+    operationsApplied?: boolean; // 用户是否已执行操作
+    appliedOperationIds?: string[]; // 用户选中执行的操作 ID
+    appliedAt?: string; // 执行时间
+  };
+}
+```
+
+#### 7.2.2 执行后发送确认消息
+
+操作执行成功后，自动发送一条系统消息给 LLM，告知操作结果：
+
+```typescript
+// 执行操作后的回调
+const handleOperationsApplied = async (
+  messageId: string,
+  selectedIds: string[],
+  operations: AIOperation[]
+) => {
+  // 1. 更新消息的 metadata，标记操作已执行
+  await updateMessageMetadata(messageId, {
+    operationsApplied: true,
+    appliedOperationIds: selectedIds,
+    appliedAt: new Date().toISOString(),
+  });
+
+  // 2. 生成确认消息内容
+  const selectedOps = operations.filter((op) => selectedIds.includes(op.id));
+  const confirmationText = generateConfirmationMessage(selectedOps);
+
+  // 3. 发送确认消息给 LLM（用户消息形式）
+  await sendMessage({ text: confirmationText });
+};
+
+// 生成确认消息
+function generateConfirmationMessage(appliedOps: AIOperation[]): string {
+  const descriptions = appliedOps.map((op) => `- ${op.description}`).join("\n");
+  return `我已执行以下操作：\n${descriptions}`;
+}
+```
+
+**确认消息示例**：
+
+```
+用户消息：我已执行以下操作：
+- 在节点"产品规划"下创建子节点：市场调研、需求分析、原型设计
+- 更新节点"需求分析"的标题为"用户需求分析"
+
+AI 响应：很好！我看到你已经执行了创建子节点和更新标题的操作。现在你的产品规划已经有了基本框架...
+```
+
+#### 7.2.3 防止重复执行
+
+1. **基于 metadata 状态控制面板显示**：
+
+```typescript
+// MessageBubble 组件
+function MessageBubble({ message, onOperationsApplied }) {
+  // 检查操作是否已执行
+  const operationsAlreadyApplied = message.metadata?.operationsApplied === true;
+
+  // 只有未执行的操作才显示面板
+  const shouldShowPanel = hasOperations && !operationsAlreadyApplied;
+
+  return (
+    <div>
+      {/* 消息内容 */}
+      <div className="message-content">{displayContent}</div>
+
+      {/* 操作面板 - 只在未执行时显示 */}
+      {shouldShowPanel && (
+        <OperationsPanel
+          operations={operations}
+          loading={operationsLoading}
+          onAccept={(selectedIds) => onOperationsApplied(message.id, selectedIds, operations)}
+          onReject={() => {}}
+        />
+      )}
+
+      {/* 已执行的操作显示执行状态 */}
+      {operationsAlreadyApplied && (
+        <div className="text-xs text-green-600 mt-2 flex items-center gap-1">
+          <CheckCircle className="w-4 h-4" />
+          已执行 {message.metadata?.appliedOperationIds?.length || 0} 个操作
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+2. **执行成功后立即更新 metadata**：
+
+```typescript
+// AIChatPanel 组件
+const handleOperationsApplied = useCallback(
+  async (
+    messageId: string,
+    selectedIds: string[],
+    operations: AIOperation[]
+  ) => {
+    // 1. 更新消息的 metadata
+    const updateAction = new UpdateAIMessageMetadataAction(messageId, {
+      operationsApplied: true,
+      appliedOperationIds: selectedIds,
+      appliedAt: new Date().toISOString(),
+    });
+    await store.acceptActions([updateAction]);
+
+    // 2. 发送确认消息给 LLM
+    const selectedOps = operations.filter((op) => selectedIds.includes(op.id));
+    const confirmationText = `我已执行以下操作：\n${selectedOps.map((op) => `- ${op.description}`).join("\n")}`;
+
+    // 保存用户消息并发送到 AI
+    const userMessageId = `user-${Date.now()}`;
+    const userMessage = createAIMessage(
+      userMessageId,
+      "user",
+      [{ type: "text", text: confirmationText }],
+      nodeContext.currentNode.id,
+      mindmapId
+    );
+    await store.acceptActions([new AddAIMessageAction(userMessage)]);
+    sendMessage({ text: confirmationText });
+  },
+  [store, nodeContext, mindmapId, sendMessage]
+);
+```
+
+### 7.3 数据流
+
+```
+用户选择并点击"应用"
+  ↓
+OperationsPanel 执行选中的操作
+  ↓
+执行成功，调用 onAccept(selectedIds)
+  ↓
+AIChatPanel.handleOperationsApplied()
+  ↓
+  ├─► 更新消息 metadata（标记 operationsApplied=true）
+  │     ↓
+  │   IndexedDB 更新（dirty=true）
+  │     ↓
+  │   云端同步（下次保存时）
+  ↓
+  └─► 发送确认消息
+        ↓
+      创建用户消息对象
+        ↓
+      保存到 IndexedDB
+        ↓
+      通过 useChat.sendMessage() 发送到 LLM
+        ↓
+      LLM 响应（知道用户执行了哪些操作）
+  ↓
+MessageBubble 检测 metadata.operationsApplied
+  ↓
+隐藏操作面板，显示执行状态
+```
+
+### 7.4 优势
+
+1. **对话上下文完整**：LLM 知道用户执行了哪些操作，可以在后续对话中参考
+2. **防止重复执行**：页面刷新或历史加载后，已执行的操作不会再次显示面板
+3. **状态持久化**：操作执行状态保存在 IndexedDB 和 Supabase，跨会话保持
+4. **用户反馈清晰**：显示执行状态，用户知道哪些操作已完成
+
+### 7.5 实现要点
+
+1. **UpdateAIMessageMetadataAction**：新增 Action 用于更新消息的 metadata
+2. **消息组件增强**：MessageBubble 需要检查 metadata 并传递回调
+3. **确认消息格式**：清晰描述执行了哪些操作
+4. **同步策略**：metadata 更新设置 dirty=true，下次保存时同步到云端
+
+## 8. 下一步
 
 **设计确认**:
 
 1. ✅ 确认操作选择性执行的交互流程
 2. ✅ 确认流式输出的处理方式
 3. ✅ 确认操作面板的设计
-4. ⏳ 待用户确认后开始实施
+4. ✅ 确认操作执行反馈与状态持久化
+5. ⏳ 待用户确认后开始实施
 
 **实施计划**（待确认后执行）:
 
@@ -745,4 +940,6 @@ UI 组件需要集成到 Chat Panel 中，具体集成方案待讨论：
 3. 实现 AIOperationExecutor 类
 4. 集成到 Chat 组件
 5. 添加错误处理和用户反馈
-6. 测试和优化
+6. 实现 UpdateAIMessageMetadataAction
+7. 实现操作执行后的确认消息发送
+8. 测试和优化

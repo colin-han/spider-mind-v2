@@ -14,8 +14,11 @@ import {
   createAIMessage,
 } from "@/lib/ai/conversation-persistence";
 import { AddAIMessageAction } from "@/domain/actions/add-ai-message";
+import { UpdateAIMessageMetadataAction } from "@/domain/actions/update-ai-message-metadata";
 import { useMindmapStore } from "@/domain/mindmap-store";
-import type { AINodeContext } from "@/lib/types/ai";
+import type { AINodeContext, AIMessage } from "@/lib/types/ai";
+import type { AIOperation } from "@/domain/ai";
+import { getDB } from "@/lib/db/schema";
 
 interface AIChatPanelProps {
   nodeId: string;
@@ -29,6 +32,11 @@ export function AIChatPanel({ nodeId }: AIChatPanelProps) {
   const [initialMessages, setInitialMessages] = useState<UIMessage[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const [historyError, setHistoryError] = useState<string | null>(null);
+
+  // 消息 metadata 映射（messageId -> metadata）
+  const [messageMetadataMap, setMessageMetadataMap] = useState<
+    Map<string, AIMessage["metadata"]>
+  >(new Map());
 
   // 获取当前思维导图 ID
   const mindmapId = store.currentEditor?.currentMindmap.id;
@@ -58,12 +66,28 @@ export function AIChatPanel({ nodeId }: AIChatPanelProps) {
         }
         const messages = await loadConversation(nodeUUID);
         setInitialMessages(messages);
+
+        // 加载消息的 metadata 映射
+        const db = await getDB();
+        const aiMessages = await db.getAllFromIndex(
+          "ai_messages",
+          "by-node",
+          nodeUUID
+        );
+        const metadataMap = new Map<string, AIMessage["metadata"]>();
+        for (const msg of aiMessages) {
+          if (msg.metadata) {
+            metadataMap.set(msg.id, msg.metadata);
+          }
+        }
+        setMessageMetadataMap(metadataMap);
       } catch (error) {
         console.error("Failed to load conversation history:", error);
         setHistoryError(
           error instanceof Error ? error.message : "加载对话历史失败"
         );
         setInitialMessages([]);
+        setMessageMetadataMap(new Map());
       } finally {
         setIsLoadingHistory(false);
       }
@@ -129,6 +153,63 @@ export function AIChatPanel({ nodeId }: AIChatPanelProps) {
   // AI SDK v5: status values are "ready" | "submitted" | "streaming" | "error"
   const isLoading = status !== "ready";
 
+  // 处理操作执行回调
+  const handleOperationsApplied = useCallback(
+    async (
+      messageId: string,
+      selectedIds: string[],
+      operations: AIOperation[]
+    ) => {
+      if (!mindmapId || !nodeContext) return;
+
+      try {
+        // 1. 更新消息的 metadata
+        const updateAction = new UpdateAIMessageMetadataAction(messageId, {
+          operationsApplied: true,
+          appliedOperationIds: selectedIds,
+          appliedAt: new Date().toISOString(),
+        });
+        await store.acceptActions([updateAction]);
+
+        // 2. 更新本地 metadata 映射
+        setMessageMetadataMap((prev) => {
+          const newMap = new Map(prev);
+          const existingMetadata = newMap.get(messageId) || {};
+          newMap.set(messageId, {
+            ...existingMetadata,
+            operationsApplied: true,
+            appliedOperationIds: selectedIds,
+            appliedAt: new Date().toISOString(),
+          });
+          return newMap;
+        });
+
+        // 3. 生成并发送确认消息给 LLM
+        const selectedOps = operations.filter((op) =>
+          selectedIds.includes(op.id)
+        );
+        const confirmationText = `我已执行以下操作：\n${selectedOps.map((op) => `- ${op.description}`).join("\n")}`;
+
+        // 保存用户消息
+        const userMessageId = `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const userMessage = createAIMessage(
+          userMessageId,
+          "user",
+          [{ type: "text", text: confirmationText }],
+          nodeContext.currentNode.id,
+          mindmapId
+        );
+        await store.acceptActions([new AddAIMessageAction(userMessage)]);
+
+        // 发送到 AI
+        sendMessage({ text: confirmationText });
+      } catch (error) {
+        console.error("Failed to handle operations applied:", error);
+      }
+    },
+    [mindmapId, nodeContext, store, sendMessage]
+  );
+
   // 自动滚动到底部
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -186,7 +267,12 @@ export function AIChatPanel({ nodeId }: AIChatPanelProps) {
         )}
 
         {messages.map((message) => (
-          <MessageBubble key={message.id} message={message} />
+          <MessageBubble
+            key={message.id}
+            message={message}
+            metadata={messageMetadataMap.get(message.id)}
+            onOperationsApplied={handleOperationsApplied}
+          />
         ))}
 
         {isLoading && (

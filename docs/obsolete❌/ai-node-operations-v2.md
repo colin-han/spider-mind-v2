@@ -347,11 +347,74 @@ interface NodeTree {
 
 ## 原则
 
-1. **优先使用简单命令**: 能用单个命令就不用多个
-2. **批量操作**: 多个相同类型的操作使用批量命令（node.addChildTrees）
-3. **保持顺序**: 如果操作有依赖关系，按正确顺序排列
-4. **友好说明**: 在 JSON 前后添加自然语言说明，解释操作的目的
-   `;
+1. **优先使用 node.addChild**: 创建单层子节点时，每个节点使用单独的 \`node.addChild\` 命令，这样用户可以选择性执行
+2. **多层级使用 node.addChildTrees**: 只有需要创建包含子节点的树结构时才使用 \`node.addChildTrees\`
+3. **一棵树一个 operation**: 使用 \`node.addChildTrees\` 时，每棵独立的子树应该是一个单独的 operation，便于用户细粒度控制
+4. **保持顺序**: 如果操作有依赖关系，按正确顺序排列
+5. **友好说明**: 在 JSON 前后添加自然语言说明，解释操作的目的
+6. **细粒度控制**: 尽量将操作拆分成独立的单元，让用户有更多选择空间
+
+### 操作粒度策略
+
+为了给用户更好的控制体验，AI 应遵循以下粒度策略：
+
+**单层子节点场景**:
+
+- 使用多个 `node.addChild` 操作，每个节点一个 operation
+- 用户可以选择性地接受部分建议
+- 例如：创建 5 个子节点 → 5 个独立的 operation
+
+**多层级结构场景**:
+
+- 使用 `node.addChildTrees`，但每棵逻辑独立的子树是一个 operation
+- 保持树结构的完整性，同时允许用户选择不同的子树
+- 例如：创建 3 个模块（每个含子功能）→ 3 个独立的 operation
+
+**反面示例（不推荐）**:
+
+```json
+// 不好：所有节点打包成一个 operation，用户无法细粒度选择
+{
+  "id": "op-1",
+  "commandId": "node.addChildTrees",
+  "params": [
+    "parent-id",
+    [
+      { "title": "节点1" },
+      { "title": "节点2" },
+      { "title": "节点3" },
+      { "title": "节点4" },
+      { "title": "节点5" }
+    ]
+  ],
+  "description": "创建5个子节点"
+}
+```
+
+**推荐示例**:
+
+```json
+// 好：每个节点一个 operation，用户可以选择
+{
+  "operations": [
+    {
+      "id": "op-1",
+      "commandId": "node.addChild",
+      "params": ["parent-id", "节点1"],
+      "description": "创建'节点1'"
+    },
+    {
+      "id": "op-2",
+      "commandId": "node.addChild",
+      "params": ["parent-id", "节点2"],
+      "description": "创建'节点2'"
+    }
+    // ... 更多独立操作
+  ]
+}
+```
+
+`;
 
 ````
 
