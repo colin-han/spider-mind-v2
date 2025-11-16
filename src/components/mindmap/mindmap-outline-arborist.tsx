@@ -21,6 +21,7 @@ import { SetCurrentNodeAction } from "@/domain/actions/set-current-node";
 import { SetFocusedAreaAction } from "@/domain/actions/set-focused-area";
 import type { MindmapNode } from "@/lib/types";
 import { cn } from "@/lib/utils/cn";
+import { useFocusedArea } from "@/lib/hooks/use-focused-area";
 
 /**
  * MindmapOutlineArborist Props
@@ -185,6 +186,20 @@ export const MindmapOutlineArborist = memo(function MindmapOutlineArborist({
     return root ? [root] : [];
   }, [rootNode, editorState.nodes]);
 
+  // 注册 outline 的 focusedArea handler
+  useFocusedArea({
+    id: "outline",
+    onEnter: () => {
+      // 将焦点设置到树组件上
+      if (treeRef.current) {
+        treeRef.current.focus(editorState.currentNode, { scroll: false });
+      } else {
+        // 如果 tree 还没准备好，聚焦容器
+        containerRef.current?.focus();
+      }
+    },
+  });
+
   // 监听容器尺寸变化
   useEffect(() => {
     if (!containerRef.current) return;
@@ -274,7 +289,8 @@ export const MindmapOutlineArborist = memo(function MindmapOutlineArborist({
       {/* Tree 内容 */}
       <div
         ref={containerRef}
-        className="flex-1 min-h-0 overflow-hidden [&_*:focus-visible]:outline-none bg-white dark:bg-gray-900 custom-scrollbar [&_*]:custom-scrollbar"
+        tabIndex={0}
+        className="flex-1 min-h-0 overflow-hidden [&_*:focus-visible]:outline-none bg-white dark:bg-gray-900 custom-scrollbar [&_*]:custom-scrollbar outline-none"
         data-testid="outline-tree"
       >
         {!editorState.currentMindmap && (

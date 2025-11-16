@@ -35,6 +35,7 @@ import {
 } from "@/lib/utils/mindmap/drag-validator";
 import type { CustomNodeData } from "@/lib/types/react-flow";
 import "@xyflow/react/dist/style.css";
+import { useFocusedArea } from "@/lib/hooks/use-focused-area";
 
 /**
  * MindmapGraphViewer Props
@@ -104,6 +105,15 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
   // Dark mode 检测
   const [isDarkMode, setIsDarkMode] = useState(false);
 
+  // 注册 graph 的 focusedArea handler
+  useFocusedArea({
+    id: "graph",
+    onEnter: () => {
+      // 将焦点设置到容器元素上
+      containerRef.current?.focus();
+    },
+  });
+
   useEffect(() => {
     // 检测初始 dark mode 状态
     const darkModeMediaQuery = window.matchMedia(
@@ -154,7 +164,7 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
   const onNodeDoubleClick = useCallback(
     (_event: React.MouseEvent, node: Node) => {
       setCurrentNode(node.id);
-      setFocusedArea("panel");
+      setFocusedArea("title-editor");
     },
     [setCurrentNode, setFocusedArea]
   );
@@ -364,7 +374,8 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
     <div
       ref={containerRef}
       data-testid="mindmap-graph-viewer"
-      className="h-full w-full bg-gray-50 dark:bg-gray-900 relative"
+      tabIndex={0}
+      className="h-full w-full bg-gray-50 dark:bg-gray-900 relative outline-none"
     >
       <ReactFlow
         nodes={nodes}

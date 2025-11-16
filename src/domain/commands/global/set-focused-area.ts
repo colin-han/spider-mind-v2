@@ -1,10 +1,7 @@
 import { CommandDefinition, registerCommand } from "../../command-registry";
-import {
-  EditorAction,
-  FocusedArea,
-  MindmapStore,
-} from "../../mindmap-store.types";
+import { EditorAction, MindmapStore } from "../../mindmap-store.types";
 import { SetFocusedAreaAction } from "../../actions/set-focused-area";
+import { FocusedAreaId } from "../../focused-area.types";
 
 export const setFocusedArea: CommandDefinition = {
   id: "global.setFocusedArea",
@@ -14,13 +11,15 @@ export const setFocusedArea: CommandDefinition = {
   actionBased: true,
   undoable: false,
   handler: async (root: MindmapStore, params?: unknown[]) => {
-    const [area] = params as [FocusedArea];
+    const [area] = params as [FocusedAreaId];
     if (!area) {
       throw new Error("Invalid area");
     }
     if (!root.currentEditor) {
       throw new Error("No editor is currently open");
     }
+
+    // 命令只负责创建 Action，生命周期方法由 Action 调用
     return [
       new SetFocusedAreaAction({
         oldArea: root.currentEditor.focusedArea,

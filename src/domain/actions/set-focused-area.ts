@@ -1,10 +1,15 @@
 import { IDBPDatabase } from "idb";
-import { EditorAction, EditorState, FocusedArea } from "../mindmap-store.types";
+import { EditorAction, EditorState } from "../mindmap-store.types";
 import { MindmapDB } from "@/lib/db/schema";
+import { FocusedAreaId } from "../focused-area.types";
+import {
+  beforeSetFocusedArea,
+  afterSetFocusedArea,
+} from "../focused-area-registry";
 
 export interface SetFocusedAreaParams {
-  oldArea: FocusedArea;
-  newArea: FocusedArea;
+  oldArea: FocusedAreaId;
+  newArea: FocusedAreaId;
 }
 
 export class SetFocusedAreaAction implements EditorAction {
@@ -13,12 +18,23 @@ export class SetFocusedAreaAction implements EditorAction {
   constructor(private readonly params: SetFocusedAreaParams) {}
 
   applyToEditorState(draft: EditorState): void {
-    draft.focusedArea = this.params.newArea;
-    draft.isSaved = false;
+    const { oldArea, newArea } = this.params;
+
+    // 1. 调用 onLeave（在状态更新之前）
+    beforeSetFocusedArea(oldArea, newArea);
+
+    // 2. 更新状态
+    draft.focusedArea = newArea;
+
+    // 3. 调用 onEnter（在状态更新之后）
+    // 使用 queueMicrotask 确保在 Immer 完成状态更新后执行
+    queueMicrotask(() => {
+      afterSetFocusedArea(oldArea, newArea);
+    });
   }
 
   async applyToIndexedDB(_db: IDBPDatabase<MindmapDB>): Promise<void> {
-    // Do nothing
+    // Do nothing - focusedArea 不需要持久化
   }
 
   reverse(): EditorAction {

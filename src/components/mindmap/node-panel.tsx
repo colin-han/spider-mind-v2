@@ -19,9 +19,16 @@ import { FileText, Sparkles } from "lucide-react";
 import { useMindmapEditorState, useCommand } from "@/domain/mindmap-store";
 import { ResizablePanel } from "./resizable-panel";
 import { NodeToolbar } from "./node-toolbar";
-import { MarkdownEditor } from "@/components/common/markdown-editor";
+import {
+  MarkdownEditor,
+  type MarkdownEditorHandle,
+} from "@/components/common/markdown-editor";
 import { Tabs, TabItem } from "@/components/common/tabs";
-import { AIChatPanel } from "@/components/ai/ai-chat-panel";
+import {
+  AIChatPanel,
+  type AIChatPanelHandle,
+} from "@/components/ai/ai-chat-panel";
+import { useFocusedArea } from "@/lib/hooks/use-focused-area";
 
 /**
  * NodePanel 组件
@@ -34,6 +41,8 @@ export const NodePanel = () => {
 
   const panelRef = useRef<HTMLDivElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
+  const noteEditorRef = useRef<MarkdownEditorHandle>(null);
+  const aiChatRef = useRef<AIChatPanelHandle>(null);
 
   // 本地编辑状态
   const [editingTitle, setEditingTitle] = useState("");
@@ -42,20 +51,51 @@ export const NodePanel = () => {
   // Tab 状态
   const [activeTab, setActiveTab] = useState<string>("note");
 
-  useEffect(() => {
-    if (
-      editorState.focusedArea === "panel" &&
-      !panelRef.current?.contains(document.activeElement)
-    ) {
-      titleInputRef.current?.focus();
-      titleInputRef.current?.select();
-    }
-  }, [editorState.focusedArea]);
-
   // 获取当前节点数据
   const node = editorState.currentNode
     ? editorState.nodes.get(editorState.currentNode)
     : null;
+
+  // 注册 title-editor 的 focusedArea handler
+  useFocusedArea({
+    id: "title-editor",
+    onEnter: () => {
+      titleInputRef.current?.focus();
+      titleInputRef.current?.select();
+    },
+    onLeave: () => {
+      // 保存 title（如果有变化）
+      if (node && editingTitle !== node.title) {
+        updateTitle(node.short_id, editingTitle);
+      }
+    },
+  });
+
+  // 注册 note-editor 的 focusedArea handler
+  useFocusedArea({
+    id: "note-editor",
+    onEnter: () => {
+      // 切换到笔记标签页并聚焦编辑器
+      setActiveTab("note");
+      // 延迟聚焦，确保 tab 切换完成
+      setTimeout(() => {
+        noteEditorRef.current?.focus();
+      }, 0);
+    },
+  });
+
+  // 注册 ai-chat 的 focusedArea handler
+  useFocusedArea({
+    id: "ai-chat",
+    onEnter: () => {
+      // 切换到 AI 助手标签页并聚焦输入框
+      setActiveTab("ai-chat");
+      // 延迟聚焦，确保 tab 切换完成
+      setTimeout(() => {
+        aiChatRef.current?.focus();
+      }, 0);
+    },
+  });
 
   // 当切换节点时，同步本地编辑状态
   useEffect(() => {
@@ -101,6 +141,7 @@ export const NodePanel = () => {
           </div>
           <div className="flex-1 flex flex-col min-h-0">
             <MarkdownEditor
+              ref={noteEditorRef}
               value={editingNote}
               onChange={(val) => setEditingNote(val || "")}
               onBlur={() => {
@@ -123,7 +164,9 @@ export const NodePanel = () => {
       id: "ai-chat",
       label: "AI 助手",
       icon: <Sparkles size={16} />,
-      content: node ? <AIChatPanel nodeId={node.short_id} /> : null,
+      content: node ? (
+        <AIChatPanel ref={aiChatRef} nodeId={node.short_id} />
+      ) : null,
     },
   ];
 
@@ -176,7 +219,7 @@ export const NodePanel = () => {
                 updateTitle(node.short_id, editingTitle);
               }
             }}
-            onFocus={() => setFocusedArea("panel")}
+            onFocus={() => setFocusedArea("title-editor")}
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 outline-none text-gray-900 dark:text-white bg-white dark:bg-gray-800"
             placeholder="节点标题"
           />

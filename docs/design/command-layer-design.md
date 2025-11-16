@@ -8,6 +8,7 @@
   - [领域层架构设计](./domain-layer-architecture.md)
   - [Action 层架构设计](./action-layer-design.md)
   - [Command 参考手册](./command-reference.md)
+  - [FocusedAreaRegistry 设计](./focused-area-registry-design.md)
 
 ## 概述
 

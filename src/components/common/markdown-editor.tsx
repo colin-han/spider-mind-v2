@@ -10,7 +10,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, forwardRef, useImperativeHandle } from "react";
 import dynamic from "next/dynamic";
 import "@/app/markdown-editor.css";
 
@@ -48,20 +48,40 @@ export interface MarkdownEditorProps {
 }
 
 /**
+ * MarkdownEditor 的命令式句柄
+ */
+export interface MarkdownEditorHandle {
+  focus: () => void;
+}
+
+/**
  * MarkdownEditor 组件
  */
-export function MarkdownEditor({
-  value,
-  onChange,
-  onBlur,
-  placeholder = "输入 Markdown 内容...",
-  maxLength = 10000,
-  className = "",
-  testId = "markdown-editor",
-}: MarkdownEditorProps) {
+export const MarkdownEditor = forwardRef<
+  MarkdownEditorHandle,
+  MarkdownEditorProps
+>(function MarkdownEditor(
+  {
+    value,
+    onChange,
+    onBlur,
+    placeholder = "输入 Markdown 内容...",
+    maxLength = 10000,
+    className = "",
+    testId = "markdown-editor",
+  },
+  ref
+) {
   const [mounted, setMounted] = useState(false);
   const [colorMode, setColorMode] = useState<"light" | "dark">("light");
   const [isEditing, setIsEditing] = useState(false);
+
+  // 暴露命令式 API
+  useImperativeHandle(ref, () => ({
+    focus: () => {
+      setIsEditing(true);
+    },
+  }));
 
   // 确保组件只在客户端渲染，并检测暗色模式
   useEffect(() => {
@@ -204,4 +224,4 @@ export function MarkdownEditor({
       />
     </div>
   );
-}
+});

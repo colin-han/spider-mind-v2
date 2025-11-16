@@ -5,7 +5,7 @@
  */
 
 import { NextRequest } from "next/server";
-import { convertToCoreMessages, streamText } from "ai";
+import { convertToModelMessages, streamText } from "ai";
 import { getAIModel } from "@/lib/config/ai-models";
 import { buildSystemPrompt } from "@/lib/ai/system-prompts";
 import type { AINodeContext, AIModelKey } from "@/lib/types/ai";
@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 转换 UIMessage 到 CoreMessage
-    const coreMessages = convertToCoreMessages(messages);
+    const coreMessages = convertToModelMessages(messages);
 
     // 获取用户ID（用于日志）
     const userId = getUserIdFromRequest(req);
@@ -86,7 +86,6 @@ export async function POST(req: NextRequest) {
         children: [],
       }
     );
-    console.log("[API /ai/chat] System prompt:", systemPrompt);
 
     // 调用 streamText
     const result = await streamText({
