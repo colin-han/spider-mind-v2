@@ -25,6 +25,7 @@ enableMapSet();
 export const useMindmapStore = create<MindmapStore>()(
   immer((set, get) => ({
     isLoading: true,
+    historyVersion: 0,
     commandManager: new CommandManager(),
     shortcutManager: new ShortcutManager(),
     historyManager: new HistoryManager(),

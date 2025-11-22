@@ -1,5 +1,6 @@
 import { MindmapStore } from "../../mindmap-store.types";
 import { CommandDefinition, registerCommand } from "../../command-registry";
+import { useMindmapStore } from "../../mindmap-store";
 
 /**
  * 重做上一次撤销的操作
@@ -12,12 +13,17 @@ export const redoCommand: CommandDefinition = {
   actionBased: false,
   undoable: false, // 重做操作本身不可撤销
 
-  handler: (root: MindmapStore) => {
+  handler: async (root: MindmapStore) => {
     if (!root.historyManager) {
       throw new Error("HistoryManager not initialized");
     }
 
-    root.historyManager.redo();
+    await root.historyManager.redo();
+
+    // 手动触发 zustand 更新，以便 UI 能响应 historyManager 状态的变化
+    useMindmapStore.setState((state) => {
+      state.historyVersion++;
+    });
   },
 
   when: (root: MindmapStore) => {

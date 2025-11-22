@@ -37,6 +37,11 @@ export class CommandManager {
             : command.description,
           actions,
         });
+
+        // 更新 historyVersion 以触发 UI 更新（影响 undo/redo 按钮状态）
+        useMindmapStore.setState((state) => {
+          state.historyVersion++;
+        });
       }
     }
   }

@@ -48,6 +48,7 @@ export interface EditorState {
 
 export interface MindmapStore {
   isLoading: boolean;
+  historyVersion: number; // 用于触发 UI 更新的版本号
 
   readonly currentEditor?: EditorState; // 内存中的编辑状态（immutable 对象）
   readonly commandManager?: CommandManager;
