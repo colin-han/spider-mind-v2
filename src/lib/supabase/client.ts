@@ -1,9 +1,16 @@
 import { createClient } from "@supabase/supabase-js";
-import { getSupabaseConfig } from "@/lib/env";
 import type { Database } from "@/lib/types/supabase";
 
-// 获取验证后的 Supabase 配置
-const { url: supabaseUrl, anonKey: supabaseAnonKey } = getSupabaseConfig();
+// 客户端直接从 process.env 读取环境变量
+// Next.js 会在构建时将 NEXT_PUBLIC_* 变量注入到客户端代码中
+const supabaseUrl = process.env["NEXT_PUBLIC_SUPABASE_URL"]!;
+const supabaseAnonKey = process.env["NEXT_PUBLIC_SUPABASE_ANON_KEY"]!;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error(
+    "Missing Supabase environment variables. Please check NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in your environment configuration."
+  );
+}
 
 // 创建客户端 Supabase 实例
 // 这个客户端实例用于浏览器端的数据操作和认证

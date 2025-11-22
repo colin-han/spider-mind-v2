@@ -3,7 +3,32 @@
  *
  * 此模块提供了用于验证和获取应用程序所需环境变量的实用函数。
  * 它确保所有必要的配置都已正确设置，并提供类型安全的环境变量访问。
+ *
+ * 配置加载优先级:
+ * 1. 平台环境变量 (Vercel/系统)
+ * 2. environments.secrets.yaml (本地开发,服务端)
+ * 3. environments.yaml (公开配置,服务端)
+ * 4. .env.local (PROFILE + PORT)
  */
+
+// 仅在服务端加载 YAML 配置
+// 客户端使用 Next.js 注入的 process.env
+function getLoadedEnv(): Record<string, string> {
+  // 客户端: 直接使用 process.env
+  if (typeof window !== "undefined") {
+    return process.env as Record<string, string>;
+  }
+
+  // 服务端: 使用 YAML 加载器
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
+    const { loadEnvironmentVariables } = require("./config/environment-loader");
+    return loadEnvironmentVariables();
+  } catch (error) {
+    console.warn("Failed to load environment-loader:", error);
+    return process.env as Record<string, string>;
+  }
+}
 
 /**
  * 必需的环境变量接口定义
@@ -120,35 +145,37 @@ function validateSupabaseAnonKey(key: string): string {
  */
 export function validateEnvironment(): EnvConfig {
   try {
+    // 加载所有环境变量
+    // 服务端: 从 YAML 文件和 process.env
+    // 客户端: 仅从 process.env (Next.js 注入)
+    const loadedEnv = getLoadedEnv();
+
     // 验证必需的环境变量
     const supabaseUrl = validateSupabaseUrl(
       validateEnvVar(
         "NEXT_PUBLIC_SUPABASE_URL",
-        process.env["NEXT_PUBLIC_SUPABASE_URL"]
+        loadedEnv["NEXT_PUBLIC_SUPABASE_URL"]
       )
     );
 
     const supabaseAnonKey = validateSupabaseAnonKey(
       validateEnvVar(
         "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-        process.env["NEXT_PUBLIC_SUPABASE_ANON_KEY"]
+        loadedEnv["NEXT_PUBLIC_SUPABASE_ANON_KEY"]
       )
     );
 
     const siteUrl = validateUrl(
       "NEXT_PUBLIC_SITE_URL",
-      validateEnvVar(
-        "NEXT_PUBLIC_SITE_URL",
-        process.env["NEXT_PUBLIC_SITE_URL"]
-      )
+      validateEnvVar("NEXT_PUBLIC_SITE_URL", loadedEnv["NEXT_PUBLIC_SITE_URL"])
     );
 
     // 获取可选的环境变量
     const supabaseServiceRoleKey =
-      process.env["SUPABASE_SERVICE_ROLE_KEY"] || undefined;
-    const databaseUrl = process.env["DATABASE_URL"] || undefined;
+      loadedEnv["SUPABASE_SERVICE_ROLE_KEY"] || undefined;
+    const databaseUrl = loadedEnv["DATABASE_URL"] || undefined;
     const nodeEnv =
-      (process.env["NODE_ENV"] as "development" | "production" | "test") ||
+      (loadedEnv["NODE_ENV"] as "development" | "production" | "test") ||
       "development";
 
     return {
@@ -162,7 +189,7 @@ export function validateEnvironment(): EnvConfig {
       NODE_ENV: nodeEnv,
       NEXT_PUBLIC_DEFAULT_AI_MODEL: validateEnvVar(
         "NEXT_PUBLIC_DEFAULT_AI_MODEL",
-        process.env["NEXT_PUBLIC_DEFAULT_AI_MODEL"]
+        loadedEnv["NEXT_PUBLIC_DEFAULT_AI_MODEL"]
       ),
     };
   } catch (error) {

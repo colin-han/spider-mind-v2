@@ -55,6 +55,15 @@ export function MindmapEditor({ mindmapId }: MindmapEditorProps) {
     openMindmap(mindmapId);
   }, [mindmapId, openMindmap]);
 
+  // 动态设置页面标题
+  useEffect(() => {
+    if (editorState?.currentMindmap?.title) {
+      const envName = process.env["NEXT_PUBLIC_ENV_NAME"];
+      const baseTitle = envName ? `Spider Mind (${envName})` : "Spider Mind";
+      document.title = `${baseTitle} - ${editorState.currentMindmap.title}`;
+    }
+  }, [editorState?.currentMindmap?.title]);
+
   if (!editorState) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">

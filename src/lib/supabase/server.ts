@@ -1,12 +1,9 @@
+import "server-only";
+
 import { createClient } from "@supabase/supabase-js";
 import { createServerClient as createSSRClient } from "@supabase/ssr";
 import { getSupabaseConfig } from "@/lib/env";
 import type { Database } from "@/lib/types/supabase";
-
-// 获取验证后的 Supabase 配置（仅获取公共配置）
-const config = getSupabaseConfig();
-const supabaseUrl = config.url;
-const supabaseAnonKey = config.anonKey;
 
 /**
  * 创建服务端 Supabase 客户端
@@ -14,7 +11,9 @@ const supabaseAnonKey = config.anonKey;
  * 注意：这个客户端绕过了 RLS (Row Level Security) 策略
  */
 export const createServerClient = () => {
-  const { serviceRoleKey: supabaseServiceRoleKey } = getSupabaseConfig();
+  const config = getSupabaseConfig();
+  const supabaseUrl = config.url;
+  const { serviceRoleKey: supabaseServiceRoleKey } = config;
 
   // 验证服务端密钥是否可用
   if (!supabaseServiceRoleKey) {
@@ -46,6 +45,10 @@ export const createServerComponentClient = async () => {
   const { cookies } = await import("next/headers");
   const cookieStore = await cookies();
 
+  const config = getSupabaseConfig();
+  const supabaseUrl = config.url;
+  const supabaseAnonKey = config.anonKey;
+
   return createSSRClient<Database>(supabaseUrl, supabaseAnonKey, {
     cookies: {
       getAll() {
@@ -70,6 +73,10 @@ export const createServerComponentClient = async () => {
  */
 export const createRouteHandlerClient = (request: Request) => {
   const cookieHeader = request.headers.get("cookie") ?? "";
+
+  const config = getSupabaseConfig();
+  const supabaseUrl = config.url;
+  const supabaseAnonKey = config.anonKey;
 
   return createClient<Database>(supabaseUrl, supabaseAnonKey, {
     auth: {

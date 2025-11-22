@@ -7,8 +7,12 @@ import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
 
+// 根据环境变量构建标题
+const envName = process.env["NEXT_PUBLIC_ENV_NAME"];
+const baseTitle = envName ? `Spider Mind (${envName})` : "Spider Mind";
+
 export const metadata: Metadata = {
-  title: "Spider Mind v2",
+  title: baseTitle,
   description: "Spider Mind v2 - Next generation knowledge management system",
 };
 

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
-import { getSupabaseConfig } from "@/lib/env";
+import { getSupabaseConfig, getEnvConfig } from "@/lib/env";
 import type { Database } from "@/lib/types/supabase";
 
 export interface AuthResult {
@@ -57,6 +57,7 @@ export async function signUp(
 ): Promise<AuthResult> {
   try {
     const supabase = await createServerActionClient();
+    const { NEXT_PUBLIC_SITE_URL } = getEnvConfig();
 
     const { error } = await supabase.auth.signUp({
       email,
@@ -66,7 +67,7 @@ export async function signUp(
           username,
           display_name: displayName || username,
         },
-        emailRedirectTo: `${process.env["NEXT_PUBLIC_SITE_URL"]}/dashboard`,
+        emailRedirectTo: `${NEXT_PUBLIC_SITE_URL}/dashboard`,
       },
     });
 

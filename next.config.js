@@ -1,3 +1,81 @@
+/* eslint-disable @typescript-eslint/no-var-requires */
+/* eslint-disable @typescript-eslint/no-require-imports */
+
+/**
+ * Next.js 配置文件
+ *
+ * 在配置加载前，先从 YAML 文件加载环境变量并注入到 process.env
+ * 这样 Next.js 在构建时就能访问到这些变量
+ */
+
+// 1. 加载环境变量（如果存在 .env.local）
+const fs = require("fs");
+const path = require("path");
+
+function loadDotEnv(filePath) {
+  if (!fs.existsSync(filePath)) return;
+
+  const content = fs.readFileSync(filePath, "utf-8");
+  content.split("\n").forEach((line) => {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) return;
+
+    const match = trimmed.match(/^([^=]+)=(.*)$/);
+    if (match) {
+      const key = match[1].trim();
+      const value = match[2].trim();
+      if (!process.env[key]) {
+        process.env[key] = value;
+      }
+    }
+  });
+}
+
+// 加载 .env.local
+loadDotEnv(path.join(__dirname, ".env.local"));
+
+// 2. 加载 YAML 配置
+try {
+  require("ts-node/register/transpile-only");
+  const {
+    loadEnvironmentVariables,
+  } = require("./src/lib/config/environment-loader.ts");
+
+  const yamlConfig = loadEnvironmentVariables();
+
+  // 将 YAML 配置注入到 process.env（不覆盖已存在的值）
+  Object.entries(yamlConfig).forEach(([key, value]) => {
+    if (!process.env[key]) {
+      process.env[key] = value;
+    }
+  });
+
+  console.log(
+    `✅ Next.js config: 已加载环境配置 (PROFILE: ${process.env.PROFILE || "local"})`
+  );
+
+  // 调试：检查关键变量是否存在
+  const criticalVars = [
+    "NEXT_PUBLIC_SITE_URL",
+    "NEXT_PUBLIC_SUPABASE_URL",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+  ];
+
+  console.log("🔍 Next.js config: 检查关键环境变量:");
+  criticalVars.forEach((key) => {
+    const value = process.env[key];
+    if (value) {
+      const display =
+        value.length > 50 ? value.substring(0, 50) + "..." : value;
+      console.log(`   ✅ ${key}: ${display}`);
+    } else {
+      console.log(`   ❌ ${key}: undefined`);
+    }
+  });
+} catch (error) {
+  console.warn("⚠️  警告: next.config.js 无法加载 YAML 配置:", error.message);
+}
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // 启用 TypeScript 严格模式
@@ -52,8 +130,19 @@ const nextConfig = {
   generateEtags: false, // 禁用 ETags 生成
 
   // 环境变量配置
+  // 注意: NEXT_PUBLIC_* 变量会自动暴露给客户端
+  // 但为了确保它们在所有情况下都可用，我们在这里显式声明
   env: {
-    CUSTOM_KEY: process.env.CUSTOM_KEY,
+    // 从 YAML 配置加载的公共变量
+    NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
+    NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME,
+    NEXT_PUBLIC_APP_VERSION: process.env.NEXT_PUBLIC_APP_VERSION,
+    NEXT_PUBLIC_DEFAULT_AI_MODEL: process.env.NEXT_PUBLIC_DEFAULT_AI_MODEL,
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    NEXT_PUBLIC_ENABLE_DEBUG: process.env.NEXT_PUBLIC_ENABLE_DEBUG,
+    NEXT_PUBLIC_ENABLE_ANALYTICS: process.env.NEXT_PUBLIC_ENABLE_ANALYTICS,
+    NEXT_PUBLIC_ENV_NAME: process.env.NEXT_PUBLIC_ENV_NAME,
   },
 
   // 重写规则配置
@@ -89,10 +178,21 @@ const nextConfig = {
     ];
   },
 
-  // 注意：Webpack 配置已移除，因为：
-  // 1. Turbopack (--turbo) 内置了代码分割和其他优化
-  // 2. Next.js 15 的默认配置已经足够优化
-  // 3. 移除此配置可消除 Turbopack 警告
+  // Webpack 配置
+  webpack: (config, { isServer }) => {
+    // 客户端构建时,排除服务端专用模块
+    if (!isServer) {
+      config.resolve = config.resolve || {};
+      config.resolve.fallback = config.resolve.fallback || {};
+
+      // 阻止在客户端打包 Node.js 模块
+      config.resolve.fallback.fs = false;
+      config.resolve.fallback.path = false;
+      config.resolve.fallback["server-only"] = false;
+    }
+
+    return config;
+  },
 
   // 跟踪文件配置
   trailingSlash: false,
