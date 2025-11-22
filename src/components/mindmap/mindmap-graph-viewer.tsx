@@ -82,6 +82,7 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
   const currentMindmap = editorState.currentMindmap;
   const nodesMap = editorState.nodes;
   const collapsedNodes = editorState.collapsedNodes;
+  const layouts = editorState.layouts;
 
   // 获取根节点的辅助函数
   const getRootNode = useCallback(
@@ -142,7 +143,6 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
     const flowData = convertToFlowData(root.short_id, nodesMap, collapsedNodes);
 
     // 步骤 2: 应用布局（从 editorState.layouts 获取）
-    const layouts = editorState.layouts;
     const layoutedNodes = flowData.nodes.map((node) => {
       const layout = layouts.get(node.id);
       if (layout) {
@@ -161,13 +161,7 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
       nodes: layoutedNodes,
       edges: flowData.edges,
     };
-  }, [
-    currentMindmap,
-    nodesMap,
-    collapsedNodes,
-    getRootNode,
-    editorState.layouts,
-  ]);
+  }, [currentMindmap, nodesMap, collapsedNodes, getRootNode, layouts]);
 
   // 单击节点 - 选中
   const onNodeClick = useCallback(

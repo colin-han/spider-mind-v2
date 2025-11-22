@@ -81,27 +81,12 @@ export interface MindmapLayoutService {
    *
    * @param engine - 布局引擎实例
    * @param sizeGetter - 节点尺寸测量函数
-   * @param initialNodes - 初始节点 Map
-   * @param initialCollapsedNodes - 初始折叠节点集合
    * @param store - Mindmap Store 实例（用于更新布局状态）
    */
   init(
     engine: MindmapLayoutEngine,
     sizeGetter: SizeGetter,
-    initialNodes: Map<string, MindmapNode>,
-    initialCollapsedNodes: Set<string>,
     store: import("@/domain/mindmap-store.types").MindmapStore
-  ): void;
-
-  /**
-   * 更新内部引用（同步外部状态）
-   *
-   * @param nodes - 当前所有节点
-   * @param collapsedNodes - 当前折叠的节点
-   */
-  updateRefs(
-    nodes: Map<string, MindmapNode>,
-    collapsedNodes: Set<string>
   ): void;
 
   /**
@@ -114,41 +99,6 @@ export interface MindmapLayoutService {
 
   /**
    * 重新计算布局（驱动 engine）
-   *
-   * @param nodes - 当前所有节点
-   * @param collapsedNodes - 当前折叠的节点
    */
-  updateLayout(
-    nodes: Map<string, MindmapNode>,
-    collapsedNodes: Set<string>
-  ): void;
-
-  /**
-   * 获取节点布局
-   *
-   * @param nodeId - 节点 ID
-   * @returns 节点布局，如果节点不可见则返回 null
-   */
-  getNodeLayout(nodeId: string): NodeLayout | null;
-
-  /**
-   * 获取所有布局
-   *
-   * @returns 所有可见节点的布局
-   */
-  getAllLayouts(): Map<string, NodeLayout>;
-
-  /**
-   * 获取 drop indicator 布局
-   *
-   * @param x - 鼠标 x 坐标
-   * @param y - 鼠标 y 坐标
-   * @returns drop indicator 的布局信息
-   */
-  getDropIndicatorLayout(x: number, y: number): NodeLayout | null;
-
-  /**
-   * 清理资源（取消订阅）
-   */
-  dispose(): void;
+  updateLayout(): void;
 }

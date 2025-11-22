@@ -26,13 +26,15 @@ import { useCallback } from "react";
 // 启用 Immer 的 Map/Set 支持
 enableMapSet();
 
+const engine = new DagreLayoutEngine();
+
 export const useMindmapStore = create<MindmapStore>()(
   immer((set, get) => ({
     isLoading: true,
     commandManager: new CommandManager(),
     shortcutManager: new ShortcutManager(),
     historyManager: new HistoryManager(),
-    layoutService: new MindmapLayoutServiceImpl(),
+    layoutService: new MindmapLayoutServiceImpl(engine, measureNodeSize),
     openMindmap: async (mindmapId: string) => {
       const db = await getDB();
       if (!db) {
@@ -200,14 +202,7 @@ export const useMindmapStore = create<MindmapStore>()(
         const { layoutService } = store;
         if (layoutService && store.currentEditor) {
           console.log("[MindmapStore] Initializing LayoutService...");
-          const engine = new DagreLayoutEngine();
-          layoutService.init(
-            engine,
-            measureNodeSize,
-            store.currentEditor.nodes,
-            store.currentEditor.collapsedNodes,
-            store as MindmapStore
-          );
+          layoutService.init(engine, measureNodeSize, store as MindmapStore);
           console.log("[MindmapStore] LayoutService initialized");
         }
 
