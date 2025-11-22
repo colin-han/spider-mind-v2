@@ -46,12 +46,14 @@ export function registerShortcut(
         }),
       });
     } else {
+      // 当 params 是 boolean 时，把它当作 preventDefault 处理
       registerShortcutImpl({
         key: arg,
         run: () => ({
           commandId: commandId!,
           params: [],
-          preventDefault: preventDefault ?? false,
+          preventDefault:
+            typeof params === "boolean" ? params : (preventDefault ?? false),
         }),
       });
     }
