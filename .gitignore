@@ -12,6 +12,9 @@ build/
 .env.local
 .env*.local
 
+# 敏感配置文件
+environments.secrets.yaml
+
 # Testing
 /test-results/
 /playwright-report/

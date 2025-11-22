@@ -3,27 +3,37 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 export async function middleware(req: NextRequest) {
+  // 在 Edge Runtime 中,环境变量由 Next.js 自动注入到 process.env
+  // 生产环境(Vercel)通过平台环境变量配置
+  // 本地开发通过 environments.yaml 加载(由 Next.js 处理)
+  const supabaseUrl = process.env["NEXT_PUBLIC_SUPABASE_URL"];
+  const supabaseAnonKey = process.env["NEXT_PUBLIC_SUPABASE_ANON_KEY"];
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.error("Missing Supabase credentials in middleware");
+    return NextResponse.json(
+      { error: "Server configuration error" },
+      { status: 500 }
+    );
+  }
+
   const supabaseResponse = NextResponse.next({
     request: req,
   });
 
-  const supabase = createServerClient(
-    process.env["NEXT_PUBLIC_SUPABASE_URL"]!,
-    process.env["NEXT_PUBLIC_SUPABASE_ANON_KEY"]!,
-    {
-      cookies: {
-        getAll() {
-          return req.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            req.cookies.set(name, value);
-            supabaseResponse.cookies.set(name, value, options);
-          });
-        },
+  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      getAll() {
+        return req.cookies.getAll();
       },
-    }
-  );
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value, options }) => {
+          req.cookies.set(name, value);
+          supabaseResponse.cookies.set(name, value, options);
+        });
+      },
+    },
+  });
 
   // 重要：刷新会话（如果过期则自动刷新）
   const {

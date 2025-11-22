@@ -1,0 +1,73 @@
+# 非敏感配置 - 可以提交到 Git
+# 包含所有环境的公开配置信息
+
+# ============================================
+# 公共配置 - 所有环境共享
+# ============================================
+common:
+  env:
+    # 应用基本信息
+    NEXT_PUBLIC_APP_NAME: "Spider Mind v2"
+    NEXT_PUBLIC_APP_VERSION: "1.0.0"
+
+    # AI 默认模型
+    NEXT_PUBLIC_DEFAULT_AI_MODEL: "deepseek-chat"
+
+# ============================================
+# 本地开发环境（使用本地 Supabase Docker）
+# ============================================
+local:
+  env:
+    # 应用 URL - 使用 ${PORT} 变量展开
+    NEXT_PUBLIC_SITE_URL: "http://localhost:${PORT}"
+
+    # 本地 Supabase（Docker）
+    NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:54321"
+    # 本地开发的 anon key 是 Supabase 默认公开 key
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0"
+
+    # 本地开发的 service role key 也是 Supabase 默认公开 key
+    SUPABASE_SERVICE_ROLE_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU"
+
+    # 环境配置
+    NODE_ENV: "development"
+
+    # 功能开关
+    NEXT_PUBLIC_ENABLE_DEBUG: "true"
+    NEXT_PUBLIC_ENABLE_ANALYTICS: "false"
+
+# ============================================
+# 开发环境（远程 Supabase）
+# ============================================
+development:
+  env:
+    # 应用 URL
+    NEXT_PUBLIC_SITE_URL: "https://spider-dev.colinhan.info"
+
+    # Supabase URL（公开信息）
+    NEXT_PUBLIC_SUPABASE_URL: "https://qltaibhrjuhdvrjxbgoj.supabase.co"
+
+    # 环境配置
+    NODE_ENV: "development"
+
+    # 功能开关
+    NEXT_PUBLIC_ENABLE_DEBUG: "true"
+    NEXT_PUBLIC_ENABLE_ANALYTICS: "true"
+
+# ============================================
+# 生产环境
+# ============================================
+production:
+  env:
+    # 应用 URL
+    NEXT_PUBLIC_SITE_URL: "https://spider.colinhan.info"
+
+    # Supabase URL（公开信息）
+    NEXT_PUBLIC_SUPABASE_URL: "https://lscvfagnbvpebivnkzmg.supabase.co"
+
+    # 环境配置
+    NODE_ENV: "production"
+
+    # 功能开关
+    NEXT_PUBLIC_ENABLE_DEBUG: "false"
+    NEXT_PUBLIC_ENABLE_ANALYTICS: "true"

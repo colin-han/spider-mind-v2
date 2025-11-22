@@ -15,7 +15,6 @@ import {
 import { Sparkles, Send, Loader2 } from "lucide-react";
 import { buildNodeContext } from "@/lib/ai/node-context";
 import { MessageBubble } from "./message-bubble";
-import { getEnvConfig } from "@/lib/env";
 import {
   loadConversation,
   createAIMessage,
@@ -169,7 +168,7 @@ export const AIChatPanel = forwardRef<AIChatPanelHandle, AIChatPanelProps>(
         // Pass nodeContext and modelKey in the request body
         body: {
           nodeContext,
-          modelKey: getEnvConfig().NEXT_PUBLIC_DEFAULT_AI_MODEL,
+          modelKey: process.env["NEXT_PUBLIC_DEFAULT_AI_MODEL"],
         },
       }),
       // 使用加载的历史消息作为初始消息

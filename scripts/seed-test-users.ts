@@ -10,31 +10,15 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
-import { readFileSync } from "fs";
-import { join } from "path";
+import { loadEnvironmentVariables } from "../src/lib/config/environment-loader";
 
-// 加载 .env.local 文件
-try {
-  const envFile = join(process.cwd(), ".env.local");
-  const envContent = readFileSync(envFile, "utf-8");
-  envContent.split("\n").forEach((line) => {
-    const match = line.match(/^([^=:#]+)=(.*)$/);
-    if (match) {
-      const key = match[1]!.trim();
-      const value = match[2]!.trim().replace(/^["']|["']$/g, "");
-      if (!process.env[key]) {
-        process.env[key] = value;
-      }
-    }
-  });
-  console.log("✅ 已加载 .env.local\n");
-} catch (_error) {
-  console.warn("⚠️  无法加载 .env.local, 使用系统环境变量\n");
-}
+// 加载环境变量 (从 YAML 文件和 process.env)
+console.log("📋 加载环境配置...\n");
+const env = loadEnvironmentVariables();
 
 // 从环境变量获取 Supabase 配置
-const supabaseUrl = process.env["NEXT_PUBLIC_SUPABASE_URL"];
-const supabaseServiceRoleKey = process.env["SUPABASE_SERVICE_ROLE_KEY"];
+const supabaseUrl = env["NEXT_PUBLIC_SUPABASE_URL"];
+const supabaseServiceRoleKey = env["SUPABASE_SERVICE_ROLE_KEY"];
 
 if (!supabaseUrl || !supabaseServiceRoleKey) {
   console.error("❌ 错误: 缺少必要的环境变量");
