@@ -5,6 +5,7 @@ import { CommandManager } from "./command-manager";
 import { ShortcutManager } from "./shortcut-manager";
 import { HistoryManager } from "./history-manager";
 import { FocusedAreaId } from "./focused-area.types";
+import type { MindmapLayoutService } from "@/lib/utils/mindmap/mindmap-layout";
 
 export interface EditorAction {
   type: string;
@@ -27,6 +28,14 @@ export interface EditorAction {
   reverse(): EditorAction;
 }
 
+export interface NodeLayout {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export interface EditorState {
   // 核心数据
   currentMindmap: Mindmap;
@@ -34,6 +43,9 @@ export interface EditorState {
 
   // UI 状态 (默认展开,仅记录折叠状态)
   collapsedNodes: Set<string>; // 折叠的节点 short_id 集合
+
+  // 布局状态（派生状态，不持久化）
+  layouts: Map<string, NodeLayout>; // 节点布局信息，key 是 short_id
 
   // 焦点状态
   focusedArea: FocusedAreaId; // UI 焦点区域
@@ -53,8 +65,12 @@ export interface MindmapStore {
   readonly commandManager?: CommandManager;
   readonly shortcutManager?: ShortcutManager;
   readonly historyManager?: HistoryManager;
+  readonly layoutService?: MindmapLayoutService; // 布局服务（管理布局计算和更新）
 
   openMindmap(mindmapId: string): Promise<void>; // 打开指定 mindmap （id是short_id），创建新的EditorState。并清理undo/redo栈。
   acceptActions(actions: EditorAction[]): Promise<void>; // 批量应用 EditorActions 到当前编辑器状态（单事务保证原子性）
   executeCommand(commandId: string, params?: unknown[]): Promise<void>;
+
+  // 布局管理（由 LayoutService 调用）
+  updateLayouts(layouts: Map<string, NodeLayout>): void; // 更新布局状态（不持久化，不触发 undo）
 }

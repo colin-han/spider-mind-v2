@@ -12,6 +12,9 @@ import {
   fetchServerVersion,
 } from "@/lib/actions/mindmap-sync";
 import { actionSubscriptionManager } from "./action-subscription-manager";
+import { MindmapLayoutServiceImpl } from "@/lib/utils/mindmap/layout-service";
+import { DagreLayoutEngine } from "@/lib/utils/mindmap/layout-engines/dagre-layout-engine";
+import { measureNodeSize } from "@/components/mindmap/utils/measure-node-size";
 
 // 导入所有命令以触发注册
 import "./commands";
@@ -29,6 +32,7 @@ export const useMindmapStore = create<MindmapStore>()(
     commandManager: new CommandManager(),
     shortcutManager: new ShortcutManager(),
     historyManager: new HistoryManager(),
+    layoutService: new MindmapLayoutServiceImpl(),
     openMindmap: async (mindmapId: string) => {
       const db = await getDB();
       if (!db) {
@@ -176,6 +180,7 @@ export const useMindmapStore = create<MindmapStore>()(
           currentMindmap: mindmapToLoad,
           nodes: new Map(nodesToLoad.map((n) => [n.short_id, n])),
           collapsedNodes: new Set(),
+          layouts: new Map(), // 布局状态，初始为空，由 LayoutService 计算后更新
           focusedArea: "graph",
           currentNode: rootNode.short_id,
           isLoading: false,
@@ -190,7 +195,23 @@ export const useMindmapStore = create<MindmapStore>()(
           state.isLoading = false;
         });
 
-        // 8. 清空历史栈
+        // 8. 初始化布局服务
+        const store = get();
+        const { layoutService } = store;
+        if (layoutService && store.currentEditor) {
+          console.log("[MindmapStore] Initializing LayoutService...");
+          const engine = new DagreLayoutEngine();
+          layoutService.init(
+            engine,
+            measureNodeSize,
+            store.currentEditor.nodes,
+            store.currentEditor.collapsedNodes,
+            store as MindmapStore
+          );
+          console.log("[MindmapStore] LayoutService initialized");
+        }
+
+        // 9. 清空历史栈
         get().historyManager?.clear();
       } catch (error) {
         set((state) => {
@@ -273,6 +294,19 @@ export const useMindmapStore = create<MindmapStore>()(
           timestamp,
         });
       }
+    },
+
+    /**
+     * 更新布局状态
+     * 由 LayoutService 调用，直接更新 state，不持久化，不触发 undo
+     */
+    updateLayouts: (layouts) => {
+      set((state) => {
+        if (!state.currentEditor) {
+          return;
+        }
+        state.currentEditor.layouts = layouts;
+      });
     },
   }))
 );

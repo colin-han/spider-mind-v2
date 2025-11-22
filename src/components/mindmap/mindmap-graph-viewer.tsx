@@ -26,7 +26,6 @@ import {
 } from "@xyflow/react";
 import { useMindmapEditorState, useCommand } from "@/domain/mindmap-store";
 import { convertToFlowData } from "@/lib/utils/mindmap/mindmap-to-flow";
-import { calculateDagreLayout } from "@/lib/utils/mindmap/dagre-layout";
 import { CustomMindNode } from "./viewer/custom-mind-node";
 import { DropIndicator, type DropIndicatorType } from "./viewer/drop-indicator";
 import {
@@ -142,14 +141,33 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
     // 步骤 1: 转换数据
     const flowData = convertToFlowData(root.short_id, nodesMap, collapsedNodes);
 
-    // 步骤 2: 计算布局
-    const layoutedNodes = calculateDagreLayout(flowData.nodes, flowData.edges);
+    // 步骤 2: 应用布局（从 editorState.layouts 获取）
+    const layouts = editorState.layouts;
+    const layoutedNodes = flowData.nodes.map((node) => {
+      const layout = layouts.get(node.id);
+      if (layout) {
+        return {
+          ...node,
+          position: { x: layout.x, y: layout.y },
+          width: layout.width,
+          height: layout.height,
+        };
+      }
+      // 如果没有布局信息，返回原始节点（初始位置）
+      return node;
+    });
 
     return {
       nodes: layoutedNodes,
       edges: flowData.edges,
     };
-  }, [currentMindmap, nodesMap, collapsedNodes, getRootNode]);
+  }, [
+    currentMindmap,
+    nodesMap,
+    collapsedNodes,
+    getRootNode,
+    editorState.layouts,
+  ]);
 
   // 单击节点 - 选中
   const onNodeClick = useCallback(

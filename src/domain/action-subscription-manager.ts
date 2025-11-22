@@ -54,9 +54,9 @@ export class ActionSubscriptionManager {
   }
 
   /**
-   * 取消订阅
+   * 取消订阅（私有方法，通过返回的 unsubscribe 函数调用）
    */
-  unsubscribe(action: ActionType, handler: Subscriber): void {
+  private unsubscribe(action: ActionType, handler: Subscriber): void {
     const handlers = this.subscribers.get(action);
     if (handlers) {
       handlers.delete(handler);

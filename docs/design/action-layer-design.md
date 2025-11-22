@@ -685,25 +685,40 @@ async applyToIndexedDB(): Promise<void> {
 
 ```typescript
 class ActionSubscriptionManager {
-  // 订阅单个 Action 类型
+  /**
+   * 订阅单个 Action 类型
+   * @returns unsubscribe 函数，调用即可取消订阅（类似 React useEffect）
+   */
   subscribe(action: ActionType, handler: Subscriber): () => void;
 
-  // 订阅多个 Action 类型
+  /**
+   * 订阅多个 Action 类型
+   * @returns unsubscribe 函数，调用即可取消所有订阅
+   */
   subscribeMultiple(actions: ActionType[], handler: Subscriber): () => void;
 
-  // 取消订阅
-  unsubscribe(action: ActionType, handler: Subscriber): void;
-
-  // 通知订阅者（内部使用，由 MindmapStore 调用）
+  /**
+   * 通知订阅者（内部使用，由 MindmapStore 调用）
+   */
   notify(action: ActionType, payload: ActionPayload): Promise<void>;
 
-  // 清空所有订阅
+  /**
+   * 清空所有订阅（主要用于测试）
+   */
   clear(): void;
 
-  // 获取订阅统计（调试用）
+  /**
+   * 获取订阅统计（调试用）
+   */
   getStats(): Record<ActionType, number>;
 }
 ```
+
+**API 设计说明**:
+
+- ✅ `subscribe()` 返回 `unsubscribe` 函数，使用者无需保持 handler 引用
+- ✅ 类似 React `useEffect` 的清理函数模式，避免内存泄漏
+- ✅ 不提供公开的 `unsubscribe(action, handler)` 方法，防止误用
 
 #### ActionPayload
 
@@ -924,17 +939,46 @@ async notify(action: ActionType, payload: ActionPayload): Promise<void> {
 
 #### DO（推荐做法）
 
-1. ✅ **在服务类的 init() 中设置订阅**：确保订阅生命周期与服务一致
-2. ✅ **在 dispose() 中取消订阅**：防止内存泄漏
-3. ✅ **订阅者执行纯粹的副作用**：不修改 EditorState
-4. ✅ **使用类型断言访问具体 Action 数据**：`const action = payload.action as AddNodeAction`
+1. ✅ **使用返回的 unsubscribe 函数**：
+
+   ```typescript
+   const unsubscribe = manager.subscribe("addNode", handler);
+   // 取消订阅时
+   unsubscribe(); // ✅ 正确
+   ```
+
+2. ✅ **在服务类的 init() 中设置订阅**：确保订阅生命周期与服务一致
+
+3. ✅ **在 dispose() 中取消订阅**：
+
+   ```typescript
+   dispose(): void {
+     this.unsubscribeFns.forEach(fn => fn());
+     this.unsubscribeFns = [];
+   }
+   ```
+
+4. ✅ **订阅者执行纯粹的副作用**：不修改 EditorState
+
+5. ✅ **使用类型断言访问具体 Action 数据**：`const action = payload.action as AddNodeAction`
 
 #### DON'T（避免做法）
 
-1. ❌ **不要在订阅者中修改 state**：订阅者只能读取 state，不能修改
-2. ❌ **不要在订阅者中执行 Action**：会导致无限循环
-3. ❌ **不要忘记取消订阅**：会导致内存泄漏和重复执行
-4. ❌ **不要在订阅者中抛出未捕获的错误**：应该自己处理错误
+1. ❌ **不要尝试手动保存 handler 引用来取消订阅**：
+
+   ```typescript
+   const handler = (payload) => { ... };
+   manager.subscribe('addNode', handler);
+   // ❌ 错误：没有公开的 unsubscribe(action, handler) 方法
+   ```
+
+2. ❌ **不要在订阅者中修改 state**：订阅者只能读取 state，不能修改
+
+3. ❌ **不要在订阅者中执行 Action**：会导致无限循环
+
+4. ❌ **不要忘记取消订阅**：会导致内存泄漏和重复执行
+
+5. ❌ **不要在订阅者中抛出未捕获的错误**：应该自己处理错误
 
 ### 测试
 

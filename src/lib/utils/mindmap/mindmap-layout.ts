@@ -1,16 +1,11 @@
 import type { MindmapNode } from "@/lib/types";
+import type { NodeLayout } from "@/domain/mindmap-store.types";
 
 // ============================================================================
 // 类型定义
 // ============================================================================
 
-export interface NodeLayout {
-  id: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
+export type { NodeLayout }; // 重新导出，方便外部使用
 
 export interface NodeSize {
   width: number;
@@ -75,19 +70,39 @@ export interface MindmapLayoutEngine {
  * 布局服务接口 - 管理状态，协调布局计算
  *
  * 职责：
- * - 监听 store 变化
+ * - 订阅 Actions 变化（自动响应）
  * - 管理节点尺寸缓存
  * - 驱动 LayoutEngine 重新计算布局
  * - 缓存布局结果
  */
 export interface MindmapLayoutService {
   /**
-   * 初始化服务
+   * 初始化服务（设置订阅）
    *
    * @param engine - 布局引擎实例
    * @param sizeGetter - 节点尺寸测量函数
+   * @param initialNodes - 初始节点 Map
+   * @param initialCollapsedNodes - 初始折叠节点集合
+   * @param store - Mindmap Store 实例（用于更新布局状态）
    */
-  init(engine: MindmapLayoutEngine, sizeGetter: SizeGetter): void;
+  init(
+    engine: MindmapLayoutEngine,
+    sizeGetter: SizeGetter,
+    initialNodes: Map<string, MindmapNode>,
+    initialCollapsedNodes: Set<string>,
+    store: import("@/domain/mindmap-store.types").MindmapStore
+  ): void;
+
+  /**
+   * 更新内部引用（同步外部状态）
+   *
+   * @param nodes - 当前所有节点
+   * @param collapsedNodes - 当前折叠的节点
+   */
+  updateRefs(
+    nodes: Map<string, MindmapNode>,
+    collapsedNodes: Set<string>
+  ): void;
 
   /**
    * 测量节点尺寸并更新缓存
@@ -133,7 +148,7 @@ export interface MindmapLayoutService {
   getDropIndicatorLayout(x: number, y: number): NodeLayout | null;
 
   /**
-   * 清理资源
+   * 清理资源（取消订阅）
    */
   dispose(): void;
 }

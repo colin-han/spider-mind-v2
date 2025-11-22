@@ -15,6 +15,13 @@ export class UpdateNodeAction implements EditorAction {
 
   constructor(private readonly params: UpdateNodeParams) {}
 
+  /**
+   * 获取节点 ID（供订阅者使用）
+   */
+  getNodeId(): string {
+    return this.params.short_id;
+  }
+
   applyToEditorState(draft: EditorState): void {
     const node = draft.nodes.get(this.params.short_id);
     if (!node) {
