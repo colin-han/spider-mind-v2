@@ -11,6 +11,7 @@ import {
   fetchMindmapData,
   fetchServerVersion,
 } from "@/lib/actions/mindmap-sync";
+import { actionSubscriptionManager } from "./action-subscription-manager";
 
 // 导入所有命令以触发注册
 import "./commands";
@@ -262,6 +263,15 @@ export const useMindmapStore = create<MindmapStore>()(
 
         // 传播错误
         throw error;
+      }
+
+      // 3. 通知订阅者
+      const timestamp = Date.now();
+      for (const action of actions) {
+        await actionSubscriptionManager.notify(action.type, {
+          action,
+          timestamp,
+        });
       }
     },
   }))
