@@ -3,11 +3,29 @@
 ## 文档信息
 
 - **创建日期**: 2025-11-06
-- **版本**: 1.0.0
+- **最后更新**: 2025-11-22
+- **版本**: 1.1.0
 - **相关文档**:
   - [领域层架构设计](./domain-layer-architecture.md)
   - [Command 层架构设计](./command-layer-design.md)
   - [MindmapStore 架构设计](./mindmap-store-design.md)
+
+## 关键概念
+
+> 本节定义该设计文档引入的新概念，不包括外部库或其他文档已定义的概念。
+
+| 概念                           | 定义                                                    | 示例/说明                                          |
+| ------------------------------ | ------------------------------------------------------- | -------------------------------------------------- |
+| Action 订阅 (Action Subscribe) | 外部系统订阅特定 Action 类型，在 Action 执行后收到通知  | LayoutService 订阅 addChildNode，触发布局重新计算  |
+| Action Payload                 | 订阅通知携带的数据，包含 Action 实例和执行上下文        | { action: AddNodeAction, timestamp: 1732248000 }   |
+| ActionSubscriptionManager      | 管理所有 Action 订阅者的单例管理器                      | 全局单例，负责注册订阅、派发通知、管理订阅生命周期 |
+| 订阅者 (Subscriber)            | 订阅 Action 的处理函数，接收 ActionPayload 并执行副作用 | async (payload) => { await measureNode(); }        |
+
+**原则**：
+
+- 订阅机制不影响 Action 的核心执行流程
+- 订阅者错误不应影响其他订阅者或 Action 执行
+- 订阅者应当是纯粹的副作用逻辑，不应修改状态
 
 ## 概述
 
@@ -320,16 +338,28 @@ await db.put("mindmap_nodes", {
 CommandHandler 生成 Action[]
   ↓
 MindmapStore.acceptActions()
-  ├─→ applyToEditorState() [同步，立即响应]
+  ├─→ 1. applyToEditorState() [同步，立即响应]
   │    └─ Immer produce() 更新 EditorState
   │         └─ Zustand 通知订阅者
   │              └─ UI 自动重新渲染
   │
-  └─→ applyToIndexedDB() [异步，数据安全]
-       └─ idb 库操作数据库
-            └─ 更新 dirty 标志
-                 └─ 等待 save() 同步到服务器
+  ├─→ 2. applyToIndexedDB() [异步，数据安全]
+  │    └─ idb 库操作数据库
+  │         └─ 更新 dirty 标志
+  │              └─ 等待 save() 同步到服务器
+  │
+  └─→ 3. actionSubscriptionManager.notify() [异步，副作用]
+       └─ 并发调用所有订阅者
+            ├─ LayoutService: 测量尺寸 + 更新布局
+            ├─ SyncManager: 同步到云端
+            └─ ... 其他订阅者
 ```
+
+**执行顺序说明**：
+
+1. **同步更新内存**：立即响应用户操作，UI 实时更新
+2. **异步持久化**：保证数据安全，防止丢失
+3. **通知订阅者**：触发副作用逻辑（布局计算、同步等）
 
 ### 批量执行
 
@@ -631,6 +661,343 @@ async applyToIndexedDB(): Promise<void> {
 4. ❌ **不要在 Action 中包含业务逻辑**（业务逻辑属于 Command）
 5. ❌ **不要直接在组件中创建 Action**（通过 Command 执行）
 
+## Action 订阅机制
+
+### 设计动机
+
+在 Action 层引入订阅机制的目的是**解耦业务逻辑与副作用**：
+
+**问题**：
+
+- LayoutService 需要在节点变化时重新计算布局
+- SyncManager 需要在数据变化时同步到云端
+- 但这些逻辑不应该耦合在 Action 或 Command 中
+
+**解决方案**：
+
+- 外部系统订阅特定的 Action 类型
+- Action 执行后自动通知订阅者
+- 订阅者执行各自的副作用逻辑
+
+### 核心接口
+
+#### ActionSubscriptionManager
+
+```typescript
+class ActionSubscriptionManager {
+  /**
+   * 订阅单个 Action 类型
+   * @returns unsubscribe 函数，调用即可取消订阅（类似 React useEffect）
+   */
+  subscribe(action: ActionType, handler: Subscriber): () => void;
+
+  /**
+   * 订阅多个 Action 类型
+   * @returns unsubscribe 函数，调用即可取消所有订阅
+   */
+  subscribeMultiple(actions: ActionType[], handler: Subscriber): () => void;
+
+  /**
+   * 通知订阅者（内部使用，由 MindmapStore 调用）
+   */
+  notify(action: ActionType, payload: ActionPayload): Promise<void>;
+
+  /**
+   * 清空所有订阅（主要用于测试）
+   */
+  clear(): void;
+
+  /**
+   * 获取订阅统计（调试用）
+   */
+  getStats(): Record<ActionType, number>;
+}
+```
+
+**API 设计说明**:
+
+- ✅ `subscribe()` 返回 `unsubscribe` 函数，使用者无需保持 handler 引用
+- ✅ 类似 React `useEffect` 的清理函数模式，避免内存泄漏
+- ✅ 不提供公开的 `unsubscribe(action, handler)` 方法，防止误用
+
+#### ActionPayload
+
+```typescript
+interface ActionPayload {
+  action: EditorAction; // Action 实例
+  timestamp: number; // 执行时间戳
+}
+```
+
+#### Subscriber
+
+```typescript
+type Subscriber = (payload: ActionPayload) => void | Promise<void>;
+```
+
+### 使用示例
+
+#### 1. 订阅节点变化（LayoutService）
+
+```typescript
+import { actionSubscriptionManager } from "@/domain/action-subscription-manager";
+import { AddNodeAction } from "@/domain/actions/add-node";
+
+class MindmapLayoutService {
+  private unsubscribeFns: Array<() => void> = [];
+
+  init(): void {
+    // 订阅节点添加
+    const unsubAdd = actionSubscriptionManager.subscribe(
+      "addChildNode",
+      async (payload) => {
+        const action = payload.action as AddNodeAction;
+        console.log("[LayoutService] Node added:", action.node.short_id);
+
+        // 测量新节点尺寸
+        await this.measureNode(action.node);
+
+        // 触发重新布局
+        this.updateLayout();
+      }
+    );
+
+    // 订阅节点更新
+    const unsubUpdate = actionSubscriptionManager.subscribe(
+      "updateNode",
+      async (payload) => {
+        const action = payload.action as UpdateNodeAction;
+
+        // 检查是否需要重新测量
+        if ("title" in action.updates || "note" in action.updates) {
+          const node = this.getNode(action.nodeId);
+          if (node) {
+            await this.measureNode(node);
+          }
+        }
+
+        this.updateLayout();
+      }
+    );
+
+    // 订阅节点删除
+    const unsubRemove = actionSubscriptionManager.subscribe(
+      "removeNode",
+      (payload) => {
+        const action = payload.action as RemoveNodeAction;
+
+        // 清理缓存
+        this.clearCache(action.nodeId);
+
+        // 触发重新布局
+        this.updateLayout();
+      }
+    );
+
+    // 保存取消订阅函数
+    this.unsubscribeFns.push(unsubAdd, unsubUpdate, unsubRemove);
+  }
+
+  dispose(): void {
+    // 取消所有订阅
+    this.unsubscribeFns.forEach((fn) => fn());
+    this.unsubscribeFns = [];
+  }
+}
+```
+
+#### 2. 订阅多个 Actions（简化写法）
+
+```typescript
+class SyncManager {
+  init(): void {
+    // 订阅所有需要同步的 Actions
+    const unsubscribe = actionSubscriptionManager.subscribeMultiple(
+      ["addChildNode", "updateNode", "removeNode"],
+      async (payload) => {
+        console.log("[SyncManager] Syncing action:", payload.action.type);
+
+        // 同步到云端
+        await this.syncToCloud(payload.action);
+      }
+    );
+
+    this.unsubscribeFns.push(unsubscribe);
+  }
+}
+```
+
+#### 3. 在 React 组件中使用
+
+```typescript
+function MindmapGraphViewer() {
+  const [forceUpdate, setForceUpdate] = useState(0);
+
+  useEffect(() => {
+    // 订阅布局相关的 Actions，触发组件重新渲染
+    const unsubscribe = actionSubscriptionManager.subscribeMultiple(
+      [
+        "addChildNode",
+        "updateNode",
+        "removeNode",
+        "collapseNode",
+        "expandNode",
+      ],
+      () => {
+        // 触发重新渲染
+        setForceUpdate((prev) => prev + 1);
+      }
+    );
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  // ... 渲染逻辑
+}
+```
+
+### 集成点
+
+订阅通知在 `MindmapStore.acceptActions()` 的最后一步触发：
+
+```typescript
+// src/domain/mindmap-store.ts
+acceptActions: async (actions) => {
+  // 1. 批量更新内存状态（同步）
+  set((state) => {
+    actions.forEach((action) => {
+      action.applyToEditorState(state.currentEditor!);
+    });
+  });
+
+  // 2. 批量持久化到 IndexedDB（异步）
+  const db = await getDB();
+  for (const action of actions) {
+    if (action.applyToIndexedDB) {
+      await action.applyToIndexedDB(db);
+    }
+  }
+
+  // ✅ 3. 通知订阅者（新增）
+  const timestamp = Date.now();
+  for (const action of actions) {
+    await actionSubscriptionManager.notify(action.type, {
+      action,
+      timestamp,
+    });
+  }
+},
+```
+
+### 错误处理
+
+订阅机制使用 `Promise.allSettled()` 实现错误隔离：
+
+```typescript
+async notify(action: ActionType, payload: ActionPayload): Promise<void> {
+  const handlers = this.subscribers.get(action);
+  if (!handlers || handlers.size === 0) {
+    return;
+  }
+
+  // 并发执行所有订阅者，错误隔离
+  const results = await Promise.allSettled(
+    Array.from(handlers).map((handler) =>
+      (async () => {
+        await handler(payload);
+      })()
+    )
+  );
+
+  // 记录错误，但不中断执行
+  results.forEach((result, index) => {
+    if (result.status === 'rejected') {
+      console.error(
+        `[ActionSubscriptionManager] Handler ${index} for action "${action}" failed:`,
+        result.reason
+      );
+    }
+  });
+}
+```
+
+**关键特性**：
+
+- ✅ 一个订阅者的错误不影响其他订阅者
+- ✅ 订阅者的错误不影响 Action 的执行
+- ✅ 所有错误都会被记录到控制台
+
+### 性能考虑
+
+1. **并发执行**：所有订阅者并发执行，不会串行阻塞
+2. **异步通知**：订阅通知是异步的，不阻塞 Action 执行
+3. **订阅管理**：使用 Map 和 Set 实现 O(1) 查询和删除
+
+### 最佳实践
+
+#### DO（推荐做法）
+
+1. ✅ **使用返回的 unsubscribe 函数**：
+
+   ```typescript
+   const unsubscribe = manager.subscribe("addNode", handler);
+   // 取消订阅时
+   unsubscribe(); // ✅ 正确
+   ```
+
+2. ✅ **在服务类的 init() 中设置订阅**：确保订阅生命周期与服务一致
+
+3. ✅ **在 dispose() 中取消订阅**：
+
+   ```typescript
+   dispose(): void {
+     this.unsubscribeFns.forEach(fn => fn());
+     this.unsubscribeFns = [];
+   }
+   ```
+
+4. ✅ **订阅者执行纯粹的副作用**：不修改 EditorState
+
+5. ✅ **使用类型断言访问具体 Action 数据**：`const action = payload.action as AddNodeAction`
+
+#### DON'T（避免做法）
+
+1. ❌ **不要尝试手动保存 handler 引用来取消订阅**：
+
+   ```typescript
+   const handler = (payload) => { ... };
+   manager.subscribe('addNode', handler);
+   // ❌ 错误：没有公开的 unsubscribe(action, handler) 方法
+   ```
+
+2. ❌ **不要在订阅者中修改 state**：订阅者只能读取 state，不能修改
+
+3. ❌ **不要在订阅者中执行 Action**：会导致无限循环
+
+4. ❌ **不要忘记取消订阅**：会导致内存泄漏和重复执行
+
+5. ❌ **不要在订阅者中抛出未捕获的错误**：应该自己处理错误
+
+### 测试
+
+订阅机制包含完整的单元测试：
+
+```bash
+volta run yarn test src/domain/__tests__/action-subscription-manager.test.ts
+```
+
+**测试覆盖**：
+
+- ✅ 订阅和取消订阅
+- ✅ 单个和批量订阅
+- ✅ 通知分发
+- ✅ 错误隔离
+- ✅ 订阅统计
+
+---
+
 ## 未来扩展方向
 
 ### 1. 协作编辑支持
@@ -665,8 +1032,12 @@ async applyToIndexedDB(): Promise<void> {
 
 ## 相关代码位置
 
-- **Action 接口定义**: `src/domain/mindmap-store.types.ts:152-157`
+- **Action 接口定义**: `src/domain/mindmap-store.types.ts`
 - **Action 实现目录**: `src/domain/actions/`
+- **订阅机制**:
+  - 类型定义: `src/domain/action-subscription.types.ts`
+  - 管理器实现: `src/domain/action-subscription-manager.ts`
+  - 单元测试: `src/domain/__tests__/action-subscription-manager.test.ts`
 - **历史管理器**: `src/domain/history-manager.ts`
 - **MindmapStore**: `src/domain/mindmap-store.ts`
 - **IndexedDB Schema**: `src/lib/db/schema.ts`

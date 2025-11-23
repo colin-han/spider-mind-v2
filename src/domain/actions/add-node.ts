@@ -9,6 +9,13 @@ export class AddNodeAction implements EditorAction {
 
   constructor(private readonly node: MindmapNode) {}
 
+  /**
+   * 获取要添加的节点（供订阅者使用）
+   */
+  getNode(): MindmapNode {
+    return this.node;
+  }
+
   applyToEditorState(draft: EditorState): void {
     // Immer 允许直接修改（会自动转为 immutable）
     draft.nodes.set(this.node.short_id, this.node);
