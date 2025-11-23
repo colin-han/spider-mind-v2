@@ -40,6 +40,7 @@ import {
   rfViewportToNodeViewport,
   nodeViewportToRfViewport,
 } from "@/domain/utils/viewport-utils";
+import { calibrateFontMetrics } from "@/lib/utils/mindmap/layout-predictor";
 
 /**
  * MindmapGraphViewer Props
@@ -129,6 +130,9 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
     // 监听 dark mode 变化
     const handler = (e: MediaQueryListEvent) => setIsDarkMode(e.matches);
     darkModeMediaQuery.addEventListener("change", handler);
+
+    // 【优化】校准字体度量，提高布局预测精度
+    calibrateFontMetrics();
 
     return () => darkModeMediaQuery.removeEventListener("change", handler);
   }, []);

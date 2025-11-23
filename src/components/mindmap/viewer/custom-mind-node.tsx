@@ -127,7 +127,8 @@ function CustomMindNodeComponent({ data }: NodeProps) {
           "flex items-center gap-2",
           "min-w-[150px] px-4 py-3",
           "rounded-lg border-2 bg-white",
-          "transition-all duration-150",
+          // 【优化】平滑过渡动画，消除布局闪烁
+          "transition-all duration-150 ease-out",
           "cursor-pointer",
           {
             // 选中状态
@@ -139,6 +140,10 @@ function CustomMindNodeComponent({ data }: NodeProps) {
               isRoot,
           }
         )}
+        style={{
+          // 【优化】确保尺寸变化也有过渡动画
+          transition: "all 0.15s ease-out",
+        }}
       >
         {/* 节点标题 (只读) */}
         <span

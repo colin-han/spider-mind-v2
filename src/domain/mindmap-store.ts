@@ -210,7 +210,7 @@ export const useMindmapStore = create<MindmapStore>()(
         const { layoutService } = store;
         if (layoutService && store.currentEditor) {
           console.log("[MindmapStore] Initializing LayoutService...");
-          layoutService.init(engine, measureNodeSize, store as MindmapStore);
+          layoutService.init();
           console.log("[MindmapStore] LayoutService initialized");
         }
 
@@ -241,6 +241,13 @@ export const useMindmapStore = create<MindmapStore>()(
         return;
       }
 
+      const state = get();
+      if (!state.currentEditor) {
+        throw new Error("No editor opened");
+      }
+
+      const mindmapId = state.currentEditor.currentMindmap.id;
+
       // 1. 批量更新内存状态（同步）
       set((state) => {
         if (!state.currentEditor) {
@@ -252,7 +259,10 @@ export const useMindmapStore = create<MindmapStore>()(
         state.currentEditor.version++;
       });
 
-      // 2. 批量持久化到 IndexedDB（单事务，异步）
+      // 🆕 2. 通知同步订阅者（同步）
+      actionSubscriptionManager.notifySync(actions, mindmapId);
+
+      // 3. 批量持久化到 IndexedDB（单事务，异步）
       const db = await getDB();
       if (!db) {
         return;
@@ -289,14 +299,8 @@ export const useMindmapStore = create<MindmapStore>()(
         throw error;
       }
 
-      // 3. 通知订阅者
-      const timestamp = Date.now();
-      for (const action of actions) {
-        await actionSubscriptionManager.notify(action.type, {
-          action,
-          timestamp,
-        });
-      }
+      // 🆕 4. 通知异步订阅者（异步）
+      await actionSubscriptionManager.notifyAsync(actions, mindmapId);
     },
 
     /**
