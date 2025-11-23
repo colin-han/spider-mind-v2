@@ -42,6 +42,9 @@ interface EditorState {
   focusedArea: FocusedArea; // "graph" | "panel" | "outline" | "search"
   currentNode: string; // 当前选中的节点 short_id
 
+  // 视口状态（派生状态，不持久化）
+  viewport: Viewport; // 视口位置、尺寸和缩放（节点坐标系）
+
   // 状态
   isLoading: boolean; // 是否正在加载
   isSaved: boolean; // 是否已保存
@@ -105,6 +108,33 @@ version: number; // 每次 acceptActions() 递增
 - 实现乐观更新
 - 冲突检测基础
 - 调试和日志记录
+
+#### 4. Viewport 管理
+
+```typescript
+viewport: Viewport; // 视口状态（派生状态，不持久化）
+```
+
+**特性**:
+
+- 使用节点坐标系（pre-zoom），与节点 x/y 一致
+- 不持久化到 IndexedDB（每次打开自动 fitView）
+- 通过 SetViewportAction 更新
+- 与 React Flow 双向同步（值比较防抖）
+
+**字段说明**:
+
+```typescript
+interface Viewport {
+  x: number; // 视口左边缘在节点坐标系中的 X 坐标
+  y: number; // 视口上边缘在节点坐标系中的 Y 坐标
+  width: number; // 视口在节点坐标系中的宽度
+  height: number; // 视口在节点坐标系中的高度
+  zoom: number; // 缩放比例 (0.1 - 2.0)
+}
+```
+
+**详细设计**: 参见 [视口管理设计](./viewport-management-design.md)
 
 ## MindmapStore 结构
 

@@ -328,6 +328,48 @@ await db.put("mindmap_nodes", {
 
 ---
 
+#### SetViewportAction
+
+**职责**: 更新视口状态（位置、尺寸、缩放）
+
+**参数**:
+
+```typescript
+{
+  x?: number;       // 视口左边缘的 X 坐标（节点坐标系）
+  y?: number;       // 视口上边缘的 Y 坐标（节点坐标系）
+  width?: number;   // 视口宽度（节点坐标系）
+  height?: number;  // 视口高度（节点坐标系）
+  zoom?: number;    // 缩放比例 (0.1 - 2.0)
+}
+```
+
+**状态变更**:
+
+- 更新 `EditorState.viewport` 的对应字段（支持部分更新）
+- 自动限制 zoom 在 [0.1, 2.0] 范围内
+
+**数据库操作**: 无（视口状态不持久化，是派生状态）
+
+**逆操作**: `SetViewportAction`（恢复之前的视口状态）
+
+**使用场景**:
+
+- 视图命令（zoom in/out/reset, pan, fit view）
+- 导航命令的节点聚焦
+- React Flow → Store 的视口同步
+
+**特性**:
+
+- 部分更新支持（只更新提供的字段）
+- 使用节点坐标系（pre-zoom），与节点 x/y 一致
+- 通过 MindmapGraphViewer 与 React Flow 双向同步
+- 使用值比较机制防止同步循环
+
+**详细设计**: 参见 [视口管理设计](./viewport-management-design.md)
+
+---
+
 ## Action 执行流程
 
 ### 完整执行链

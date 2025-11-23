@@ -406,7 +406,194 @@ export type CommandDefinition =
 
 ---
 
-### 3. Global Commands（全局操作）
+### 3. View Commands（视图操作）
+
+这类命令用于控制视口的缩放、平移和聚焦，不支持 undo/redo（因为是视图状态操作，不修改数据）。
+
+#### view.zoomIn
+
+**功能**: 放大视图（缩放比例增加 20%）
+
+**快捷键**: `Cmd+=`
+
+**执行条件**: 当前缩放比例 < 2.0
+
+**业务逻辑**:
+
+1. 计算新缩放比例：`newZoom = Math.min(2.0, viewport.zoom * 1.2)`
+2. 保持视口中心点不变
+3. 根据新缩放比例重新计算视口的 x, y, width, height
+4. 返回 SetViewportAction
+
+**特殊性**:
+
+- actionBased: true
+- undoable: false（视图操作不可撤销）
+- 缩放比例上限为 2.0
+
+**文件位置**: `src/domain/commands/view/zoom-in.ts`
+
+---
+
+#### view.zoomOut
+
+**功能**: 缩小视图（缩放比例减少约 17%）
+
+**快捷键**: `Cmd+-`
+
+**执行条件**: 当前缩放比例 > 0.1
+
+**业务逻辑**:
+
+1. 计算新缩放比例：`newZoom = Math.max(0.1, viewport.zoom / 1.2)`
+2. 保持视口中心点不变
+3. 根据新缩放比例重新计算视口的 x, y, width, height
+4. 返回 SetViewportAction
+
+**特殊性**:
+
+- actionBased: true
+- undoable: false
+- 缩放比例下限为 0.1
+
+**文件位置**: `src/domain/commands/view/zoom-out.ts`
+
+---
+
+#### view.zoomReset
+
+**功能**: 重置缩放比例为 100%（1.0）
+
+**快捷键**: `Cmd+0`
+
+**执行条件**: 无（总是可执行）
+
+**业务逻辑**:
+
+1. 保持视口中心点不变
+2. 将缩放比例设置为 1.0
+3. 根据新缩放比例重新计算视口的 x, y, width, height
+4. 返回 SetViewportAction
+
+**特殊性**:
+
+- actionBased: true
+- undoable: false
+
+**文件位置**: `src/domain/commands/view/zoom-reset.ts`
+
+---
+
+#### view.fitView
+
+**功能**: 缩放视口以适应所有节点
+
+**快捷键**: `Cmd+1`
+
+**执行条件**: 无（总是可执行）
+
+**业务逻辑**:
+
+1. 委托给 React Flow 的 `fitView()` 方法
+2. React Flow 会自动计算最佳缩放比例和视口位置
+3. 通过 `onViewportChange` 回调同步视口状态到 Store
+
+**特殊性**:
+
+- actionBased: false（命令式命令，直接调用 React Flow API）
+- undoable: false
+- 不返回 Action，直接操作 React Flow
+
+**文件位置**: `src/domain/commands/view/fit-view.ts`
+
+---
+
+#### view.focusCurrentNode
+
+**功能**: 确保当前节点在视口中可见（保留 15% 边距）
+
+**快捷键**: `Cmd+L`
+
+**执行条件**: 存在当前节点
+
+**业务逻辑**:
+
+1. 调用 `ensureNodeVisibleAction(currentNode, state)`
+2. 检查当前节点是否在视口内（带 15% 边距）
+3. 如果不在视口内，最小化移动距离将节点移入视口
+4. 返回 SetViewportAction 或 null
+
+**特殊性**:
+
+- actionBased: true
+- undoable: false
+- 使用 `ensureNodeVisibleAction` 工具函数
+- 只在节点不可见时才移动视口
+
+**文件位置**: `src/domain/commands/view/focus-current-node.ts`
+
+---
+
+#### view.panLeft / Right / Up / Down
+
+**功能**: 向指定方向平移视口（移动 100 节点坐标单位）
+
+**快捷键**:
+
+- `Alt+ArrowLeft` (向左平移)
+- `Alt+ArrowRight` (向右平移)
+- `Alt+ArrowUp` (向上平移)
+- `Alt+ArrowDown` (向下平移)
+
+**执行条件**: 无（总是可执行）
+
+**业务逻辑**:
+
+1. 根据方向调整视口的 x 或 y 坐标
+2. 平移距离为 100 节点坐标单位
+3. 返回 SetViewportAction（只更新 x 或 y，不更新其他字段）
+
+**特殊性**:
+
+- actionBased: true
+- undoable: false
+- 平移距离固定为 100 节点坐标单位
+
+**文件位置**:
+
+- `src/domain/commands/view/pan-left.ts`
+- `src/domain/commands/view/pan-right.ts`
+- `src/domain/commands/view/pan-up.ts`
+- `src/domain/commands/view/pan-down.ts`
+
+---
+
+#### view.setViewport
+
+**功能**: 设置视口状态（用于 React Flow → Store 同步）
+
+**快捷键**: 无（不直接暴露给用户）
+
+**执行条件**: 无（总是可执行）
+
+**业务逻辑**:
+
+1. 接收完整的视口参数 (x, y, width, height, zoom)
+2. 返回 SetViewportAction
+3. 主要用于 MindmapGraphViewer 中的双向同步
+
+**特殊性**:
+
+- actionBased: true
+- undoable: false
+- 内部命令，不绑定快捷键
+- 用于处理用户在 React Flow 中的交互（鼠标拖拽、滚轮缩放等）
+
+**文件位置**: `src/domain/commands/view/set-viewport.ts`
+
+---
+
+### 4. Global Commands（全局操作）
 
 这类命令是系统级操作，部分支持 undo/redo。
 
