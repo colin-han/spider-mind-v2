@@ -65,15 +65,23 @@ export class DagreLayoutEngine implements MindmapLayoutEngine {
       });
     }
 
-    // 4. 添加边到图中（按 order_index 排序保证兄弟节点顺序）
-    // 先将节点按 order_index 排序，再添加边
-    const sortedNodes = Array.from(visibleNodes.values()).sort(
-      (a, b) => a.order_index - b.order_index
-    );
-
-    for (const node of sortedNodes) {
+    // 4. 添加边到图中（按父节点分组，每组内按 order_index 排序）
+    // dagre 会按边添加顺序排列同级子节点，所以需要确保每个父节点的子节点按顺序添加
+    const childrenByParent = new Map<string, MindmapNode[]>();
+    for (const node of visibleNodes.values()) {
       if (node.parent_short_id && visibleNodes.has(node.parent_short_id)) {
-        g.setEdge(node.parent_short_id, node.short_id);
+        if (!childrenByParent.has(node.parent_short_id)) {
+          childrenByParent.set(node.parent_short_id, []);
+        }
+        childrenByParent.get(node.parent_short_id)!.push(node);
+      }
+    }
+
+    // 对每个父节点的子节点按 order_index 排序，然后添加边
+    for (const [parentId, children] of childrenByParent) {
+      children.sort((a, b) => a.order_index - b.order_index);
+      for (const child of children) {
+        g.setEdge(parentId, child.short_id);
       }
     }
 

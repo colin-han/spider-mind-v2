@@ -31,18 +31,47 @@ export type ActionType =
  */
 export interface ActionPayload {
   action: EditorAction; // Action 实例
-  timestamp: number; // 执行时间戳
+  mindmapId: string; // 思维导图 ID
 }
 
 /**
- * 订阅者函数类型
+ * 同步订阅者（在 Store 更新后立即执行）
+ *
+ * 约束：
+ * - 必须是同步函数（不能返回 Promise）
+ * - 应该尽快完成（< 10ms）
+ * - 不应包含异步操作
  */
-export type Subscriber = (payload: ActionPayload) => void | Promise<void>;
+export type SyncSubscriber = (payload: ActionPayload) => void;
 
 /**
- * 订阅上下文（用于扩展）
+ * 异步订阅者（在 IndexedDB 更新后执行）
+ *
+ * 允许：
+ * - 同步或异步函数
+ * - 包含异步操作（如 DOM 测量、网络请求）
  */
-export interface SubscriptionContext {
-  action: ActionType;
-  timestamp: number;
-}
+export type AsyncSubscriber = (payload: ActionPayload) => void | Promise<void>;
+
+/**
+ * 同步后处理器（在所有 Sync 订阅处理完成后执行）
+ *
+ * 约束：
+ * - 必须是同步函数
+ * - 应该尽快完成
+ *
+ * @param actionsMap - 按 ActionType 分组的 Actions
+ *   例如：Map { "addChildNode" => [action1, action2], "updateNode" => [action3] }
+ */
+export type PostSyncHandler = (
+  actionsMap: Map<ActionType, EditorAction[]>
+) => void;
+
+/**
+ * 异步后处理器（在所有 Async 订阅处理完成后执行）
+ *
+ * @param actionsMap - 按 ActionType 分组的 Actions
+ */
+export type PostAsyncHandler = (
+  actionsMap: Map<ActionType, EditorAction[]>
+) => void | Promise<void>;

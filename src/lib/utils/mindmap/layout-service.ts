@@ -8,6 +8,7 @@ import type {
 import type { NodeLayout } from "@/domain/mindmap-store.types";
 import { actionSubscriptionManager } from "@/domain/action-subscription-manager";
 import { useMindmapStore } from "@/domain/mindmap-store";
+import { predictNodeSize } from "./layout-predictor";
 
 // ============================================================================
 // MindmapLayoutServiceImpl - 有状态的布局服务实现
@@ -91,7 +92,7 @@ export class MindmapLayoutServiceImpl implements MindmapLayoutService {
   /**
    * 重新计算布局（驱动 engine）
    */
-  updateLayout(): void {
+  private updateLayout(): void {
     const { nodes, collapsedNodes } = this.getCurrentState();
     // 计算新布局
     const newLayouts = this.engine.layout(
@@ -166,82 +167,184 @@ export class MindmapLayoutServiceImpl implements MindmapLayoutService {
   }
 
   /**
-   * 设置 Action 订阅
-   * 监听会影响布局的 Actions 并触发重新计算
+   * 设置 Action 订阅（双层 + 后处理架构）
+   *
+   * 四步处理流程：
+   * 1. Sync订阅：预测受影响节点的尺寸，更新缓存
+   * 2. Sync后处理：使用预测尺寸驱动布局引擎，更新预测布局到Store
+   * 3. Async订阅：实际测量节点的真实尺寸
+   * 4. Async后处理：使用真实尺寸驱动布局引擎，更新精确布局到Store
    */
   private setupSubscriptions(): void {
-    console.log("[LayoutService] Setting up action subscriptions...");
+    console.log(
+      "[LayoutService] Setting up action subscriptions (dual-layer)..."
+    );
 
-    // 1. 订阅节点添加事件
-    const unsubscribeAddNode = actionSubscriptionManager.subscribe(
-      "addChildNode",
-      async ({ action }) => {
-        console.log("[LayoutService] Action received: addChildNode");
+    // ========================================
+    // 步骤 1: 单个 Action 的同步订阅
+    // 职责：预测受影响节点的布局，更新缓存的测量尺寸
+    // 时机：每个 Action 的 Store 更新后立即执行
+    // ========================================
 
-        // 测量新节点尺寸
-        // 使用类型断言来访问 AddNodeAction 的 getNode() 方法
+    this.unsubscribeFunctions.push(
+      actionSubscriptionManager.subscribeSync("addChildNode", ({ action }) => {
         const addAction = action as { getNode?: () => MindmapNode };
         if (addAction.getNode) {
           const newNode = addAction.getNode();
-          console.log("[LayoutService] Measuring new node:", newNode.short_id);
-          await this.measureNode(newNode);
+          console.log(
+            "[LayoutService] Sync: predicting new node",
+            newNode.short_id
+          );
+
+          // 预测新节点的尺寸
+          const predictedSize = predictNodeSize(newNode);
+          this.sizeCache.set(newNode.short_id, predictedSize);
         }
-
-        this.updateLayout();
-      }
+      })
     );
-    this.unsubscribeFunctions.push(unsubscribeAddNode);
 
-    // 2. 订阅节点更新事件（内容变化可能导致尺寸变化）
-    const unsubscribeUpdateNode = actionSubscriptionManager.subscribe(
-      "updateNode",
-      async ({ action }) => {
-        console.log("[LayoutService] Action received: updateNode");
-
-        // 从 store 获取最新状态
-        const state = this.getCurrentState();
-        // 清除缓存的尺寸，触发重新测量
+    this.unsubscribeFunctions.push(
+      actionSubscriptionManager.subscribeSync("updateNode", ({ action }) => {
         const updateAction = action as { getNodeId?: () => string };
         if (updateAction.getNodeId) {
           const nodeId = updateAction.getNodeId();
-          console.log("[LayoutService] Re-measuring updated node:", nodeId);
-          this.sizeCache.delete(nodeId);
+          const node = this.getCurrentState().nodes.get(nodeId);
 
-          const node = state.nodes.get(nodeId);
           if (node) {
-            await this.measureNode(node);
+            console.log(
+              "[LayoutService] Sync: predicting updated node",
+              nodeId
+            );
+
+            // 预测更新后的尺寸
+            const predictedSize = predictNodeSize(node);
+            this.sizeCache.set(nodeId, predictedSize);
           }
         }
-
-        this.updateLayout();
-      }
+      })
     );
-    this.unsubscribeFunctions.push(unsubscribeUpdateNode);
 
-    // 3. 订阅节点删除事件
-    const unsubscribeDeleteNode = actionSubscriptionManager.subscribe(
-      "deleteNode",
-      async () => {
-        console.log("[LayoutService] Action received: deleteNode");
+    this.unsubscribeFunctions.push(
+      actionSubscriptionManager.subscribeSync("removeNode", ({ action }) => {
+        const deleteAction = action as { getNodeId?: () => string };
+        if (deleteAction.getNodeId) {
+          const nodeId = deleteAction.getNodeId();
+          console.log("[LayoutService] Sync: removing node from cache", nodeId);
 
-        this.updateLayout();
-      }
+          // 清理缓存
+          this.sizeCache.delete(nodeId);
+        }
+      })
     );
-    this.unsubscribeFunctions.push(unsubscribeDeleteNode);
 
-    // 4. 订阅折叠/展开事件
-    const unsubscribeToggleCollapse = actionSubscriptionManager.subscribe(
-      "toggleCollapseNode",
-      async () => {
-        console.log("[LayoutService] Action received: toggleCollapseNode");
+    // ========================================
+    // 步骤 2: 同步后处理
+    // 职责：驱动 LayoutEngine，更新预测布局到 EditorState.layouts
+    // 时机：所有 Action 的 Sync 订阅处理完成后执行（后处理阶段）
+    // 特点：批量操作时只调用一次，接收所有相关 Actions
+    // ========================================
 
-        this.updateLayout();
-      }
+    this.unsubscribeFunctions.push(
+      actionSubscriptionManager.subscribePostSync(
+        [
+          "addChildNode",
+          "updateNode",
+          "removeNode",
+          "collapseNode",
+          "expandNode",
+        ],
+        (actionsMap) => {
+          console.log(
+            "[LayoutService] Post-sync: updating layout with predictions,",
+            actionsMap.size,
+            "action types"
+          );
+
+          this.updateLayout();
+        }
+      )
     );
-    this.unsubscribeFunctions.push(unsubscribeToggleCollapse);
+
+    // ========================================
+    // 步骤 3: 单个 Action 的异步订阅
+    // 职责：实际测量节点的真实尺寸（DOM 测量）
+    // 时机：每个 Action 的 IndexedDB 更新后立即执行
+    // ========================================
+
+    this.unsubscribeFunctions.push(
+      actionSubscriptionManager.subscribeAsync(
+        "addChildNode",
+        async ({ action }) => {
+          const addAction = action as { getNode?: () => MindmapNode };
+          if (addAction.getNode) {
+            const newNode = addAction.getNode();
+            console.log(
+              "[LayoutService] Async: measuring new node",
+              newNode.short_id
+            );
+
+            // 异步测量真实尺寸（需要 DOM 渲染）
+            const actualSize = await this.measureNode(newNode);
+            this.sizeCache.set(newNode.short_id, actualSize);
+          }
+        }
+      )
+    );
+
+    this.unsubscribeFunctions.push(
+      actionSubscriptionManager.subscribeAsync(
+        "updateNode",
+        async ({ action }) => {
+          const updateAction = action as { getNodeId?: () => string };
+          if (updateAction.getNodeId) {
+            const nodeId = updateAction.getNodeId();
+            const node = this.getCurrentState().nodes.get(nodeId);
+
+            if (node) {
+              console.log(
+                "[LayoutService] Async: measuring updated node",
+                nodeId
+              );
+
+              // 异步测量真实尺寸
+              const actualSize = await this.measureNode(node);
+              this.sizeCache.set(nodeId, actualSize);
+            }
+          }
+        }
+      )
+    );
+
+    // ========================================
+    // 步骤 4: 异步后处理
+    // 职责：使用真实尺寸驱动 LayoutEngine，更新精确布局到 Store
+    // 时机：所有 Action 的 Async 订阅处理完成后执行（后处理阶段）
+    // 特点：批量操作时只调用一次，接收所有相关 Actions
+    // ========================================
+
+    this.unsubscribeFunctions.push(
+      actionSubscriptionManager.subscribePostAsync(
+        [
+          "addChildNode",
+          "updateNode",
+          "removeNode",
+          "collapseNode",
+          "expandNode",
+        ],
+        async (actionsMap) => {
+          console.log(
+            "[LayoutService] Post-async: updating layout with actual sizes,",
+            actionsMap.size,
+            "action types"
+          );
+
+          this.updateLayout();
+        }
+      )
+    );
 
     console.log(
-      `[LayoutService] Subscribed to ${this.unsubscribeFunctions.length} action types`
+      `[LayoutService] Subscribed with dual-layer architecture: ${this.unsubscribeFunctions.length} subscriptions`
     );
   }
 

@@ -79,15 +79,10 @@ export interface MindmapLayoutService {
   /**
    * 初始化服务（设置订阅）
    *
-   * @param engine - 布局引擎实例
-   * @param sizeGetter - 节点尺寸测量函数
-   * @param store - Mindmap Store 实例（用于更新布局状态）
+   * 注：engine 和 sizeGetter 在构造函数中传入，
+   * init() 负责设置 Action 订阅并执行初始布局计算
    */
-  init(
-    engine: MindmapLayoutEngine,
-    sizeGetter: SizeGetter,
-    store: import("@/domain/mindmap-store.types").MindmapStore
-  ): void;
+  init(): void;
 
   /**
    * 测量节点尺寸并更新缓存
@@ -96,9 +91,4 @@ export interface MindmapLayoutService {
    * @returns 节点尺寸
    */
   measureNode(node: MindmapNode): Promise<NodeSize>;
-
-  /**
-   * 重新计算布局（驱动 engine）
-   */
-  updateLayout(): void;
 }
