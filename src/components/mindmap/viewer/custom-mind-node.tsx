@@ -100,7 +100,7 @@ function CustomMindNodeComponent({ data }: NodeProps) {
       className={cn(
         "mind-node relative",
         "flex flex-col",
-        "min-w-[150px] pt-5 px-4 pb-1",
+        "min-w-[150px] pt-2 px-4 pb-0",
         "rounded-lg border-2 bg-white",
         "transition-all duration-150",
         "cursor-pointer",
@@ -141,7 +141,7 @@ function CustomMindNodeComponent({ data }: NodeProps) {
       <div
         data-testid={`mindmap-node-${nodeData.shortId}-status-icons`}
         style={{ padding: 0 }}
-        className="h-3.5 flex justify-end items-center gap-1 mt-1"
+        className="h-1.5 flex justify-end items-center gap-1 mb-1"
       >
         {node?.note && (
           <AlignLeft

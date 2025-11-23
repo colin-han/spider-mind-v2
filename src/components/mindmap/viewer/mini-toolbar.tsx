@@ -133,7 +133,7 @@ export function MiniToolbar({ node, zoom, testId }: MiniToolbarProps) {
 
   const toolbarStyles = cn(
     // 毛玻璃效果 - 浅色模式和深色模式都使用白色半透明
-    "bg-white/80 dark:bg-white/20",
+    "bg-white/60 dark:bg-white/20",
     "backdrop-blur-sm",
     "rounded-md",
     // hover 时增加阴影，非 hover 时半透明
