@@ -23,6 +23,7 @@ import {
   type Node,
   type NodeTypes,
   type Viewport as RFViewport,
+  PanOnScrollMode,
 } from "@xyflow/react";
 import { useMindmapEditorState, useCommand } from "@/domain/mindmap-store";
 import { convertToFlowData } from "@/lib/utils/mindmap/mindmap-to-flow";
@@ -555,6 +556,11 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
         fitView
         minZoom={0.1}
         maxZoom={2}
+        // 妙控板手势支持
+        panOnScroll={true}
+        panOnScrollMode={PanOnScrollMode.Free}
+        panOnScrollSpeed={0.5}
+        zoomOnPinch={true}
         defaultEdgeOptions={{
           type: "smoothstep",
           animated: false,
