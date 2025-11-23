@@ -76,6 +76,11 @@ export interface CommandBarProps {
   className?: string;
 
   /**
+   * 应用于所有按钮的样式类名
+   */
+  buttonClassName?: string;
+
+  /**
    * 测试 ID
    */
   testId?: string;
@@ -84,7 +89,12 @@ export interface CommandBarProps {
 /**
  * CommandBar 组件
  */
-export function CommandBar({ commands, className, testId }: CommandBarProps) {
+export function CommandBar({
+  commands,
+  className,
+  buttonClassName,
+  testId,
+}: CommandBarProps) {
   return (
     <div
       className={cn("flex items-center gap-1", className)}
@@ -123,6 +133,9 @@ export function CommandBar({ commands, className, testId }: CommandBarProps) {
                   disabled: button.disabled,
                 })}
                 {...(button.testId !== undefined && { testId: button.testId })}
+                {...(buttonClassName !== undefined && {
+                  className: buttonClassName,
+                })}
               />
             ))}
           </div>

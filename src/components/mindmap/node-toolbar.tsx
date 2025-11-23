@@ -41,6 +41,11 @@ interface NodeToolbarProps {
   className?: string;
 
   /**
+   * 应用于所有按钮的样式类名
+   */
+  buttonClassName?: string;
+
+  /**
    * 测试 ID
    */
   testId?: string;
@@ -52,6 +57,7 @@ interface NodeToolbarProps {
 export function NodeToolbar({
   node,
   className,
+  buttonClassName,
   testId = "node-toolbar",
 }: NodeToolbarProps) {
   // 是否是根节点
@@ -109,7 +115,10 @@ export function NodeToolbar({
       )}
       data-testid={testId}
     >
-      <CommandBar commands={toolbarCommands} />
+      <CommandBar
+        commands={toolbarCommands}
+        {...(buttonClassName && { buttonClassName })}
+      />
     </div>
   );
 }

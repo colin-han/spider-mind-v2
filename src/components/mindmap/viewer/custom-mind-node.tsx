@@ -2,29 +2,24 @@
  * CustomMindNode - 自定义思维导图节点组件
  *
  * 职责:
- * - 只读显示节点信息 (标题、图标)
+ * - 只读显示节点信息 (标题、状态图标)
  * - 展开/折叠按钮交互
  * - 选中状态视觉反馈
+ * - 迷你工具栏显示
  *
  * 不负责:
  * - 节点编辑 (在 NodePanel 中完成)
  * - 布局计算 (由 Dagre 完成)
  */
 
-import { memo, useCallback } from "react";
-import {
-  Handle,
-  Position,
-  NodeToolbar as ReactFlowNodeToolbar,
-  type NodeProps,
-  useViewport,
-} from "@xyflow/react";
+import { memo, useCallback, useState } from "react";
+import { Handle, Position, type NodeProps, useViewport } from "@xyflow/react";
 import { useMindmapEditorState, useMindmapStore } from "@/domain/mindmap-store";
 import { CollapseNodeAction } from "@/domain/actions/collapse-node";
 import { ExpandNodeAction } from "@/domain/actions/expand-node";
 import type { CustomNodeData } from "@/lib/types/react-flow";
 import { cn } from "@/lib/utils/cn";
-import { NodeToolbar } from "@/components/mindmap/node-toolbar";
+import { MiniToolbar } from "./mini-toolbar";
 import { MindmapNode } from "@/lib/types";
 import { AlignLeft } from "lucide-react";
 
@@ -60,12 +55,16 @@ function CustomMindNodeComponent({ data }: NodeProps) {
   // 获取当前缩放级别
   const { zoom } = useViewport();
 
+  // hover 状态追踪
+  const [isHovered, setIsHovered] = useState(false);
+
   // 将 data 断言为 CustomNodeData 类型
   const nodeData = data as CustomNodeData;
 
   const isSelected = editorState.currentNode === nodeData.shortId;
   const isExpanded = !editorState.collapsedNodes.has(nodeData.shortId);
   const isRoot = !nodeData.parentId;
+  const showToolbar = isSelected || isHovered;
 
   // 获取完整节点数据（用于工具栏）
   const node = editorState.nodes.get(nodeData.shortId);
@@ -96,116 +95,108 @@ function CustomMindNodeComponent({ data }: NodeProps) {
   );
 
   return (
-    <>
-      {/* 浮动工具栏 - 只在节点选中时显示，跟随图形缩放 */}
-      {node && (
-        <ReactFlowNodeToolbar
-          position={Position.Top}
-          align="start"
-          isVisible={isSelected}
-        >
-          <div
-            className="px-2 py-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg"
-            style={{
-              transform: `scale(${zoom})`,
-              transformOrigin: "bottom left",
-            }}
-          >
-            <NodeToolbar
-              node={node}
-              className="border-0 pb-0"
-              testId="floating-node-toolbar"
-            />
-          </div>
-        </ReactFlowNodeToolbar>
+    <div
+      data-testid={`mindmap-node-${nodeData.shortId}`}
+      className={cn(
+        "mind-node relative",
+        "flex flex-col",
+        "min-w-[150px] pt-5 px-4 pb-1",
+        "rounded-lg border-2 bg-white",
+        "transition-all duration-150",
+        "cursor-pointer",
+        {
+          // 选中状态
+          "border-blue-500 shadow-[0_0_0_3px_rgba(59,130,246,0.3)] dark:border-blue-400 dark:shadow-[0_0_0_4px_rgba(96,165,250,0.4)]":
+            isSelected,
+          "border-gray-200 dark:border-gray-300": !isSelected,
+          // 根节点样式
+          "bg-gradient-to-br from-purple-600 to-purple-700 text-white border-purple-800 font-semibold":
+            isRoot,
+        }
+      )}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {/* 迷你工具栏 - 选中或 hover 时显示 */}
+      {showToolbar && node && (
+        <MiniToolbar
+          node={node}
+          zoom={zoom}
+          testId={`mindmap-node-${nodeData.shortId}-mini-toolbar`}
+        />
       )}
 
-      <div
-        data-testid={`mindmap-node-${nodeData.shortId}`}
-        className={cn(
-          "mind-node relative",
-          "flex items-center gap-2",
-          "min-w-[150px] px-4 py-3",
-          "rounded-lg border-2 bg-white",
-          "transition-all duration-150",
-          "cursor-pointer",
-          {
-            // 选中状态
-            "border-blue-500 shadow-[0_0_0_3px_rgba(59,130,246,0.3)] dark:border-blue-400 dark:shadow-[0_0_0_4px_rgba(96,165,250,0.4)]":
-              isSelected,
-            "border-gray-200 dark:border-gray-300": !isSelected,
-            // 根节点样式
-            "bg-gradient-to-br from-purple-600 to-purple-700 text-white border-purple-800 font-semibold":
-              isRoot,
-          }
-        )}
+      {/* 节点标题 (只读) */}
+      <span
+        data-testid={`mindmap-node-${nodeData.shortId}-title`}
+        className={cn("title text-sm select-none py-1", {
+          "text-white": isRoot,
+          "text-gray-900 dark:text-gray-900": !isRoot,
+        })}
       >
-        {/* 节点标题 (只读) */}
-        <span
-          data-testid={`mindmap-node-${nodeData.shortId}-title`}
-          className={cn("title flex-1 text-sm select-none", {
-            "text-white": isRoot,
-            "text-gray-900 dark:text-gray-900": !isRoot,
-          })}
-        >
-          {nodeData.title}
-        </span>
+        {nodeData.title}
+      </span>
 
-        {/* Note 图标 - 只在节点有 note 时显示 */}
+      {/* 状态图标区域 - 始终占位 */}
+      <div
+        data-testid={`mindmap-node-${nodeData.shortId}-status-icons`}
+        style={{ padding: 0 }}
+        className="h-3.5 flex justify-end items-center gap-1 mt-1"
+      >
         {node?.note && (
           <AlignLeft
-            data-testid={`mindmap-node-${nodeData.shortId}-note-icon`}
-            className={cn("w-4 h-4 flex-shrink-0", {
+            data-testid={`mindmap-node-${nodeData.shortId}-status-note`}
+            className={cn("w-3.5 h-3.5 flex-shrink-0", {
               "text-white opacity-80": isRoot,
               "text-gray-500": !isRoot,
             })}
             aria-label="该节点有笔记"
           />
         )}
-
-        {/* React Flow Handles (连接点) - 从左到右布局，隐藏但保留用于连线计算 */}
-        <Handle
-          type="target"
-          position={Position.Left}
-          className="!w-2 !h-2 !bg-transparent !border-0"
-        />
-        <Handle
-          type="source"
-          position={Position.Right}
-          className="!w-2 !h-2 !bg-transparent !border-0"
-        />
-
-        {/* 展开/折叠按钮 - 右侧连接点位置 */}
-        {nodeData.hasChildren && (
-          <button
-            data-testid={`mindmap-node-${nodeData.shortId}-expand-button`}
-            onClick={toggleExpand}
-            className={cn(
-              "expand-button absolute",
-              "w-5 h-5 flex items-center justify-center",
-              "rounded-full border cursor-pointer",
-              "transition-all duration-150",
-              "right-[-10px] top-1/2 -translate-y-1/2",
-              "z-10",
-              {
-                // 包含当前节点 - 蓝色高亮
-                "bg-blue-500 border-blue-600 text-white hover:bg-blue-600 shadow-md":
-                  containsCurrentNode,
-                // 根节点 - 紫色
-                "bg-white border-purple-600 text-purple-600 hover:bg-purple-50":
-                  !containsCurrentNode && isRoot,
-                // 普通节点 - 灰色
-                "bg-white border-gray-400 text-gray-600 hover:bg-gray-50":
-                  !containsCurrentNode && !isRoot,
-              }
-            )}
-            aria-label={isExpanded ? "折叠子节点" : "展开子节点"}
-          >
-            <span className="text-xs font-bold">{isExpanded ? "−" : "+"}</span>
-          </button>
-        )}
       </div>
-    </>
+
+      {/* React Flow Handles (连接点) - 从左到右布局，隐藏但保留用于连线计算 */}
+      <Handle
+        type="target"
+        position={Position.Left}
+        className="!w-2 !h-2 !bg-transparent !border-0"
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        className="!w-2 !h-2 !bg-transparent !border-0"
+      />
+
+      {/* 展开/折叠按钮 - 右侧连接点位置 */}
+      {nodeData.hasChildren && (
+        <button
+          data-testid={`mindmap-node-${nodeData.shortId}-expand-button`}
+          onClick={toggleExpand}
+          className={cn(
+            "expand-button absolute",
+            "w-5 h-5 flex items-center justify-center",
+            "rounded-full border cursor-pointer",
+            "transition-all duration-150",
+            "right-[-10px] top-1/2 -translate-y-1/2",
+            "z-10",
+            {
+              // 包含当前节点 - 蓝色高亮
+              "bg-blue-500 border-blue-600 text-white hover:bg-blue-600 shadow-md":
+                containsCurrentNode,
+              // 根节点 - 紫色
+              "bg-white border-purple-600 text-purple-600 hover:bg-purple-50":
+                !containsCurrentNode && isRoot,
+              // 普通节点 - 灰色
+              "bg-white border-gray-400 text-gray-600 hover:bg-gray-50":
+                !containsCurrentNode && !isRoot,
+            }
+          )}
+          aria-label={isExpanded ? "折叠子节点" : "展开子节点"}
+        >
+          <span className="text-xs font-bold">{isExpanded ? "−" : "+"}</span>
+        </button>
+      )}
+    </div>
   );
 }
 
