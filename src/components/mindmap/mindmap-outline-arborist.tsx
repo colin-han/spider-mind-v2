@@ -190,6 +190,11 @@ export const MindmapOutlineArborist = memo(function MindmapOutlineArborist({
   useFocusedArea({
     id: "outline",
     onEnter: () => {
+      // 自动展开左侧面板
+      if (isCollapsed) {
+        onToggleCollapse();
+      }
+
       // 将焦点设置到树组件上
       if (treeRef.current) {
         treeRef.current.focus(editorState.currentNode, { scroll: false });
