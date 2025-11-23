@@ -8,6 +8,8 @@
   "scripts": {
     "dev": "node scripts/dev.js",
     "dev:turbo": "node scripts/dev.js --turbo",
+    "dev:kill": "node scripts/kill-dev-server.js",
+    "dev:kill:force": "node scripts/kill-dev-server.js --force",
     "build": "next build",
     "build:analyze": "ANALYZE=true next build",
     "start": "next start",
