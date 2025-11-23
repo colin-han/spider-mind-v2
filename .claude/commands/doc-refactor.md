@@ -98,8 +98,8 @@
 
 ### 步骤 3: 参考标准文档模板
 
-参考设计文档模板：`.claude/templates/design-doc-template.md`
-模板使用指南：`.claude/templates/design-doc-guide.md`
+参考设计文档模板：`docs/standard/design-doc-template.md`
+模板使用指南：`docs/standard/design-doc-guide.md`
 
 **说明**：
 
