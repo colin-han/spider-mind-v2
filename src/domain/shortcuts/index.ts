@@ -15,3 +15,6 @@ import "./global-shortcuts";
 
 // 焦点区域快捷键
 import "./focused-area-shortcuts";
+
+// 视图操作快捷键
+import "./view-shortcuts";

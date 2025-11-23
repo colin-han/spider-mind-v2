@@ -10,6 +10,7 @@ export type CommandCategory =
   | "navigation" // 导航操作
   | "edit" // 编辑操作
   | "global" // 全局操作
+  | "view" // 视图操作
   | "ai"; // AI 相关操作
 
 /**
@@ -158,6 +159,7 @@ export function generateAICommandsPrompt(
       navigation: "导航操作",
       edit: "编辑操作",
       global: "全局操作",
+      view: "视图操作",
       ai: "AI 操作",
     };
 

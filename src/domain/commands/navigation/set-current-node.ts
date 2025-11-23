@@ -1,7 +1,8 @@
 import { CommandDefinition } from "../../command-registry";
-import { MindmapStore } from "../../mindmap-store.types";
+import { MindmapStore, EditorAction } from "../../mindmap-store.types";
 import { SetCurrentNodeAction } from "../../actions/set-current-node";
 import { registerCommand } from "../../command-registry";
+import { ensureNodeVisibleAction } from "../../utils/viewport-utils";
 
 export type SetCurrentNodeParams = [nodeId: string];
 
@@ -21,12 +22,22 @@ export const setCurrentNode: CommandDefinition = {
   ],
   handler: (root: MindmapStore, params?: unknown[]) => {
     const [nodeId] = (params as SetCurrentNodeParams) || [];
-    return [
+    const state = root.currentEditor!;
+
+    const actions: EditorAction[] = [
       new SetCurrentNodeAction({
-        oldNodeId: root.currentEditor!.currentNode,
+        oldNodeId: state.currentNode,
         newNodeId: nodeId,
       }),
     ];
+
+    // 确保新节点在可视区域内
+    const viewportAction = ensureNodeVisibleAction(nodeId, state);
+    if (viewportAction) {
+      actions.push(viewportAction);
+    }
+
+    return actions;
   },
 };
 

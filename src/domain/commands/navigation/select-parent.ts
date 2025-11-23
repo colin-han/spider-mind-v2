@@ -1,6 +1,7 @@
-import { MindmapStore } from "../../mindmap-store.types";
+import { MindmapStore, EditorAction } from "../../mindmap-store.types";
 import { CommandDefinition, registerCommand } from "../../command-registry";
 import { SetCurrentNodeAction } from "../../actions/set-current-node";
+import { ensureNodeVisibleAction } from "../../utils/viewport-utils";
 
 /**
  * 选择父节点
@@ -15,19 +16,31 @@ export const selectParentCommand: CommandDefinition = {
   parameters: [],
 
   handler: (root: MindmapStore) => {
-    const currentNode = root.currentEditor?.nodes.get(
-      root.currentEditor.currentNode
-    );
+    const state = root.currentEditor;
+    if (!state) return;
+
+    const currentNode = state.nodes.get(state.currentNode);
     if (!currentNode || !currentNode.parent_short_id) {
       return;
     }
 
-    return [
+    const actions: EditorAction[] = [
       new SetCurrentNodeAction({
         oldNodeId: currentNode.short_id,
         newNodeId: currentNode.parent_short_id,
       }),
     ];
+
+    // 确保父节点在可视区域内
+    const viewportAction = ensureNodeVisibleAction(
+      currentNode.parent_short_id,
+      state
+    );
+    if (viewportAction) {
+      actions.push(viewportAction);
+    }
+
+    return actions;
   },
 
   when: (root: MindmapStore) => {

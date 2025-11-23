@@ -109,7 +109,7 @@ try {
         encoding: "utf-8",
       });
       console.log(`\n进程信息:\n${processInfo}`);
-    } catch (error) {
+    } catch (_error) {
       // 进程可能已经结束
     }
   });

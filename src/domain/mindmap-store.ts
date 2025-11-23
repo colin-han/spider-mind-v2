@@ -184,6 +184,13 @@ export const useMindmapStore = create<MindmapStore>()(
           nodes: new Map(nodesToLoad.map((n) => [n.short_id, n])),
           collapsedNodes: new Set(),
           layouts: new Map(), // 布局状态，初始为空，由 LayoutService 计算后更新
+          viewport: {
+            x: 0,
+            y: 0,
+            width: 800, // 默认值，会在 MindmapGraphViewer 初始化时更新
+            height: 600, // 默认值，会在 MindmapGraphViewer 初始化时更新
+            zoom: 1,
+          },
           focusedArea: "graph",
           currentNode: rootNode.short_id,
           isLoading: false,

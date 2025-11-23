@@ -1,7 +1,8 @@
-import { MindmapStore } from "../../mindmap-store.types";
+import { MindmapStore, EditorAction } from "../../mindmap-store.types";
 import { CommandDefinition, registerCommand } from "../../command-registry";
 import { SetCurrentNodeAction } from "../../actions/set-current-node";
 import { getNodeDepth, getNodesAtDepth } from "../../editor-utils";
+import { ensureNodeVisibleAction } from "../../utils/viewport-utils";
 
 /**
  * 选择上一个同深度的节点
@@ -17,24 +18,22 @@ export const selectPreviousSiblingCommand: CommandDefinition = {
   parameters: [],
 
   handler: (root: MindmapStore) => {
-    const currentNode = root.currentEditor?.nodes.get(
-      root.currentEditor.currentNode
-    );
+    const state = root.currentEditor;
+    if (!state) return;
+
+    const currentNode = state.nodes.get(state.currentNode);
     if (!currentNode || !currentNode.parent_short_id) {
       return;
     }
 
     // 获取当前节点的深度
-    const currentDepth = getNodeDepth(
-      root.currentEditor!,
-      currentNode.short_id
-    );
+    const currentDepth = getNodeDepth(state, currentNode.short_id);
     if (currentDepth < 0) {
       return;
     }
 
     // 获取所有同深度的节点（按深度优先遍历顺序）
-    const nodesAtSameDepth = getNodesAtDepth(root.currentEditor!, currentDepth);
+    const nodesAtSameDepth = getNodesAtDepth(state, currentDepth);
 
     // 找到当前节点在列表中的位置
     const currentIndex = nodesAtSameDepth.findIndex(
@@ -44,12 +43,25 @@ export const selectPreviousSiblingCommand: CommandDefinition = {
     // 如果不是第一个，选择上一个
     if (currentIndex > 0) {
       const previousNode = nodesAtSameDepth[currentIndex - 1];
-      return [
+      if (!previousNode) return;
+
+      const actions: EditorAction[] = [
         new SetCurrentNodeAction({
           oldNodeId: currentNode.short_id,
-          newNodeId: previousNode!.short_id,
+          newNodeId: previousNode.short_id,
         }),
       ];
+
+      // 确保上一个节点在可视区域内
+      const viewportAction = ensureNodeVisibleAction(
+        previousNode.short_id,
+        state
+      );
+      if (viewportAction) {
+        actions.push(viewportAction);
+      }
+
+      return actions;
     }
 
     return;

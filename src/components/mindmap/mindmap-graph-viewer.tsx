@@ -18,15 +18,16 @@ import { useCallback, useMemo, useEffect, useState, memo, useRef } from "react";
 import {
   ReactFlow,
   Background,
-  Controls,
   MiniMap,
   useReactFlow,
   type Node,
   type NodeTypes,
+  type Viewport as RFViewport,
 } from "@xyflow/react";
 import { useMindmapEditorState, useCommand } from "@/domain/mindmap-store";
 import { convertToFlowData } from "@/lib/utils/mindmap/mindmap-to-flow";
 import { CustomMindNode } from "./viewer/custom-mind-node";
+import { CustomControls } from "./viewer/custom-controls";
 import { DropIndicator, type DropIndicatorType } from "./viewer/drop-indicator";
 import {
   validateDrop,
@@ -35,6 +36,10 @@ import {
 import type { CustomNodeData } from "@/lib/types/react-flow";
 import "@xyflow/react/dist/style.css";
 import { useFocusedArea } from "@/lib/hooks/use-focused-area";
+import {
+  rfViewportToNodeViewport,
+  nodeViewportToRfViewport,
+} from "@/domain/utils/viewport-utils";
 
 /**
  * MindmapGraphViewer Props
@@ -372,15 +377,157 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
     [dragState, nodesMap, moveNode]
   );
 
-  // 初始化时自动适应视图
+  // === 视口双向同步 ===
+  const viewport = editorState?.viewport;
+  const { setViewport: rfSetViewport } = useReactFlow();
+  const setViewportCmd = useCommand("view.setViewport");
+  const hasInitializedRef = useRef(false);
+  const currentMindmapId = useRef<string | null>(null);
+  const lastSyncedViewportRef = useRef<{
+    x: number;
+    y: number;
+    zoom: number;
+  } | null>(null);
+
+  // 比较两个 viewport 是否相似（差值小于阈值）
+  const isSimilarViewport = useCallback(
+    (
+      vp1: { x: number; y: number; zoom: number },
+      vp2: { x: number; y: number; zoom: number }
+    ) => {
+      const threshold = 0.0001;
+      return (
+        Math.abs(vp1.x - vp2.x) < threshold &&
+        Math.abs(vp1.y - vp2.y) < threshold &&
+        Math.abs(vp1.zoom - vp2.zoom) < threshold
+      );
+    },
+    []
+  );
+
+  // Store → React Flow（Command 触发）
   useEffect(() => {
-    if (nodes.length > 0) {
-      // 延迟执行以确保节点已渲染
+    if (!viewport) return;
+
+    // 检查是否与上次同步的值相似，如果相似则跳过
+    if (
+      lastSyncedViewportRef.current &&
+      isSimilarViewport(
+        { x: viewport.x, y: viewport.y, zoom: viewport.zoom },
+        lastSyncedViewportRef.current
+      )
+    ) {
+      return;
+    }
+
+    // 记录本次同步的值
+    lastSyncedViewportRef.current = {
+      x: viewport.x,
+      y: viewport.y,
+      zoom: viewport.zoom,
+    };
+
+    // 转换为 React Flow 坐标系
+    const rfViewport = nodeViewportToRfViewport(viewport);
+    rfSetViewport(rfViewport, { duration: 200 });
+  }, [viewport, rfSetViewport, isSimilarViewport]);
+
+  // React Flow → Store（用户交互触发）
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const debouncedSync = useCallback(
+    (rfVp: RFViewport) => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+
+      debounceTimeoutRef.current = setTimeout(() => {
+        const container = containerRef.current;
+        if (!container) return;
+
+        // 转换为节点坐标系
+        const nodeVp = rfViewportToNodeViewport(
+          rfVp,
+          container.clientWidth,
+          container.clientHeight
+        );
+
+        // 检查是否与上次同步的值相似，如果相似则跳过
+        if (
+          lastSyncedViewportRef.current &&
+          isSimilarViewport(
+            { x: nodeVp.x, y: nodeVp.y, zoom: nodeVp.zoom },
+            lastSyncedViewportRef.current
+          )
+        ) {
+          return;
+        }
+
+        // 记录本次同步的值
+        lastSyncedViewportRef.current = {
+          x: nodeVp.x,
+          y: nodeVp.y,
+          zoom: nodeVp.zoom,
+        };
+
+        setViewportCmd(
+          nodeVp.x,
+          nodeVp.y,
+          nodeVp.width,
+          nodeVp.height,
+          nodeVp.zoom
+        );
+      }, 50);
+    },
+    [setViewportCmd, isSimilarViewport]
+  );
+
+  // 仅在首次加载时适应视图
+  useEffect(() => {
+    if (!editorState) return;
+
+    // 检查是否是新的 mindmap（通过 mindmap id 判断）
+    const mindmapId = editorState.currentMindmap.id;
+    if (currentMindmapId.current !== mindmapId) {
+      currentMindmapId.current = mindmapId;
+      hasInitializedRef.current = false;
+      lastSyncedViewportRef.current = null; // 重置同步记录
+    }
+
+    if (nodes.length > 0 && !hasInitializedRef.current) {
+      hasInitializedRef.current = true;
       setTimeout(() => {
         fitView({ padding: 0.2, duration: 300 });
+
+        // fitView 完成后，同步视口到 Store
+        setTimeout(() => {
+          const container = containerRef.current;
+          if (!container) return;
+
+          const rfVp = getViewport();
+          const nodeVp = rfViewportToNodeViewport(
+            rfVp,
+            container.clientWidth,
+            container.clientHeight
+          );
+
+          // 记录初始同步的值
+          lastSyncedViewportRef.current = {
+            x: nodeVp.x,
+            y: nodeVp.y,
+            zoom: nodeVp.zoom,
+          };
+
+          setViewportCmd(
+            nodeVp.x,
+            nodeVp.y,
+            nodeVp.width,
+            nodeVp.height,
+            nodeVp.zoom
+          );
+        }, 350); // 等待 fitView 动画完成
       }, 50);
     }
-  }, [nodes.length, fitView]);
+  }, [nodes.length, fitView, getViewport, setViewportCmd, editorState]);
 
   return (
     <div
@@ -399,6 +546,7 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
         onNodeDragStart={onNodeDragStart}
         onNodeDrag={onNodeDrag}
         onNodeDragStop={onNodeDragStop}
+        onViewportChange={debouncedSync}
         disableKeyboardA11y={true}
         fitView
         minZoom={0.1}
@@ -414,10 +562,7 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
         proOptions={{ hideAttribution: true }}
       >
         <Background color={isDarkMode ? "#374151" : "#e2e8f0"} gap={16} />
-        <Controls
-          data-testid="mindmap-graph-viewer-controls"
-          showInteractive={false}
-        />
+        <CustomControls />
         <MiniMap
           data-testid="mindmap-graph-viewer-minimap"
           nodeColor={(node) => {
