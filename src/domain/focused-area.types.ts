@@ -24,6 +24,10 @@ export interface FocusedAreaHandler {
   /**
    * 离开该区域时的回调
    * @param to 目标区域
+   * @param reason 切换原因 - "escape": 用户按下ESC键, "normal": 正常切换
    */
-  onLeave?: (to: FocusedAreaId) => void | Promise<void>;
+  onLeave?: (
+    to: FocusedAreaId,
+    reason?: "escape" | "normal"
+  ) => void | Promise<void>;
 }

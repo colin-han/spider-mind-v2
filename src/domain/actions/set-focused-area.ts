@@ -10,6 +10,7 @@ import {
 export interface SetFocusedAreaParams {
   oldArea: FocusedAreaId;
   newArea: FocusedAreaId;
+  reason?: "escape" | "normal";
 }
 
 export class SetFocusedAreaAction implements EditorAction {
@@ -18,10 +19,10 @@ export class SetFocusedAreaAction implements EditorAction {
   constructor(private readonly params: SetFocusedAreaParams) {}
 
   applyToEditorState(draft: EditorState): void {
-    const { oldArea, newArea } = this.params;
+    const { oldArea, newArea, reason = "normal" } = this.params;
 
     // 1. 调用 onLeave（在状态更新之前）
-    beforeSetFocusedArea(oldArea, newArea);
+    beforeSetFocusedArea(oldArea, newArea, reason);
 
     // 2. 更新状态
     draft.focusedArea = newArea;

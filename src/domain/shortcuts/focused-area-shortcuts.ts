@@ -20,3 +20,27 @@ registerShortcutForArea(
   ["graph"],
   true
 );
+
+registerShortcutForArea(
+  "title-editor",
+  "escape",
+  "global.setFocusedArea",
+  ["graph", "escape"],
+  true
+);
+
+registerShortcutForArea(
+  "note-editor",
+  "escape",
+  "global.setFocusedArea",
+  ["graph", "escape"],
+  true
+);
+
+registerShortcutForArea(
+  "outline",
+  "escape",
+  "global.setFocusedArea",
+  ["graph", "escape"],
+  true
+);

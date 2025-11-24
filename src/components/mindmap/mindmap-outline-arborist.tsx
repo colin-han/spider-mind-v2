@@ -203,6 +203,12 @@ export const MindmapOutlineArborist = memo(function MindmapOutlineArborist({
         containerRef.current?.focus();
       }
     },
+    onLeave: (_to, reason) => {
+      // 如果是 ESC 触发的离开，关闭大纲视图
+      if (reason === "escape" && !isCollapsed) {
+        onToggleCollapse();
+      }
+    },
   });
 
   // 监听容器尺寸变化

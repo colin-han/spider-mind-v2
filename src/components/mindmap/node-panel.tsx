@@ -48,6 +48,10 @@ export const NodePanel = () => {
   const [editingTitle, setEditingTitle] = useState("");
   const [editingNote, setEditingNote] = useState("");
 
+  // 原始值（用于 ESC 回滚）
+  const [originalTitle, setOriginalTitle] = useState("");
+  const [originalNote, setOriginalNote] = useState("");
+
   // Tab 状态
   const [activeTab, setActiveTab] = useState<string>("note");
 
@@ -63,9 +67,12 @@ export const NodePanel = () => {
       titleInputRef.current?.focus();
       titleInputRef.current?.select();
     },
-    onLeave: () => {
-      // 保存 title（如果有变化）
-      if (node && editingTitle !== node.title) {
+    onLeave: (_to, reason) => {
+      // 如果是 ESC 触发的离开，回滚到原始值
+      if (reason === "escape") {
+        setEditingTitle(originalTitle);
+      } else if (node && editingTitle !== node.title) {
+        // 否则保存修改
         updateTitle(node.short_id, editingTitle);
       }
     },
@@ -81,6 +88,13 @@ export const NodePanel = () => {
       setTimeout(() => {
         noteEditorRef.current?.focus();
       }, 0);
+    },
+    onLeave: (_to, reason) => {
+      // 如果是 ESC 触发的离开，回滚到原始值
+      if (reason === "escape") {
+        setEditingNote(originalNote);
+      }
+      // 注意: 笔记的保存在 onBlur 中处理，不在 onLeave 中
     },
   });
 
@@ -102,6 +116,9 @@ export const NodePanel = () => {
     if (node) {
       setEditingTitle(node.title);
       setEditingNote(node.note || "");
+      // 保存原始值
+      setOriginalTitle(node.title);
+      setOriginalNote(node.note || "");
     }
   }, [node]);
 
