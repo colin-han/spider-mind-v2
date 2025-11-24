@@ -3,11 +3,13 @@
 ## 文档信息
 
 - **创建日期**: 2025-11-06
-- **版本**: 1.0.0
+- **最后更新**: 2025-11-24
+- **版本**: 1.1.0
 - **相关文档**:
   - [领域层架构设计](./domain-layer-architecture.md)
   - [Action 层架构设计](./action-layer-design.md)
   - [Command 层架构设计](./command-layer-design.md)
+  - [持久化中间件设计](./persistence-middleware-design.md) - 三层存储和 Dirty Flag 机制
 
 ## 概述
 
@@ -472,80 +474,15 @@ MindmapStore.acceptActions(reverseActions)
 
 ## 状态持久化
 
-### 三层存储
+持久化机制实现三层存储架构（内存 → IndexedDB → Supabase），通过 Dirty Flag 追踪变更，支持增量同步和冲突检测。
 
-```
-┌─────────────────────────────────────┐
-│   EditorState (内存)                 │
-│   - 立即响应                         │
-│   - Map/Set 优化                     │
-│   - 会话级生命周期                   │
-└─────────────────────────────────────┘
-           ↓ acceptActions()
-┌─────────────────────────────────────┐
-│   IndexedDB (本地数据库)             │
-│   - 数据安全                         │
-│   - 离线支持                         │
-│   - dirty 标志追踪                   │
-└─────────────────────────────────────┘
-           ↓ save()
-┌─────────────────────────────────────┐
-│   Supabase (服务器数据库)            │
-│   - 云端存储                         │
-│   - 多设备同步                       │
-│   - 协作基础                         │
-└─────────────────────────────────────┘
-```
+**核心概念**:
 
-### Dirty 标志管理
+- **三层存储**: EditorState（立即响应） → IndexedDB（离线支持） → Supabase（多设备同步）
+- **Dirty Flag**: 标记哪些数据需要同步到服务器
+- **版本管理**: 使用三个时间戳（version, local_updated_at, server_updated_at）追踪变更
 
-**目的**: 追踪哪些节点需要同步到服务器
-
-**流程**:
-
-```typescript
-// Action 应用到 IndexedDB 时
-async applyToIndexedDB() {
-  const db = await getDB();
-  await db.put("mindmap_nodes", {
-    ...node,
-    dirty: true,  // 标记为脏数据
-    local_updated_at: new Date().toISOString()
-  });
-}
-
-// save() 时
-async save() {
-  const dirtyNodes = await db
-    .getAll("mindmap_nodes")
-    .then(nodes => nodes.filter(n => n.dirty));
-
-  await uploadMindmap(dirtyNodes);
-
-  // 清除 dirty 标志
-  dirtyNodes.forEach(node => {
-    db.put("mindmap_nodes", { ...node, dirty: false });
-  });
-}
-```
-
-### 版本管理
-
-**三个时间戳**:
-
-1. `EditorState.version` - 内存版本号，每次 acceptActions 递增
-2. `local_updated_at` - IndexedDB 本地修改时间
-3. `server_updated_at` - Supabase 服务器时间
-
-**冲突检测**:
-
-```typescript
-// 上传前检查
-if (localNode.server_updated_at < serverNode.updated_at) {
-  // 服务器有更新的数据，存在冲突
-  throw new ConflictError();
-}
-```
+**详细设计**: 参见 [持久化中间件设计](./persistence-middleware-design.md)，包含三层存储架构、Dirty Flag 机制、冲突检测策略、性能优化等完整说明。
 
 ## 初始化流程
 

@@ -6,7 +6,7 @@
 - 创建日期：2025-11-23
 - 最后更新：2025-11-23
 - 相关文档：
-  - [思维导图编辑器布局设计](./mindmap-editor-layout-design.md)
+  - [编辑器 UI 布局设计](./editor-ui-layout-design.md)
   - [视口管理设计](./viewport-management-design.md)
   - [Command 层架构设计](./command-layer-design.md)
 
@@ -123,6 +123,8 @@ const scale = isHovered
 
 **坐标转换**：
 
+工具栏位置基于节点坐标系计算，需转换为屏幕坐标进行Portal定位。转换公式：
+
 ```typescript
 function nodeToScreenCoords(nodeX, nodeY, viewport) {
   return {
@@ -131,6 +133,8 @@ function nodeToScreenCoords(nodeX, nodeY, viewport) {
   };
 }
 ```
+
+**坐标系统详解**: 参见 [视口管理设计 - 坐标系转换](./viewport-management-design.md#坐标系转换公式)，包含节点坐标系与屏幕坐标系的完整说明。
 
 #### 3. 状态图标区域
 

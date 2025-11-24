@@ -7,7 +7,6 @@
 - 最后更新：2025-11-24
 - 相关文档：
   - [Command 层架构设计](./command-layer-design.md)
-  - [CompositeCommand 设计](./composite-command.md)
   - [数据库设计](./database-schema.md)
   - [ID 设计规范](./id-design.md)
   - [命令参考手册](./command-reference.md)
