@@ -144,43 +144,18 @@
 - `sizeCache: Map<string, NodeSize>` - 节点尺寸缓存
 - `unsubscribeFunctions: Array<() => void>` - 订阅清理函数
 
-##### Action 订阅机制（双层 + 后处理架构）
+##### Action 订阅机制
 
-LayoutService 使用 4 步订阅流程优化 UI 响应性：
+LayoutService 使用 ActionSubscription 的双层订阅机制（Sync → Post-Sync → Async → Post-Async）优化 UI 响应性：
 
-**步骤 1: Sync 订阅（预测阶段）**
+- **Sync 阶段**: 快速预测节点尺寸并更新缓存
+- **Post-Sync 阶段**: 使用预测尺寸驱动布局引擎，立即渲染预测布局
+- **Async 阶段**: DOM 测量真实尺寸并更新缓存
+- **Post-Async 阶段**: 使用真实尺寸更新精确布局，平滑过渡
 
-| Action 类型    | 处理逻辑                            |
-| -------------- | ----------------------------------- |
-| `addChildNode` | 快速预测新节点尺寸 → 更新 sizeCache |
-| `updateNode`   | 快速预测更新后尺寸 → 更新 sizeCache |
-| `removeNode`   | 清除 sizeCache 中的节点             |
+**订阅的 Action 类型**: `addChildNode`、`updateNode`、`removeNode`、`collapseNode`、`expandNode`
 
-**步骤 2: Post-Sync 后处理（预测布局）**
-
-- 订阅 `["addChildNode", "updateNode", "removeNode", "collapseNode", "expandNode"]`
-- 使用预测尺寸驱动 LayoutEngine
-- 更新预测布局到 Store（UI 立即渲染）
-
-**步骤 3: Async 订阅（精确测量阶段）**
-
-| Action 类型    | 处理逻辑                          |
-| -------------- | --------------------------------- |
-| `addChildNode` | DOM 测量真实尺寸 → 更新 sizeCache |
-| `updateNode`   | DOM 测量真实尺寸 → 更新 sizeCache |
-
-**步骤 4: Post-Async 后处理（精确布局）**
-
-- 订阅 `["addChildNode", "updateNode", "removeNode", "collapseNode", "expandNode"]`
-- 使用真实尺寸驱动 LayoutEngine
-- 更新精确布局到 Store（UI 平滑过渡）
-
-**优势**：
-
-- ✅ **优化 UI 响应性**：Sync 阶段快速预测（~10ms），用户无感知延迟
-- ✅ **保证精确性**：Async 阶段修正误差（~50ms），最终布局完全准确
-- ✅ **批量优化**：后处理器去重，批量操作只驱动一次布局引擎
-- ✅ **渐进式体验**：用户先看到预测布局，然后平滑过渡到精确布局
+**订阅机制详细说明**: 参见 [Action 层架构设计 - Action 订阅机制](./action-layer-design.md#action-订阅机制双层--后处理架构)
 
 ## 实现要点
 

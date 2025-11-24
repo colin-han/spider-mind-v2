@@ -3,16 +3,86 @@
 ## 元信息
 
 - 创建日期: 2025-11-06
+- 最后更新: 2025-11-24
 - 作者: Claude Code
 - 状态: 正式版本
 - 相关文档:
-  - [Action 层架构设计](./action-layer-design.md)
   - [Command 层架构设计](./command-layer-design.md)
-  - [MindmapStore 架构设计](./mindmap-store-design.md)
+  - [命令参考手册](./command-reference.md)
+  - [AI 助手系统设计](./ai-assistant-system-design.md)
+  - [视口管理设计](./viewport-management-design.md)
+  - [数据库设计](./database-schema.md)
+
+## 关键概念
+
+| 概念               | 定义                                     | 示例/说明                                            |
+| ------------------ | ---------------------------------------- | ---------------------------------------------------- |
+| EditorAction       | 原子性状态变更操作，支持可逆和持久化     | AddNodeAction, RemoveNodeAction                      |
+| CommandDefinition  | 命令定义，封装业务逻辑并生成 Action 序列 | node.addChild, navigation.selectParent               |
+| ShortcutDefinition | 快捷键定义，将键盘事件映射到命令         | Tab → node.addChild                                  |
+| HistoryManager     | 撤销/重做栈管理器，记录操作历史          | undo/redo 栈，最多保存 50 条历史                     |
+| CompositeCommand   | 组合命令，将多个操作打包为一个可撤销单元 | AI 批量操作，一次 undo 撤销所有操作                  |
+| ActionSubscription | Action 订阅机制，允许服务响应特定 Action | 布局服务订阅节点变更 Action 自动重新计算布局         |
+| FocusedArea        | 焦点区域，标识当前用户操作的 UI 区域     | outline（大纲视图）、graph（图形视图）、note（笔记） |
+| dirty flag         | 脏标记，标识数据是否有未保存的修改       | dirty=true 表示需要同步到服务器                      |
+| applyToEditorState | Action 的核心方法，用于更新内存状态      | 使用 Immer draft 实现不可变更新                      |
+| applyToIndexedDB   | Action 的持久化方法，用于更新本地数据库  | 可选实现，仅持久化数据需要                           |
+| reverse()          | Action 的逆向方法，用于实现撤销          | AddNodeAction.reverse() → RemoveNodeAction           |
 
 ## 概述
 
-领域层（Domain Layer）位于 `src/domain/` 目录，实现了思维导图编辑器的核心业务逻辑。采用清晰的分层架构，从用户输入到数据持久化形成完整的数据流。
+领域层（Domain Layer）位于 `src/domain/` 目录，实现了思维导图编辑器的核心业务逻辑。采用清晰的分层架构，从用户输入到数据持久化形成完整的数据流。支持命令模式、撤销/重做、批量操作、Action 订阅等高级特性。
+
+## 📖 阅读指南
+
+### 文档定位
+
+本文档是**架构总览文档**，提供领域层的全景视图和各层职责说明。如需深入了解某一层的实现细节，请参阅对应的详细设计文档。
+
+### 文档类型区分
+
+| 文档类型 | 目的                     | 内容特点                               | 本文档属性 |
+| -------- | ------------------------ | -------------------------------------- | ---------- |
+| 总览文档 | 理解整体架构和各模块关系 | 概念定义、层级关系、简要说明、引用链接 | ✅ 总览    |
+| 详细设计 | 实现具体功能或层级       | 完整API、实现细节、代码示例、设计决策  | ❌         |
+| 实战指南 | 学习如何使用或扩展系统   | 使用案例、最佳实践、常见问题、调试技巧 | ❌         |
+
+### 推荐阅读路径
+
+**🎯 快速理解架构**（15分钟）
+
+1. 阅读本文档的"分层设计"和"数据流总览"章节
+2. 理解 Command → Action → State 的数据流
+3. 了解各层的职责划分
+
+**📚 深入学习某一层**（30-60分钟）
+
+1. 先阅读本文档对应章节，了解该层在整体架构中的位置
+2. 然后查看详细设计文档：
+   - Command层 → [Command 层架构设计](./command-layer-design.md)
+   - Action层 → [Action 层架构设计](./action-layer-design.md)
+   - 持久化层 → [数据库设计](./database-schema.md)
+
+**🔧 实现新功能**（1-2小时）
+
+1. 确定功能属于哪一层（通常从Command层开始）
+2. 查阅对应的详细设计文档和命令参考手册
+3. 参考已有实现的模式进行开发
+
+### 详细设计文档索引
+
+| 层级      | 详细设计文档                                       | 内容                             |
+| --------- | -------------------------------------------------- | -------------------------------- |
+| Command层 | [Command 层架构设计](./command-layer-design.md)    | 命令模式、批量操作、命令注册     |
+| Action层  | [Action 层架构设计](./action-layer-design.md)      | Action接口、订阅机制、持久化逻辑 |
+| 持久化层  | [数据库设计](./database-schema.md)                 | Schema定义、同步流程、冲突解决   |
+| 快捷键    | [命令参考手册](./command-reference.md)             | 所有命令列表、快捷键绑定         |
+| ID机制    | [ID 设计规范](./id-design.md)                      | UUID、short_id生成规则           |
+| 视口管理  | [视口管理设计](./viewport-management-design.md)    | 坐标系统、视口同步、缩放平移命令 |
+| 节点布局  | [节点布局引擎设计](./node-layout-engine-design.md) | Dagre算法、布局服务、尺寸缓存    |
+| AI助手    | [AI 助手系统设计](./ai-assistant-system-design.md) | 对话持久化、操作执行、参数转换   |
+
+---
 
 ## 分层设计
 
@@ -121,47 +191,11 @@ KeyboardEvent → ShortcutManager.handleKeydown()
 
 **位置**: `src/domain/commands/`, `command-manager.ts`, `command-registry.ts`
 
-**职责**:
+**职责**: 定义所有业务操作,封装业务逻辑和参数验证,生成 Action 序列,决定是否可撤销。
 
-- 定义所有业务操作（20 个命令）
-- 封装业务逻辑和参数验证
-- 生成 Action 序列
-- 决定是否可撤销
+**命令分类**: Node Commands (10个)、Navigation Commands (7个)、View Commands (9个)、Global Commands (5个)、AI Commands (1个)、Composite Commands (动态)。
 
-**核心组件**:
-
-- `CommandManager`: 命令执行管理器
-- `CommandRegistry`: 命令注册表
-- `CommandDefinition`: 命令定义接口
-
-**命令分类**:
-| 类别 | 数量 | 可撤销 | 示例 |
-|------|------|--------|------|
-| Node Commands | 8 | ✅ 是 | addChild, delete, moveUp |
-| Navigation Commands | 8 | ❌ 否 | selectParent, collapseNode |
-| Global Commands | 4 | 部分 | save (否), undo (否) |
-| AI Commands | 1 | 待定 | aiAssist (TODO) |
-
-**数据流**:
-
-```
-CommandManager.execute(commandId, params)
-  → 查找 CommandDefinition
-  → 检查 when() 条件
-  → 调用 handler(store, params)
-  → 返回 EditorAction[]
-  → 判断 undoable
-    ├─ 可撤销 → HistoryManager.execute(actions)
-    └─ 不可撤销 → store.acceptActions(actions)
-```
-
-**设计特点**:
-
-- ✅ 命令与 Action 解耦（命令可以生成多个 Action）
-- ✅ 支持异步操作（handler 可以是 async）
-- ✅ 灵活的参数系统（params: unknown[]）
-- ✅ 条件执行（when() 方法）
-- ⚠️ 命令不直接修改状态（通过 Action 间接修改）
+**详细设计**: 参见 [Command 层架构设计](./command-layer-design.md)
 
 ---
 
@@ -169,62 +203,99 @@ CommandManager.execute(commandId, params)
 
 **位置**: `src/domain/actions/`
 
+**职责**: 定义原子性状态变更操作,实现双层更新（内存 + 数据库）,提供可逆操作（undo/redo）,保证数据一致性。
+
+**Action 分类**:
+
+- **持久化 Action**: AddNodeAction、RemoveNodeAction、UpdateNodeAction、AddAIMessageAction、UpdateAIMessageMetadataAction
+- **非持久化 Action**: SetCurrentNodeAction、CollapseNodeAction、ExpandNodeAction、SetViewportAction、SetFocusedAreaAction
+
+**详细设计**: 参见 [Action 层架构设计](./action-layer-design.md)
+
+---
+
+### 4. 扩展机制
+
+#### 4.1 CompositeCommand（组合命令）
+
+**位置**: `src/domain/commands/composite/`
+
 **职责**:
 
-- 定义原子性状态变更操作
-- 实现双层更新（内存 + 数据库）
-- 提供可逆操作（undo/redo）
-- 保证数据一致性
+- 将多个命令打包为一个可撤销单元
+- 保证原子性（全部成功或全部失败）
+- 简化批量操作的撤销逻辑
+
+**使用场景**:
+
+- AI 批量操作：用户一次接受多个 AI 建议
+- 复杂编辑：一个用户操作涉及多个节点修改
+- 批量导入：导入外部数据创建多个节点
 
 **核心接口**:
 
 ```typescript
-interface EditorAction {
-  type: string;
-  applyToEditorState(draft: EditorState): void;
-  applyToIndexedDB?(db: IDBPDatabase): Promise<void>;
-  reverse(): EditorAction;
-}
+createCompositeCommand(
+  description: string,
+  commands: Array<{ commandId: string; params: unknown[] }>
+): CommandDefinition
 ```
 
-**Action 分类**:
+**特点**:
 
+- ✅ 一次 undo 撤销所有操作
+- ✅ 任何命令失败都会回滚已执行的部分
+- ✅ 支持嵌套（CompositeCommand 可以包含其他 CompositeCommand）
+- ⚠️ 只支持 undoable 命令（non-undoable 命令不能撤销）
+
+**详细设计**: 参见 [Command 层架构设计 - 批量操作章节](./command-layer-design.md#批量操作---compositecommand)
+
+#### 4.2 ActionSubscription（Action 订阅）
+
+**位置**: `src/domain/action-subscription-manager.ts`
+
+**职责**: 允许服务订阅特定类型的 Action,在 Action 执行后自动触发回调,实现双层订阅（Sync + Async）和后处理机制。
+
+**订阅类型**: Sync 订阅（快速预测）、Post-Sync 后处理（批量驱动）、Async 订阅（精确测量）、Post-Async 后处理（批量更新）。
+
+**详细设计**: 参见 [Action 层架构设计](./action-layer-design.md)
+
+#### 4.3 FocusedArea（焦点区域）
+
+**位置**: `src/domain/focused-area-registry.ts`, `src/domain/focused-area.types.ts`
+
+**职责**:
+
+- 跟踪当前用户焦点在哪个 UI 区域
+- 根据焦点区域过滤可用命令和快捷键
+- 实现上下文感知的命令执行
+
+**焦点区域类型**:
+
+```typescript
+type FocusedArea =
+  | "outline" // 大纲视图（左侧面板）
+  | "graph" // 图形视图（中间画布）
+  | "note" // 笔记编辑器（右侧面板）
+  | "ai-chat" // AI 聊天面板
+  | "none"; // 无焦点
 ```
-持久化 Action (修改数据):
-  - AddNodeAction       → 添加节点到 Map + 数据库
-  - RemoveNodeAction    → 从 Map 删除 + 数据库标记删除
-  - UpdateNodeAction    → 更新 Map 字段 + 数据库更新
 
-非持久化 Action (仅 UI):
-  - SetCurrentNodeAction   → 仅更新 currentNode 字段
-  - CollapseNodeAction     → 仅更新 collapsedNodes Set
-  - ExpandNodeAction       → 仅更新 collapsedNodes Set
-  - SetFocusedAreaAction   → 仅更新 focusedArea 字段
-```
+**应用**:
 
-**数据流**:
+- 命令和快捷键的 `when()` 条件可以检查 `focusedArea`
+- 例如：`Tab` 键在 `outline` 中添加子节点，在 `note` 中插入制表符
+- 避免快捷键冲突
 
-```
-store.acceptActions([action1, action2])
-  → 开始 Immer produce()
-  → 逐个执行 action.applyToEditorState(draft)
-  → 提交 Immer draft → 新状态
-  → 触发 React 重渲染
-  → 异步：逐个执行 action.applyToIndexedDB(db)
-  → 更新 isSaved = false
-```
+**特点**:
 
-**设计特点**:
-
-- ✅ 原子性（每个 Action 是独立的最小操作）
-- ✅ 可组合（多个 Action 可以组合成事务）
-- ✅ 可逆性（通过 reverse() 实现 undo）
-- ✅ 双层更新（内存快 + 数据库安全）
-- ⚠️ Action 不应包含复杂业务逻辑（应在 Command 层处理）
+- ✅ 上下文感知（不同区域不同行为）
+- ✅ 自动切换（用户点击不同区域时自动更新）
+- ✅ 持久化状态（保存在 EditorState 中）
 
 ---
 
-### 4. 状态层 (State Layer)
+### 5. 状态层 (State Layer)
 
 **位置**: `mindmap-store.ts`, `mindmap-store.types.ts`
 
@@ -241,7 +312,7 @@ store.acceptActions([action1, action2])
 EditorState {
   // 核心数据 (持久化)
   currentMindmap: Mindmap
-  nodes: Map<short_id, MindmapNode>   // O(1) 查询
+  nodes: Map<short_id, MindmapNode>   // O(1) 查询，使用 short_id 作为键
 
   // UI 状态 (非持久化)
   collapsedNodes: Set<short_id>       // O(1) 查询
@@ -254,6 +325,8 @@ EditorState {
   version: number                      // 递增版本号
 }
 ```
+
+**ID 设计**: 系统使用 UUID 作为主键，short_id（6字符 base36）作为用户友好标识符。详见 [ID 设计规范](./id-design.md)。
 
 **性能优化**:
 
@@ -280,7 +353,7 @@ acceptActions(actions[])
 
 ---
 
-### 5. 历史层 (History Layer)
+### 6. 历史层 (History Layer)
 
 **位置**: `history-manager.ts`
 
@@ -337,70 +410,82 @@ HistoryManager.redo()
 
 ---
 
-### 6. 持久化层 (Persistence Layer)
+### 7. 持久化层 (Persistence Layer)
 
 **位置**: `src/lib/db/schema.ts`, `src/lib/sync/sync-manager.ts`
 
-**职责**:
+**职责**: 本地数据缓存（IndexedDB）、脏标记管理、批量同步到服务器、冲突检测和解决。
 
-- 本地数据缓存（IndexedDB）
-- 脏标记管理（dirty flag）
-- 批量同步到服务器
-- 冲突检测和解决
+**核心机制**: 三层存储架构（内存 Store → IndexedDB → Supabase），离线优先，增量同步，使用 dirty flag 追踪未保存修改，基于时间戳的冲突检测。
 
-**核心机制**:
+**详细设计**:
 
-**IndexedDB Schema**:
-
-```typescript
-MindmapDB {
-  mindmaps: {
-    key: short_id
-    value: Mindmap & {
-      dirty: boolean           // 是否有未保存修改
-      local_updated_at: string // 本地修改时间
-      server_updated_at: string // 服务器版本时间
-    }
-  }
-
-  mindmap_nodes: {
-    key: short_id
-    value: MindmapNode & {
-      dirty: boolean
-      local_updated_at: string
-    }
-  }
-}
-```
-
-**同步流程**:
-
-```
-用户点击保存 → SyncManager.syncMindmap()
-  → 收集脏数据 (dirty = true)
-  → 冲突检测 (比较 server_updated_at)
-  ├─ 无冲突
-  │   → 批量 upsert 到 Supabase
-  │   → 清除 dirty 标记
-  │   → 更新 server_updated_at
-  └─ 有冲突
-      → 提示用户选择策略
-      ├─ force_overwrite → 强制覆盖
-      ├─ discard_local → 丢弃本地，重新加载
-      └─ cancel → 取消保存
-```
-
-**设计特点**:
-
-- ✅ 离线优先（本地操作立即响应）
-- ✅ 增量同步（只上传脏数据）
-- ✅ 冲突感知（基于时间戳）
-- ✅ 事务安全（IndexedDB 事务保证）
-- ⚠️ 不支持实时协同（未来可扩展）
+- [持久化中间件设计](./persistence-middleware-design.md) - 三层存储、Dirty Flag、冲突检测、性能优化
+- [数据库设计](./database-schema.md) - Schema 定义、索引、触发器、RLS 策略
 
 ---
 
 ## 数据流总览
+
+### 核心数据流图
+
+以下是 Command → Action → State 的核心数据流程（适用于所有层级），展示了一个完整操作从触发到持久化的全过程：
+
+```mermaid
+graph TD
+    A[用户触发<br/>快捷键/按钮/命令] --> B[ShortcutManager<br/>键盘事件映射]
+    B --> C[CommandManager<br/>execute命令]
+
+    C --> D{检查when条件}
+    D -->|条件不满足| E[静默返回]
+    D -->|条件满足| F[Command.handler<br/>业务逻辑编排]
+
+    F --> G[生成Action序列<br/>AddNodeAction, UpdateNodeAction...]
+
+    G --> H[HistoryManager<br/>记录到undoStack]
+    H --> I[EditorState<br/>acceptActions]
+
+    I --> J[Immer produce<br/>更新内存状态]
+    I --> K[applyToIndexedDB<br/>持久化到本地]
+
+    J --> L[React重渲染UI<br/>Zustand通知订阅者]
+    K --> M[标记dirty=true<br/>等待同步]
+
+    M --> N{用户点击保存?}
+    N -->|是| O[SyncManager<br/>同步到Supabase]
+    O --> P[清除dirty标记<br/>更新server时间戳]
+
+    style A fill:#e1f5fe
+    style C fill:#fff9c4
+    style F fill:#fff9c4
+    style G fill:#c8e6c9
+    style I fill:#f8bbd0
+    style J fill:#f8bbd0
+    style K fill:#d1c4e9
+    style O fill:#d1c4e9
+
+    classDef userLayer fill:#e1f5fe,stroke:#01579b
+    classDef commandLayer fill:#fff9c4,stroke:#f57f17
+    classDef actionLayer fill:#c8e6c9,stroke:#2e7d32
+    classDef stateLayer fill:#f8bbd0,stroke:#c2185b
+    classDef persistLayer fill:#d1c4e9,stroke:#4a148c
+```
+
+**图例说明**:
+
+- 🔵 蓝色：用户交互层
+- 🟡 黄色：Command层
+- 🟢 绿色：Action层
+- 🔴 粉色：State层（内存）
+- 🟣 紫色：持久化层（数据库）
+
+**不同视角的理解**：
+
+- **Command层视角**：关注如何从命令ID到Action序列的转换（节点C→F→G）
+- **Action层视角**：关注Action如何更新内存和数据库（节点G→I→J+K）
+- **State层视角**：关注如何接收Actions并触发React更新（节点I→J→L）
+
+---
 
 ### 完整的操作链路
 
@@ -621,12 +706,21 @@ A:
 
 ---
 
+## 修订历史
+
+| 日期       | 版本 | 修改内容                                                                                                        | 作者        |
+| ---------- | ---- | --------------------------------------------------------------------------------------------------------------- | ----------- |
+| 2025-11-24 | 1.1  | 添加关键概念章节，更新命令和 Action 分类，新增扩展机制章节（CompositeCommand、ActionSubscription、FocusedArea） | Claude Code |
+| 2025-11-06 | 1.0  | 初始版本，描述领域层整体架构设计                                                                                | Claude Code |
+
 ## 相关文档
 
-- [Action 层架构设计](./action-layer-design.md) - Action 详细设计
-- [Command 层架构设计](./command-layer-design.md) - Command 详细设计
-- [MindmapStore 架构设计](./mindmap-store-design.md) - Store 详细设计
-- [命令参考手册](./command-reference.md) - 所有命令列表
+- [Command 层架构设计](./command-layer-design.md) - Command 详细设计（包含 CompositeCommand 批量操作）
+- [命令参考手册](./command-reference.md) - 所有命令列表和快捷键
+- [AI 助手系统设计](./ai-assistant-system-design.md) - AI 集成和操作执行
+- [视口管理设计](./viewport-management-design.md) - 视口管理和 Action 订阅
+- [节点布局引擎设计](./node-layout-engine-design.md) - 布局服务和 Action 订阅
+- [数据库设计](./database-schema.md) - IndexedDB 和 Supabase 设计
 
 ---
 

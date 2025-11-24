@@ -267,14 +267,15 @@ docs/
 │   ├── command-reference.md  # 命令系统参考手册
 │   ├── database-schema.md    # 数据库设计文档
 │   ├── id-design.md          # ID设计规范（UUID + short_id）
-│   ├── mindmap-editor-layout-design.md  # 思维导图编辑器布局设计
+│   ├── editor-ui-layout-design.md       # 编辑器 UI 布局设计
+│   ├── node-layout-engine-design.md     # 节点布局引擎设计
 │   └── INDEX.md              # 设计文档索引
 ├── draft/                    # 设计文档草稿，讨论中的设计方案
 │   ├── mindmap-viewer-implementation-plan.md
 │   └── pending-features.md
 ├── obsolete❌/                # 已废弃的设计文档（保留以供参考）
 │   ├── command-system-design.md        # 已被 command-reference.md 替代
-│   ├── mindmap-editor-store-design.md  # 已整合到 mindmap-editor-layout-design.md
+│   ├── mindmap-editor-store-design.md  # 已整合到 editor-ui-layout-design.md
 │   ├── mindmap-persistence-design.md   # 已废弃
 │   └── shortcut-system-design.md       # 已整合到 command-reference.md
 └── standard/                  # 标准规范

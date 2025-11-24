@@ -4,19 +4,19 @@
 
 ## 📋 文档概览
 
-| 文档名称                                                    | 描述                      | 状态      | 最后更新   |
-| ----------------------------------------------------------- | ------------------------- | --------- | ---------- |
-| [ID 设计规范](./id-design.md)                               | 系统 ID 生成和管理机制    | ✅ 已确认 | 2025-01-07 |
-| [数据库设计](./database-schema.md)                          | 数据库表结构和约束设计    | ✅ 已确认 | 2025-11-06 |
-| [思维导图编辑器布局设计](./mindmap-editor-layout-design.md) | 编辑器界面布局和组件协作  | ✅ 已确认 | 2025-10-19 |
-| [思维导图节点布局设计](./mindmap-layout-design.md)          | 节点布局计算引擎和服务    | ✅ 已确认 | 2025-01-23 |
-| [视口管理设计](./viewport-management-design.md)             | 视口状态管理和双向同步    | ✅ 已确认 | 2025-11-23 |
-| [Command 层架构设计](./command-layer-design.md)             | 命令系统架构和实现        | ✅ 已确认 | 2025-11-23 |
-| [命令参考手册](./command-reference.md)                      | 所有命令和快捷键快速查询  | ✅ 已确认 | 2025-11-23 |
-| [思维导图节点卡片设计](./mindmap-node-card-design.md)       | 节点卡片布局和迷你工具栏  | ✅ 已确认 | 2025-11-23 |
-| [CompositeCommand 设计](./composite-command.md)             | 组合命令系统设计和实现    | ✅ 已确认 | 2025-11-15 |
-| [AI 助手系统设计](./ai-assistant-system-design.md)          | AI 对话、操作执行和持久化 | ✅ 已确认 | 2025-11-24 |
-| [XMind 导出功能设计](./export-xmind-design.md)              | XMind 格式导出实现        | ✅ 已确认 | 2025-11-23 |
+| 文档名称                                               | 描述                      | 状态      | 最后更新   |
+| ------------------------------------------------------ | ------------------------- | --------- | ---------- |
+| [ID 设计规范](./id-design.md)                          | 系统 ID 生成和管理机制    | ✅ 已确认 | 2025-01-07 |
+| [数据库设计](./database-schema.md)                     | 数据库表结构和约束设计    | ✅ 已确认 | 2025-11-06 |
+| [编辑器 UI 布局设计](./editor-ui-layout-design.md)     | 编辑器界面布局和组件协作  | ✅ 已确认 | 2025-10-19 |
+| [节点布局引擎设计](./node-layout-engine-design.md)     | 节点布局计算引擎和服务    | ✅ 已确认 | 2025-01-23 |
+| [视口管理设计](./viewport-management-design.md)        | 视口状态管理和双向同步    | ✅ 已确认 | 2025-11-23 |
+| [Command 层架构设计](./command-layer-design.md)        | 命令系统架构和实现        | ✅ 已确认 | 2025-11-23 |
+| [命令参考手册](./command-reference.md)                 | 所有命令和快捷键快速查询  | ✅ 已确认 | 2025-11-23 |
+| [持久化中间件设计](./persistence-middleware-design.md) | 三层存储和Dirty Flag机制  | ✅ 已确认 | 2025-11-24 |
+| [思维导图节点卡片设计](./mindmap-node-card-design.md)  | 节点卡片布局和迷你工具栏  | ✅ 已确认 | 2025-11-23 |
+| [AI 助手系统设计](./ai-assistant-system-design.md)     | AI 对话、操作执行和持久化 | ✅ 已确认 | 2025-11-24 |
+| [XMind 导出功能设计](./export-xmind-design.md)         | XMind 格式导出实现        | ✅ 已确认 | 2025-11-23 |
 
 ## 🏗️ 按模块分类
 
@@ -38,11 +38,20 @@
   - 思维导图节点表（mindmap_nodes）
   - 约束、索引和触发器设计
 
+#### 持久化机制
+
+- **[持久化中间件设计](./persistence-middleware-design.md)**
+  - 三层存储架构（内存 → IndexedDB → Supabase）
+  - Dirty Flag 机制（追踪未保存修改）
+  - 增量同步（只上传变更数据）
+  - 冲突检测（基于时间戳）
+  - 性能优化（批量事务、防抖保存）
+
 ### 前端架构
 
 #### 编辑器布局和组件
 
-- **[思维导图编辑器布局设计](./mindmap-editor-layout-design.md)**
+- **[思维导图编辑器布局设计](./editor-ui-layout-design.md)**
   - 三栏式编辑器界面
   - 可调整宽度面板
   - 虚拟化大纲视图（react-arborist）
@@ -52,7 +61,7 @@
 
 #### 节点布局计算
 
-- **[思维导图节点布局设计](./mindmap-layout-design.md)**
+- **[思维导图节点布局设计](./node-layout-engine-design.md)**
   - Engine + Service 分离架构
   - DagreLayoutEngine 布局算法
   - 节点尺寸缓存和测量
@@ -83,6 +92,7 @@
   - ActionBasedCommandDefinition 和 ImperativeCommandDefinition
   - CommandManager 和执行流程
   - 条件执行（when）和撤销支持
+  - 组合命令（CompositeCommand）实现 - 参见[批量操作章节](./command-layer-design.md#批量操作---compositecommand)
 
 - **[命令参考手册](./command-reference.md)**
   - 32个已实现命令
@@ -90,12 +100,6 @@
   - 快捷键绑定和上下文感知
   - 完整的命令列表和使用说明
   - 添加新命令的最佳实践
-
-- **[CompositeCommand 设计](./composite-command.md)**
-  - 组合命令（批量操作）实现
-  - 原子性和可撤销性保证
-  - AI 批量操作集成
-  - 严格的全或无错误处理
 
 #### AI 助手系统
 
@@ -130,9 +134,8 @@ graph TD
     C --> T[节点卡片设计]
     C --> D[Command 层架构设计]
     D --> E[命令参考手册]
-    D --> F[CompositeCommand 设计]
     D --> X[XMind 导出设计]
-    F --> L[AI 助手系统设计]
+    D --> L[AI 助手系统设计]
 
     B -.->|定义| G[数据模型]
     C -.->|使用| H[react-arborist]
@@ -145,10 +148,9 @@ graph TD
     T -.->|读取| R
     D -.->|实现| J[Command Pattern]
     D -.->|使用| K[react-hotkeys-hook]
-    F -.->|扩展| D
     L -.->|使用| M[AI SDK v5]
     L -.->|使用| N[IndexedDB]
-    L -.->|复用| F
+    L -.->|复用| D
     X -.->|使用| V[JSZip]
     X -.->|读取| B
 
@@ -175,21 +177,21 @@ graph TD
 
 ### 已确定的技术选型
 
-| 领域           | 技术选择            | 理由                                | 相关文档                                            |
-| -------------- | ------------------- | ----------------------------------- | --------------------------------------------------- |
-| **ID 生成**    | UUID + short_id     | 兼顾唯一性和用户友好性              | [ID 设计](./id-design.md)                           |
-| **数据库**     | PostgreSQL/Supabase | 开源、实时同步、完整的关系型特性    | [数据库设计](./database-schema.md)                  |
-| **状态管理**   | Zustand + Immer     | 轻量级、类型安全、不可变更新        | [编辑器布局设计](./mindmap-editor-layout-design.md) |
-| **命令模式**   | Command Pattern     | 解耦触发与逻辑、可扩展              | [命令参考](./command-reference.md)                  |
-| **快捷键**     | react-hotkeys-hook  | Hook API、轻量级、TypeScript 支持   | [命令参考](./command-reference.md)                  |
-| **大纲视图**   | react-arborist      | 虚拟化渲染、类型安全                | [布局设计](./mindmap-editor-layout-design.md)       |
-| **图形渲染**   | React Flow          | 成熟稳定、丰富功能                  | [布局设计](./mindmap-editor-layout-design.md)       |
-| **尺寸监听**   | ResizeObserver      | 原生 API、性能优秀                  | [布局设计](./mindmap-editor-layout-design.md)       |
-| **布局持久化** | localStorage        | 快速响应、离线可用                  | [布局设计](./mindmap-editor-layout-design.md)       |
-| **AI 集成**    | AI SDK v5           | 流式响应、React Hooks、类型安全     | [AI 助手系统](./ai-assistant-system-design.md)      |
-| **本地存储**   | IndexedDB (idb)     | 大容量、异步 API、离线优先          | [AI 助手系统](./ai-assistant-system-design.md)      |
-| **节点布局**   | dagre               | 成熟的分层布局算法、TypeScript 支持 | [节点布局设计](./mindmap-layout-design.md)          |
-| **文件导出**   | JSZip               | 纯 JS、浏览器支持、体积小           | [XMind 导出设计](./export-xmind-design.md)          |
+| 领域           | 技术选择            | 理由                                | 相关文档                                       |
+| -------------- | ------------------- | ----------------------------------- | ---------------------------------------------- |
+| **ID 生成**    | UUID + short_id     | 兼顾唯一性和用户友好性              | [ID 设计](./id-design.md)                      |
+| **数据库**     | PostgreSQL/Supabase | 开源、实时同步、完整的关系型特性    | [数据库设计](./database-schema.md)             |
+| **状态管理**   | Zustand + Immer     | 轻量级、类型安全、不可变更新        | [编辑器布局设计](./editor-ui-layout-design.md) |
+| **命令模式**   | Command Pattern     | 解耦触发与逻辑、可扩展              | [命令参考](./command-reference.md)             |
+| **快捷键**     | react-hotkeys-hook  | Hook API、轻量级、TypeScript 支持   | [命令参考](./command-reference.md)             |
+| **大纲视图**   | react-arborist      | 虚拟化渲染、类型安全                | [布局设计](./editor-ui-layout-design.md)       |
+| **图形渲染**   | React Flow          | 成熟稳定、丰富功能                  | [布局设计](./editor-ui-layout-design.md)       |
+| **尺寸监听**   | ResizeObserver      | 原生 API、性能优秀                  | [布局设计](./editor-ui-layout-design.md)       |
+| **布局持久化** | localStorage        | 快速响应、离线可用                  | [布局设计](./editor-ui-layout-design.md)       |
+| **AI 集成**    | AI SDK v5           | 流式响应、React Hooks、类型安全     | [AI 助手系统](./ai-assistant-system-design.md) |
+| **本地存储**   | IndexedDB (idb)     | 大容量、异步 API、离线优先          | [AI 助手系统](./ai-assistant-system-design.md) |
+| **节点布局**   | dagre               | 成熟的分层布局算法、TypeScript 支持 | [节点布局设计](./node-layout-engine-design.md) |
+| **文件导出**   | JSZip               | 纯 JS、浏览器支持、体积小           | [XMind 导出设计](./export-xmind-design.md)     |
 
 ### 核心设计原则
 
@@ -243,111 +245,118 @@ graph TD
 
 ### 按关键词索引
 
-| 关键词                                 | 相关文档                                        |
-| -------------------------------------- | ----------------------------------------------- |
-| UUID, short_id, 唯一性, base36         | [ID 设计](./id-design.md)                       |
-| 数据库, Schema, PostgreSQL, Supabase   | [数据库设计](./database-schema.md)              |
-| mindmaps, mindmap_nodes, user_profiles | [数据库设计](./database-schema.md)              |
-| 约束, 索引, 触发器, 外键               | [数据库设计](./database-schema.md)              |
-| Command Pattern, 命令模式              | [Command 层架构](./command-layer-design.md)     |
-| ActionBased, ImperativeCommand         | [Command 层架构](./command-layer-design.md)     |
-| CommandManager, 命令执行               | [Command 层架构](./command-layer-design.md)     |
-| 快捷键, react-hotkeys-hook, 键盘事件   | [命令参考](./command-reference.md)              |
-| 节点操作, 导航, 编辑命令               | [命令参考](./command-reference.md)              |
-| CompositeCommand, 组合命令, 批量操作   | [CompositeCommand 设计](./composite-command.md) |
-| 原子性, 可撤销性, AI 批量操作          | [CompositeCommand 设计](./composite-command.md) |
-| 布局, 三栏, 大纲视图, 图形视图         | [布局设计](./mindmap-editor-layout-design.md)   |
-| react-arborist, 虚拟化, Tree           | [布局设计](./mindmap-editor-layout-design.md)   |
-| React Flow, 图形渲染                   | [布局设计](./mindmap-editor-layout-design.md)   |
-| ResizeObserver, 响应式                 | [布局设计](./mindmap-editor-layout-design.md)   |
-| localStorage, 布局持久化               | [布局设计](./mindmap-editor-layout-design.md)   |
-| 折叠节点, 高亮, 导航                   | [布局设计](./mindmap-editor-layout-design.md)   |
-| Zustand, Immer, 状态管理               | [布局设计](./mindmap-editor-layout-design.md)   |
-| AI SDK, useChat, 流式响应              | [AI 助手系统](./ai-assistant-system-design.md)  |
-| AIMessage, AIOperation, 对话持久化     | [AI 助手系统](./ai-assistant-system-design.md)  |
-| IndexedDB, idb, 本地存储               | [AI 助手系统](./ai-assistant-system-design.md)  |
-| operationsApplied, metadata, 操作状态  | [AI 助手系统](./ai-assistant-system-design.md)  |
-| LLM, 提示词, 系统提示                  | [AI 助手系统](./ai-assistant-system-design.md)  |
-| 参数转换, UUID, short_id               | [AI 助手系统](./ai-assistant-system-design.md)  |
-| 操作验证, validateOperations           | [AI 助手系统](./ai-assistant-system-design.md)  |
-| 取消操作, operationsCancelled          | [AI 助手系统](./ai-assistant-system-design.md)  |
-| AI 模型配置, AIModelConfig             | [AI 助手系统](./ai-assistant-system-design.md)  |
-| 动态命令生成, generateAICommandsPrompt | [AI 助手系统](./ai-assistant-system-design.md)  |
-| LayoutEngine, LayoutService, 布局计算  | [节点布局设计](./mindmap-layout-design.md)      |
-| NodeLayout, NodeSize, SizeGetter       | [节点布局设计](./mindmap-layout-design.md)      |
-| dagre, 分层布局, 同级对齐              | [节点布局设计](./mindmap-layout-design.md)      |
-| order_index, 兄弟节点排序              | [节点布局设计](./mindmap-layout-design.md)      |
-| Action 订阅, 自动响应                  | [节点布局设计](./mindmap-layout-design.md)      |
-| Viewport, 视口, 坐标系转换             | [视口管理设计](./viewport-management-design.md) |
-| 双向同步, 值比较, 防抖                 | [视口管理设计](./viewport-management-design.md) |
-| 缩放, 平移, 聚焦, fitView              | [视口管理设计](./viewport-management-design.md) |
-| XMind, 导出, ZIP, XML                  | [XMind 导出设计](./export-xmind-design.md)      |
-| JSZip, content.xml, manifest.xml       | [XMind 导出设计](./export-xmind-design.md)      |
-| 文件下载, Blob API, 浏览器下载         | [XMind 导出设计](./export-xmind-design.md)      |
-| 树遍历, 节点排序, order_index          | [XMind 导出设计](./export-xmind-design.md)      |
-| XML 转义, 特殊字符, 文件名清理         | [XMind 导出设计](./export-xmind-design.md)      |
-| 节点可见性, ensureNodeVisible          | [视口管理设计](./viewport-management-design.md) |
-| SetViewportAction, 视图命令            | [视口管理设计](./viewport-management-design.md) |
-| MiniToolbar, 迷你工具栏, Portal        | [节点卡片设计](./mindmap-node-card-design.md)   |
-| 节点卡片, CustomMindNode, 状态图标     | [节点卡片设计](./mindmap-node-card-design.md)   |
-| nodeToScreenCoords, 坐标转换           | [节点卡片设计](./mindmap-node-card-design.md)   |
+| 关键词                                 | 相关文档                                                                           |
+| -------------------------------------- | ---------------------------------------------------------------------------------- |
+| UUID, short_id, 唯一性, base36         | [ID 设计](./id-design.md)                                                          |
+| 数据库, Schema, PostgreSQL, Supabase   | [数据库设计](./database-schema.md)                                                 |
+| mindmaps, mindmap_nodes, user_profiles | [数据库设计](./database-schema.md)                                                 |
+| 约束, 索引, 触发器, 外键               | [数据库设计](./database-schema.md)                                                 |
+| 三层存储, Dirty Flag, 增量同步         | [持久化中间件设计](./persistence-middleware-design.md)                             |
+| 冲突检测, 版本管理, applyToIndexedDB   | [持久化中间件设计](./persistence-middleware-design.md)                             |
+| Command Pattern, 命令模式              | [Command 层架构](./command-layer-design.md)                                        |
+| ActionBased, ImperativeCommand         | [Command 层架构](./command-layer-design.md)                                        |
+| CommandManager, 命令执行               | [Command 层架构](./command-layer-design.md)                                        |
+| 快捷键, react-hotkeys-hook, 键盘事件   | [命令参考](./command-reference.md)                                                 |
+| 节点操作, 导航, 编辑命令               | [命令参考](./command-reference.md)                                                 |
+| CompositeCommand, 组合命令, 批量操作   | [Command 层架构 - 批量操作](./command-layer-design.md#批量操作---compositecommand) |
+| 原子性, 可撤销性, AI 批量操作          | [Command 层架构 - 批量操作](./command-layer-design.md#批量操作---compositecommand) |
+| 布局, 三栏, 大纲视图, 图形视图         | [布局设计](./editor-ui-layout-design.md)                                           |
+| react-arborist, 虚拟化, Tree           | [布局设计](./editor-ui-layout-design.md)                                           |
+| React Flow, 图形渲染                   | [布局设计](./editor-ui-layout-design.md)                                           |
+| ResizeObserver, 响应式                 | [布局设计](./editor-ui-layout-design.md)                                           |
+| localStorage, 布局持久化               | [布局设计](./editor-ui-layout-design.md)                                           |
+| 折叠节点, 高亮, 导航                   | [布局设计](./editor-ui-layout-design.md)                                           |
+| Zustand, Immer, 状态管理               | [布局设计](./editor-ui-layout-design.md)                                           |
+| AI SDK, useChat, 流式响应              | [AI 助手系统](./ai-assistant-system-design.md)                                     |
+| AIMessage, AIOperation, 对话持久化     | [AI 助手系统](./ai-assistant-system-design.md)                                     |
+| IndexedDB, idb, 本地存储               | [AI 助手系统](./ai-assistant-system-design.md)                                     |
+| operationsApplied, metadata, 操作状态  | [AI 助手系统](./ai-assistant-system-design.md)                                     |
+| LLM, 提示词, 系统提示                  | [AI 助手系统](./ai-assistant-system-design.md)                                     |
+| 参数转换, UUID, short_id               | [AI 助手系统](./ai-assistant-system-design.md)                                     |
+| 操作验证, validateOperations           | [AI 助手系统](./ai-assistant-system-design.md)                                     |
+| 取消操作, operationsCancelled          | [AI 助手系统](./ai-assistant-system-design.md)                                     |
+| AI 模型配置, AIModelConfig             | [AI 助手系统](./ai-assistant-system-design.md)                                     |
+| 动态命令生成, generateAICommandsPrompt | [AI 助手系统](./ai-assistant-system-design.md)                                     |
+| LayoutEngine, LayoutService, 布局计算  | [节点布局设计](./node-layout-engine-design.md)                                     |
+| NodeLayout, NodeSize, SizeGetter       | [节点布局设计](./node-layout-engine-design.md)                                     |
+| dagre, 分层布局, 同级对齐              | [节点布局设计](./node-layout-engine-design.md)                                     |
+| order_index, 兄弟节点排序              | [节点布局设计](./node-layout-engine-design.md)                                     |
+| Action 订阅, 自动响应                  | [节点布局设计](./node-layout-engine-design.md)                                     |
+| Viewport, 视口, 坐标系转换             | [视口管理设计](./viewport-management-design.md)                                    |
+| 双向同步, 值比较, 防抖                 | [视口管理设计](./viewport-management-design.md)                                    |
+| 缩放, 平移, 聚焦, fitView              | [视口管理设计](./viewport-management-design.md)                                    |
+| XMind, 导出, ZIP, XML                  | [XMind 导出设计](./export-xmind-design.md)                                         |
+| JSZip, content.xml, manifest.xml       | [XMind 导出设计](./export-xmind-design.md)                                         |
+| 文件下载, Blob API, 浏览器下载         | [XMind 导出设计](./export-xmind-design.md)                                         |
+| 树遍历, 节点排序, order_index          | [XMind 导出设计](./export-xmind-design.md)                                         |
+| XML 转义, 特殊字符, 文件名清理         | [XMind 导出设计](./export-xmind-design.md)                                         |
+| 节点可见性, ensureNodeVisible          | [视口管理设计](./viewport-management-design.md)                                    |
+| SetViewportAction, 视图命令            | [视口管理设计](./viewport-management-design.md)                                    |
+| MiniToolbar, 迷你工具栏, Portal        | [节点卡片设计](./mindmap-node-card-design.md)                                      |
+| 节点卡片, CustomMindNode, 状态图标     | [节点卡片设计](./mindmap-node-card-design.md)                                      |
+| nodeToScreenCoords, 坐标转换           | [节点卡片设计](./mindmap-node-card-design.md)                                      |
 
 ### 常见问题对应文档
 
-| 问题                                    | 查看文档                                        |
-| --------------------------------------- | ----------------------------------------------- |
-| 如何生成唯一 ID？                       | [ID 设计](./id-design.md)                       |
-| 数据库表结构是什么？                    | [数据库设计](./database-schema.md)              |
-| 如何设计数据模型？                      | [数据库设计](./database-schema.md)              |
-| 命令系统如何设计？                      | [Command 层架构](./command-layer-design.md)     |
-| ActionBased 和 Imperative 命令的区别？  | [Command 层架构](./command-layer-design.md)     |
-| 有哪些可用的命令？                      | [命令参考](./command-reference.md)              |
-| 如何实现快捷键？                        | [命令参考](./command-reference.md)              |
-| 如何添加新命令？                        | [命令参考](./command-reference.md)              |
-| 如何实现批量操作？                      | [CompositeCommand 设计](./composite-command.md) |
-| 如何保证批量操作的原子性？              | [CompositeCommand 设计](./composite-command.md) |
-| AI 批量操作如何集成？                   | [CompositeCommand 设计](./composite-command.md) |
-| 如何实现编辑器布局？                    | [布局设计](./mindmap-editor-layout-design.md)   |
-| 如何实现虚拟化大纲视图？                | [布局设计](./mindmap-editor-layout-design.md)   |
-| 如何实现图形视图？                      | [布局设计](./mindmap-editor-layout-design.md)   |
-| 如何实现可调整宽度面板？                | [布局设计](./mindmap-editor-layout-design.md)   |
-| 如何实现折叠节点高亮？                  | [布局设计](./mindmap-editor-layout-design.md)   |
-| 如何保存用户布局偏好？                  | [布局设计](./mindmap-editor-layout-design.md)   |
-| 如何管理思维导图状态？                  | [布局设计](./mindmap-editor-layout-design.md)   |
-| 如何优化大量节点的性能？                | [布局设计](./mindmap-editor-layout-design.md)   |
-| AI 对话如何持久化？                     | [AI 助手系统](./ai-assistant-system-design.md)  |
-| AI 操作如何执行？                       | [AI 助手系统](./ai-assistant-system-design.md)  |
-| 如何避免重复执行 AI 操作？              | [AI 助手系统](./ai-assistant-system-design.md)  |
-| AI 操作参数如何转换（UUID/short_id）？  | [AI 助手系统](./ai-assistant-system-design.md)  |
-| 如何验证 AI 操作的有效性？              | [AI 助手系统](./ai-assistant-system-design.md)  |
-| 用户取消 AI 操作会怎样？                | [AI 助手系统](./ai-assistant-system-design.md)  |
-| 支持哪些 AI 模型？                      | [AI 助手系统](./ai-assistant-system-design.md)  |
-| AI 消息如何同步到云端？                 | [AI 助手系统](./ai-assistant-system-design.md)  |
-| 如何设计 LLM 提示词？                   | [AI 助手系统](./ai-assistant-system-design.md)  |
-| 如何保证 AI 操作的原子性？              | [AI 助手系统](./ai-assistant-system-design.md)  |
-| 节点布局如何计算？                      | [节点布局设计](./mindmap-layout-design.md)      |
-| 如何实现布局引擎？                      | [节点布局设计](./mindmap-layout-design.md)      |
-| 如何响应节点变化自动更新布局？          | [节点布局设计](./mindmap-layout-design.md)      |
-| 兄弟节点如何排序和对齐？                | [节点布局设计](./mindmap-layout-design.md)      |
-| 如何管理视口状态？                      | [视口管理设计](./viewport-management-design.md) |
-| 如何实现 Store 和 React Flow 双向同步？ | [视口管理设计](./viewport-management-design.md) |
-| 如何防止视口同步循环？                  | [视口管理设计](./viewport-management-design.md) |
-| 如何实现缩放、平移命令？                | [视口管理设计](./viewport-management-design.md) |
-| 如何确保节点在视口中可见？              | [视口管理设计](./viewport-management-design.md) |
-| 如何导出思维导图为 XMind？              | [XMind 导出设计](./export-xmind-design.md)      |
-| XMind 文件格式是什么？                  | [XMind 导出设计](./export-xmind-design.md)      |
-| 如何生成 ZIP 文件？                     | [XMind 导出设计](./export-xmind-design.md)      |
-| 如何处理特殊字符？                      | [XMind 导出设计](./export-xmind-design.md)      |
-| 如何触发浏览器下载？                    | [XMind 导出设计](./export-xmind-design.md)      |
-| 节点坐标系和屏幕坐标系如何转换？        | [视口管理设计](./viewport-management-design.md) |
-| 节点卡片布局如何设计？                  | [节点卡片设计](./mindmap-node-card-design.md)   |
-| 迷你工具栏如何避免被其他节点遮挡？      | [节点卡片设计](./mindmap-node-card-design.md)   |
-| 工具栏缩放如何实现？                    | [节点卡片设计](./mindmap-node-card-design.md)   |
+| 问题                                    | 查看文档                                                                           |
+| --------------------------------------- | ---------------------------------------------------------------------------------- |
+| 如何生成唯一 ID？                       | [ID 设计](./id-design.md)                                                          |
+| 数据库表结构是什么？                    | [数据库设计](./database-schema.md)                                                 |
+| 如何设计数据模型？                      | [数据库设计](./database-schema.md)                                                 |
+| 如何实现离线支持？                      | [持久化中间件设计](./persistence-middleware-design.md)                             |
+| 数据如何同步到服务器？                  | [持久化中间件设计](./persistence-middleware-design.md)                             |
+| 如何追踪未保存的修改？                  | [持久化中间件设计](./persistence-middleware-design.md)                             |
+| 如何处理多设备数据冲突？                | [持久化中间件设计](./persistence-middleware-design.md)                             |
+| 命令系统如何设计？                      | [Command 层架构](./command-layer-design.md)                                        |
+| ActionBased 和 Imperative 命令的区别？  | [Command 层架构](./command-layer-design.md)                                        |
+| 有哪些可用的命令？                      | [命令参考](./command-reference.md)                                                 |
+| 如何实现快捷键？                        | [命令参考](./command-reference.md)                                                 |
+| 如何添加新命令？                        | [命令参考](./command-reference.md)                                                 |
+| 如何实现批量操作？                      | [Command 层架构 - 批量操作](./command-layer-design.md#批量操作---compositecommand) |
+| 如何保证批量操作的原子性？              | [Command 层架构 - 批量操作](./command-layer-design.md#批量操作---compositecommand) |
+| AI 批量操作如何集成？                   | [Command 层架构 - 批量操作](./command-layer-design.md#批量操作---compositecommand) |
+| 如何实现编辑器布局？                    | [布局设计](./editor-ui-layout-design.md)                                           |
+| 如何实现虚拟化大纲视图？                | [布局设计](./editor-ui-layout-design.md)                                           |
+| 如何实现图形视图？                      | [布局设计](./editor-ui-layout-design.md)                                           |
+| 如何实现可调整宽度面板？                | [布局设计](./editor-ui-layout-design.md)                                           |
+| 如何实现折叠节点高亮？                  | [布局设计](./editor-ui-layout-design.md)                                           |
+| 如何保存用户布局偏好？                  | [布局设计](./editor-ui-layout-design.md)                                           |
+| 如何管理思维导图状态？                  | [布局设计](./editor-ui-layout-design.md)                                           |
+| 如何优化大量节点的性能？                | [布局设计](./editor-ui-layout-design.md)                                           |
+| AI 对话如何持久化？                     | [AI 助手系统](./ai-assistant-system-design.md)                                     |
+| AI 操作如何执行？                       | [AI 助手系统](./ai-assistant-system-design.md)                                     |
+| 如何避免重复执行 AI 操作？              | [AI 助手系统](./ai-assistant-system-design.md)                                     |
+| AI 操作参数如何转换（UUID/short_id）？  | [AI 助手系统](./ai-assistant-system-design.md)                                     |
+| 如何验证 AI 操作的有效性？              | [AI 助手系统](./ai-assistant-system-design.md)                                     |
+| 用户取消 AI 操作会怎样？                | [AI 助手系统](./ai-assistant-system-design.md)                                     |
+| 支持哪些 AI 模型？                      | [AI 助手系统](./ai-assistant-system-design.md)                                     |
+| AI 消息如何同步到云端？                 | [AI 助手系统](./ai-assistant-system-design.md)                                     |
+| 如何设计 LLM 提示词？                   | [AI 助手系统](./ai-assistant-system-design.md)                                     |
+| 如何保证 AI 操作的原子性？              | [AI 助手系统](./ai-assistant-system-design.md)                                     |
+| 节点布局如何计算？                      | [节点布局设计](./node-layout-engine-design.md)                                     |
+| 如何实现布局引擎？                      | [节点布局设计](./node-layout-engine-design.md)                                     |
+| 如何响应节点变化自动更新布局？          | [节点布局设计](./node-layout-engine-design.md)                                     |
+| 兄弟节点如何排序和对齐？                | [节点布局设计](./node-layout-engine-design.md)                                     |
+| 如何管理视口状态？                      | [视口管理设计](./viewport-management-design.md)                                    |
+| 如何实现 Store 和 React Flow 双向同步？ | [视口管理设计](./viewport-management-design.md)                                    |
+| 如何防止视口同步循环？                  | [视口管理设计](./viewport-management-design.md)                                    |
+| 如何实现缩放、平移命令？                | [视口管理设计](./viewport-management-design.md)                                    |
+| 如何确保节点在视口中可见？              | [视口管理设计](./viewport-management-design.md)                                    |
+| 如何导出思维导图为 XMind？              | [XMind 导出设计](./export-xmind-design.md)                                         |
+| XMind 文件格式是什么？                  | [XMind 导出设计](./export-xmind-design.md)                                         |
+| 如何生成 ZIP 文件？                     | [XMind 导出设计](./export-xmind-design.md)                                         |
+| 如何处理特殊字符？                      | [XMind 导出设计](./export-xmind-design.md)                                         |
+| 如何触发浏览器下载？                    | [XMind 导出设计](./export-xmind-design.md)                                         |
+| 节点坐标系和屏幕坐标系如何转换？        | [视口管理设计](./viewport-management-design.md)                                    |
+| 节点卡片布局如何设计？                  | [节点卡片设计](./mindmap-node-card-design.md)                                      |
+| 迷你工具栏如何避免被其他节点遮挡？      | [节点卡片设计](./mindmap-node-card-design.md)                                      |
+| 工具栏缩放如何实现？                    | [节点卡片设计](./mindmap-node-card-design.md)                                      |
 
 ## 📅 更新记录
 
 | 日期       | 更新内容                                                                                                      | 更新者      |
 | ---------- | ------------------------------------------------------------------------------------------------------------- | ----------- |
+| 2025-11-24 | 阶段3+4重构：添加阅读指南、统一流程图、拆分持久化中间件设计、全局验证、布局文档重命名、CompositeCommand合并   | Claude Code |
 | 2025-11-24 | 更新 AI 助手系统设计文档（补充参数转换、操作验证、取消操作、AI 模型配置等实现细节，使文档与代码实现完全一致） | Claude Code |
 | 2025-11-23 | 添加 XMind 导出功能设计文档（ZIP + XML 格式、命令系统集成、UI 按钮）                                          | Claude Code |
 | 2025-11-23 | 添加思维导图节点卡片设计文档（迷你工具栏、状态图标区域）                                                      | Claude Code |

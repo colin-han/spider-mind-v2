@@ -8,7 +8,7 @@
 - 相关文档：
   - [Command 层架构设计](./command-layer-design.md)
   - [命令参考手册](./command-reference.md)
-  - [思维导图编辑器布局设计](./mindmap-editor-layout-design.md)
+  - [编辑器 UI 布局设计](./editor-ui-layout-design.md)
 
 ## 关键概念
 
