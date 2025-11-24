@@ -123,14 +123,11 @@ export async function uploadMindmapChanges(data: {
 
     // 1. 更新思维导图元数据（如果有修改）
     if (data.mindmap) {
-      // 构建更新对象，只包含非 undefined 的字段
+      // 更新mindmap的updated_at
+      // 注意：title字段已移除，统一使用根节点title
       const updateData: Record<string, string> = {
         updated_at: new Date().toISOString(),
       };
-
-      if (data.mindmap.title !== undefined) {
-        updateData["title"] = data.mindmap.title;
-      }
 
       const { data: updatedMindmap, error } = await supabase
         .from("mindmaps")

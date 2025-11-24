@@ -46,7 +46,7 @@ export async function createMindmap(): Promise<CreateMindmapResult> {
       const mindmapInsert: MindmapInsert = {
         user_id: user.id,
         short_id: mindmapShortId,
-        title,
+        // title字段已移除，统一使用根节点title
       };
 
       const { data, error } = await supabase

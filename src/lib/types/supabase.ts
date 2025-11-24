@@ -142,7 +142,6 @@ export type Database = {
           deleted_at: string | null
           id: string
           short_id: string
-          title: string
           updated_at: string
           user_id: string
         }
@@ -151,7 +150,6 @@ export type Database = {
           deleted_at?: string | null
           id?: string
           short_id: string
-          title: string
           updated_at?: string
           user_id: string
         }
@@ -160,7 +158,6 @@ export type Database = {
           deleted_at?: string | null
           id?: string
           short_id?: string
-          title?: string
           updated_at?: string
           user_id?: string
         }

@@ -72,7 +72,7 @@ let dbInstance: IDBPDatabase<MindmapDB> | null = null;
  * 数据库配置
  */
 const DB_NAME = "spider-mark-mindmap";
-const DB_VERSION = 5; // 升级版本以添加 ai_messages 表
+const DB_VERSION = 6; // 升级版本：移除 mindmap.title 字段
 
 /**
  * 初始化并打开数据库
@@ -89,6 +89,7 @@ export async function initDB(): Promise<IDBPDatabase<MindmapDB>> {
       );
 
       // 简化的迁移策略：版本不一致时清空所有数据
+      // 注意：IndexedDB 只是缓存，真实数据在 Supabase，清空后会自动重新同步
       if (oldVersion > 0 && newVersion && oldVersion < newVersion) {
         console.warn(
           `Database schema changed from version ${oldVersion} to ${newVersion}. Clearing all data.`
