@@ -35,7 +35,7 @@ export function useFocusedArea(handler: FocusedAreaHandler) {
     const wrappedHandler: FocusedAreaHandler = {
       id: handler.id,
       onEnter: (from) => handlerRef.current.onEnter?.(from),
-      onLeave: (to) => handlerRef.current.onLeave?.(to),
+      onLeave: (to, reason) => handlerRef.current.onLeave?.(to, reason),
     };
 
     const unregister = registerFocusedAreaHandler(wrappedHandler);

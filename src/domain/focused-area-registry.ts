@@ -29,7 +29,8 @@ export function registerFocusedAreaHandler(
  */
 export function beforeSetFocusedArea(
   oldArea: FocusedAreaId,
-  newArea: FocusedAreaId
+  newArea: FocusedAreaId,
+  reason?: "escape" | "normal"
 ): void {
   if (oldArea === newArea) {
     return;
@@ -39,7 +40,7 @@ export function beforeSetFocusedArea(
   if (oldHandler?.onLeave) {
     try {
       // fire and forget，不等待 Promise
-      Promise.resolve(oldHandler.onLeave(newArea)).catch((error) => {
+      Promise.resolve(oldHandler.onLeave(newArea, reason)).catch((error) => {
         console.error(
           `[FocusedAreaRegistry] Error in onLeave for "${oldArea}":`,
           error

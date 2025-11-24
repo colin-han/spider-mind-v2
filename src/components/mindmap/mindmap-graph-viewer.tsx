@@ -68,6 +68,8 @@ interface DragState {
     width: number;
     height: number;
   } | null;
+  originalPosition?: { x: number; y: number }; // 原始位置（用于 ESC 取消）
+  isCancelled?: boolean; // 是否被取消
 }
 
 /**
@@ -138,6 +140,31 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
     return () => darkModeMediaQuery.removeEventListener("change", handler);
   }, []);
 
+  // 监听拖拽时的 ESC 键
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && dragState.draggedNodeId) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        // 标记为已取消
+        setDragState((prev) => ({
+          ...prev,
+          isCancelled: true,
+        }));
+
+        // React Flow 会自动将节点恢复到原始位置
+        // 我们只需要标记取消状态即可
+      }
+    };
+
+    if (dragState.draggedNodeId) {
+      window.addEventListener("keydown", handleEscape);
+      return () => window.removeEventListener("keydown", handleEscape);
+    }
+    return undefined;
+  }, [dragState.draggedNodeId]);
+
   // 转换数据为 React Flow 格式
   const { nodes, edges } = useMemo(() => {
     if (!currentMindmap) {
@@ -204,6 +231,8 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
         targetNodeId: null,
         dropIndicatorType: null,
         targetRect: null,
+        originalPosition: { x: node.position.x, y: node.position.y },
+        isCancelled: false,
       });
     },
     []
@@ -326,7 +355,8 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
   // 拖拽结束
   const onNodeDragStop = useCallback(
     (_event: React.MouseEvent | React.TouchEvent | MouseEvent, _node: Node) => {
-      const { draggedNodeId, targetNodeId, dropIndicatorType } = dragState;
+      const { draggedNodeId, targetNodeId, dropIndicatorType, isCancelled } =
+        dragState;
 
       // 清空拖拽状态
       setDragState({
@@ -334,7 +364,13 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
         targetNodeId: null,
         dropIndicatorType: null,
         targetRect: null,
+        isCancelled: false,
       });
+
+      // 如果被取消，只清空状态，不执行移动
+      if (isCancelled) {
+        return;
+      }
 
       // 如果没有有效的拖放目标,不执行任何操作
       if (!draggedNodeId || !targetNodeId || !dropIndicatorType) {

@@ -74,7 +74,7 @@ export const exportXMindCommand: CommandDefinition = {
       );
       const filename = rootNode
         ? `${sanitizeFilename(rootNode.title)}.xmind`
-        : `${sanitizeFilename(currentMindmap.title)}.xmind`;
+        : "untitled.xmind";
 
       // 5. 触发下载
       const url = URL.createObjectURL(blob);
