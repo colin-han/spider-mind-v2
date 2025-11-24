@@ -16,7 +16,7 @@
 import { useCallback, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Undo2, Redo2, Save } from "lucide-react";
+import { Undo2, Redo2, Save, Download } from "lucide-react";
 import { useMindmapStore, useMindmapEditorState } from "@/domain/mindmap-store";
 import { MindmapEditorLayout } from "./mindmap-editor-layout";
 import { CommandButton } from "@/components/common/command-button";
@@ -142,6 +142,16 @@ export function MindmapEditor({ mindmapId }: MindmapEditorProps) {
                 icon={Save}
                 testId="save-button"
                 disabled={editorState.isSaved}
+              />
+
+              {/* 分隔线 */}
+              <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1" />
+
+              {/* Export 按钮 */}
+              <CommandButton
+                commandId="global.exportXMind"
+                icon={Download}
+                testId="export-xmind-button"
               />
 
               {/* 状态指示器 */}

@@ -31,6 +31,7 @@ import "./global/save";
 import "./global/undo";
 import "./global/redo";
 import "./global/set-focused-area";
+import "./global/export-xmind";
 
 // AI 操作命令
 import "./ai/ai-assist";
