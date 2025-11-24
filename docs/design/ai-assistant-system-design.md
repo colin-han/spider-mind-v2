@@ -4,12 +4,13 @@
 
 - 作者：Claude Code
 - 创建日期：2025-11-16
-- 最后更新：2025-11-16
+- 最后更新：2025-11-24
 - 相关文档：
   - [Command 层架构设计](./command-layer-design.md)
   - [CompositeCommand 设计](./composite-command.md)
   - [数据库设计](./database-schema.md)
   - [ID 设计规范](./id-design.md)
+  - [命令参考手册](./command-reference.md)
 
 ## 关键概念
 
@@ -45,15 +46,38 @@
 ### 核心文件
 
 ```
+# 类型定义
 src/lib/types/ai.ts                           # AIMessage 类型定义
+src/domain/ai/types.ts                        # AIOperation 类型定义
+
+# 对话持久化
 src/lib/ai/conversation-persistence.ts        # 对话持久化服务
 src/domain/actions/add-ai-message.ts          # 添加消息 Action
 src/domain/actions/update-ai-message-metadata.ts  # 更新消息元数据 Action
+
+# AI 交互
 src/lib/ai/system-prompts.ts                  # LLM 系统提示词
+src/lib/ai/node-context.ts                    # 节点上下文构建
+src/lib/ai/parse-operations.ts                # 操作解析
+src/lib/ai/parse-suggestions.ts               # 建议解析（旧格式）
+
+# 操作执行
+src/domain/ai/executor.ts                     # 操作执行器
+src/domain/ai/validation.ts                   # 操作验证
+src/domain/ai/param-transformer.ts            # 参数转换（UUID → short_id）
+
+# UI 组件
 src/components/ai/ai-chat-panel.tsx           # AI 聊天面板组件
 src/components/ai/message-bubble.tsx          # 消息气泡组件
 src/components/ai/operations-panel.tsx        # 操作面板组件
-src/domain/ai/executor.ts                     # 操作执行器
+src/components/ai/suggestion-actions.tsx      # 建议操作组件（旧格式）
+
+# 配置
+src/lib/config/ai-models.ts                   # AI 模型配置
+src/domain/commands/ai/ai-assist.ts           # AI 辅助命令
+
+# API 路由
+src/app/api/ai/chat/route.ts                  # AI 聊天 API 端点
 ```
 
 ### 常用操作
@@ -73,9 +97,18 @@ const message = createAIMessage(id, role, parts, nodeId, mindmapId);
 // 同步到云端
 await syncAIMessages(mindmapId);
 
+// 解析 AI 响应中的操作
+const operations = extractOperations(aiResponse);
+
+// 验证操作
+const validationResult = validateOperations(operations);
+
+// 转换操作参数（UUID → short_id）
+const transformedOps = transformOperationsParams(operations);
+
 // 执行 AI 操作
 const executor = createAIOperationExecutor();
-await executor.executeSelected(operations, "执行 AI 建议");
+await executor.executeSelected(transformedOps, "执行 AI 建议");
 ```
 
 ## 设计方案
@@ -87,15 +120,23 @@ await executor.executeSelected(operations, "执行 AI 建议");
   ↓
 AI Chat Panel ←→ useChat Hook (AI SDK v5)
   ↓
+/api/ai/chat (Next.js API Route)
+  ↓
 LLM API (流式响应)
   ↓
 Message Bubble (渲染消息)
+  ↓
+检测 <operations> 标签 → 解析操作
   ↓
 Operations Panel (展示操作建议)
   ↓
 用户选择执行
   ↓
-AIOperationExecutor → Command System → Action Layer
+验证操作 (validateOperations)
+  ↓
+转换参数 (UUID → short_id)
+  ↓
+AIOperationExecutor → CompositeCommand → Command System → Action Layer
   ↓
 更新 metadata (operationsApplied=true)
   ↓
@@ -217,23 +258,51 @@ setMessages() 更新 useChat
 ##### 操作执行流程
 
 ```
-用户点击"应用"
+用户选择操作并点击"应用"
   ↓
 OperationsPanel.handleAccept()
   ↓
+转换参数 (transformOperationsParams)
+  ├─ UUID → short_id（命令系统使用 short_id）
+  └─ 保持其他参数不变
+  ↓
 验证操作 (validateOperations)
+  ├─ 检查命令是否存在
+  ├─ 检查节点是否存在
+  └─ 验证参数合法性
   ↓
 执行操作 (executeSelected)
-  ├─ undoable 操作 → CompositeCommand
-  └─ non-undoable 操作 → 依次执行
+  ├─ 按 undoable 属性分组
+  ├─ undoable 操作 → CompositeCommand（一次 undo 撤销）
+  └─ non-undoable 操作 → 依次执行（如 save）
+  ↓
+执行成功
   ↓
 onAccept 回调
   ↓
 AIChatPanel.handleOperationsApplied()
-  ├─ 更新消息 metadata (operationsApplied=true)
-  └─ 发送确认消息给 LLM
+  ├─ 更新消息 metadata (operationsApplied=true, appliedOperationIds, appliedAt)
+  ├─ 更新本地 metadata 映射
+  └─ 发送确认消息给 LLM（"我已执行以下操作：..."）
   ↓
 LLM 收到确认，后续对话有上下文
+```
+
+##### 操作取消流程
+
+```
+用户点击"取消"
+  ↓
+OperationsPanel.handleReject()
+  ↓
+onReject 回调
+  ↓
+AIChatPanel.handleOperationsCancelled()
+  ├─ 更新消息 metadata (operationsApplied=true, operationsCancelled=true, cancelledAt)
+  ├─ 更新本地 metadata 映射
+  └─ 发送取消消息给 LLM（"我已取消了你建议的 N 个操作"）
+  ↓
+LLM 收到取消通知
 ```
 
 ##### 同步流程
@@ -252,7 +321,108 @@ syncAIMessages(mindmapId)
 更新本地记录 (dirty=false, server_id)
 ```
 
-#### 5. LLM 提示词设计
+#### 5. 参数转换机制
+
+AI 返回的操作中使用的是 UUID（用于数据库持久化），但命令系统内部使用 short_id 进行节点操作。因此需要一个参数转换层。
+
+##### transformOperationsParams()
+
+```typescript
+function transformOperationsParams(operations: AIOperation[]): AIOperation[] {
+  return operations.map((op) => {
+    // 根据命令类型转换参数
+    if (isNodeCommand(op.commandId)) {
+      // 节点命令：第一个参数（节点ID）从 UUID 转换为 short_id
+      const params = [...op.params];
+      if (params[0] && typeof params[0] === "string") {
+        params[0] = convertUUIDToShortId(params[0]);
+      }
+      return { ...op, params };
+    }
+    return op;
+  });
+}
+```
+
+**关键点**：
+
+- 只转换节点相关命令的第一个参数（父节点 ID）
+- NodeTree 对象中的节点不需要 ID（系统自动生成）
+- 转换失败时抛出错误，防止执行无效操作
+
+#### 6. 操作验证
+
+在执行操作前需要验证操作的有效性，确保：
+
+1. 命令存在于命令注册表
+2. 节点存在于当前编辑器
+3. 参数格式正确
+
+##### validateOperations()
+
+```typescript
+function validateOperations(operations: AIOperation[]): ValidationResult {
+  for (const op of operations) {
+    // 1. 检查命令是否存在
+    const command = getCommand(op.commandId);
+    if (!command) {
+      return { valid: false, error: `Unknown command: ${op.commandId}` };
+    }
+
+    // 2. 检查节点是否存在（针对节点命令）
+    if (isNodeCommand(op.commandId)) {
+      const nodeId = op.params[0];
+      if (!nodeExists(nodeId)) {
+        return { valid: false, error: `Node not found: ${nodeId}` };
+      }
+    }
+  }
+
+  return { valid: true };
+}
+```
+
+#### 7. AI 模型配置
+
+系统支持多种 AI 模型，通过配置文件集中管理。
+
+##### AIModelConfig
+
+```typescript
+interface AIModelConfig {
+  provider: string; // 提供商：openai, anthropic, deepseek 等
+  name: string; // 显示名称
+  model: LanguageModel; // AI SDK 的模型实例
+  description: string; // 模型描述
+  cost: "极低" | "低" | "中" | "高"; // 成本级别
+}
+```
+
+**支持的模型**：
+
+- GPT-4 Turbo (OpenAI)
+- GPT-3.5 Turbo (OpenAI)
+- Claude 3.5 Sonnet (Anthropic)
+- Claude 3 Haiku (Anthropic)
+- DeepSeek Chat
+- Moonshot v1
+- Qwen Turbo
+
+#### 8. LLM 提示词设计
+
+##### 动态命令生成
+
+系统提示词中的可用命令列表是从命令注册表动态生成的，确保文档与实现同步。
+
+```typescript
+const availableCommands = generateAICommandsPrompt(["node", "navigation"]);
+```
+
+**优势**：
+
+- 自动包含新增命令
+- 避免文档与代码不一致
+- 支持按分类过滤命令
 
 ##### 操作粒度策略
 
@@ -267,9 +437,21 @@ syncAIMessages(mindmapId)
 // 推荐：3 个独立操作
 {
   "operations": [
-    {"id": "op-1", "commandId": "node.addChild", "params": ["parentId", null, "节点1"]},
-    {"id": "op-2", "commandId": "node.addChild", "params": ["parentId", null, "节点2"]},
-    {"id": "op-3", "commandId": "node.addChild", "params": ["parentId", null, "节点3"]}
+    {
+      "id": "op-1",
+      "commandId": "node.addChild",
+      "params": ["b1520189-176f-4592-b64a-bb60d7420836", null, "节点1"]
+    },
+    {
+      "id": "op-2",
+      "commandId": "node.addChild",
+      "params": ["b1520189-176f-4592-b64a-bb60d7420836", null, "节点2"]
+    },
+    {
+      "id": "op-3",
+      "commandId": "node.addChild",
+      "params": ["b1520189-176f-4592-b64a-bb60d7420836", null, "节点3"]
+    }
   ]
 }
 
@@ -280,6 +462,8 @@ syncAIMessages(mindmapId)
   ]
 }
 ```
+
+**注意**：AI 必须使用上下文中提供的完整 UUID，禁止使用占位符或短ID。
 
 ##### 返回格式
 
@@ -296,32 +480,76 @@ syncAIMessages(mindmapId)
 </operations>
 ```
 
-前端检测到 `<operations>` 标签时切换为操作面板，避免显示未完成的 JSON。
+**解析机制**：
+
+- `hasOperationsTag()` - 检测流式输出中是否包含 `<operations>` 标签
+- `hasCompleteOperations()` - 检测是否接收完整的 `</operations>` 结束标签
+- `extractExplanation()` - 提取标签前的说明文本
+- `extractOperations()` - 解析 JSON 获取操作列表
+
+**流式输出优化**：
+
+- 前端检测到 `<operations>` 标签时立即切换为操作面板
+- 避免显示不完整的 JSON 造成困扰
+- 在 `</operations>` 完成后才开始解析和验证操作
 
 ## 实现要点
 
 ### 1. Action 设计
 
-- `AddAIMessageAction` - 无撤销支持，设置 dirty=true
-- `UpdateAIMessageMetadataAction` - 更新 metadata，保持 dirty=true
+- `AddAIMessageAction` - 添加新消息，无撤销支持，设置 dirty=true
+- `UpdateAIMessageMetadataAction` - 更新消息 metadata，保持 dirty=true
+- 消息只新增不修改，避免冲突
 
-### 2. 状态管理
+### 2. 参数转换实现
 
-- `messageMetadataMap` - 映射 messageId 到 metadata
+- `transformOperationsParams()` - UUID → short_id 转换
+- `convertUUIDToShortId()` - 从 store 中查找节点的 short_id
+- 只转换节点命令的第一个参数（节点 ID）
+- NodeTree 中的节点不需要转换（系统自动生成）
+
+### 3. 操作验证实现
+
+- `validateOperations()` - 执行前验证
+- 检查命令是否在注册表中
+- 检查节点是否存在于当前编辑器
+- 验证失败时中断执行并提示用户
+
+### 4. 状态管理
+
+- `messageMetadataMap` - 映射 messageId 到 metadata（本地状态）
 - `operationsPanelVisible` - 控制面板显示
 - `operationsAlreadyApplied` - 防止重复执行
+- `operationsCancelled` - 标记用户取消
 
-### 3. 类型安全
+### 5. 类型安全
 
-- UIMessagePart[] 转换为 Json 类型
+- UIMessagePart[] 转换为 Json 类型（Supabase）
 - 使用索引访问属性（`metadata?.["appliedOperationIds"]`）
 - 数组访问使用非空断言（验证后）
+- AIOperation 类型严格定义参数结构
 
-### 4. 同步策略
+### 6. 同步策略
 
 - 本地优先，写操作只写 IndexedDB
 - 保存时批量同步到 Supabase
 - AI 消息同步失败不影响主流程
+- 消息只新增不更新，避免冲突
+
+### 7. UI 交互优化
+
+- 流式输出时先显示说明文本
+- 检测到 `<operations>` 标签后切换显示
+- 操作面板默认全选，支持多选和单选
+- 执行中禁用操作，显示 loading 状态
+- 执行后显示成功状态和已应用标记
+
+### 8. 错误处理
+
+- 转换失败：提示节点不存在
+- 验证失败：显示具体错误信息
+- 执行失败：toast 提示并保持面板可用
+- 网络失败：对话历史降级到本地
 
 ## 使用示例
 
@@ -347,6 +575,24 @@ onFinish: async ({ message }) => {
 };
 ```
 
+### 转换和验证操作
+
+```typescript
+// 1. 转换参数（UUID → short_id）
+const transformedOps = transformOperationsParams(operations);
+
+// 2. 验证操作
+const validationResult = validateOperations(transformedOps);
+if (!validationResult.valid) {
+  toast.error(`验证失败: ${validationResult.error}`);
+  return;
+}
+
+// 3. 执行操作
+const executor = createAIOperationExecutor();
+await executor.executeSelected(transformedOps, "执行 AI 建议");
+```
+
 ### 处理操作执行回调
 
 ```typescript
@@ -356,12 +602,57 @@ const handleOperationsApplied = async (messageId, selectedIds, operations) => {
     new UpdateAIMessageMetadataAction(messageId, {
       operationsApplied: true,
       appliedOperationIds: selectedIds,
+      appliedAt: new Date().toISOString(),
     }),
   ]);
 
-  // 2. 发送确认消息
+  // 2. 更新本地 metadata 映射
+  setMessageMetadataMap((prev) => {
+    const newMap = new Map(prev);
+    newMap.set(messageId, {
+      ...prev.get(messageId),
+      operationsApplied: true,
+      appliedOperationIds: selectedIds,
+      appliedAt: new Date().toISOString(),
+    });
+    return newMap;
+  });
+
+  // 3. 发送确认消息
+  const selectedOps = operations.filter((op) => selectedIds.includes(op.id));
   const confirmText = `我已执行以下操作：\n${selectedOps.map((op) => `- ${op.description}`).join("\n")}`;
   sendMessage({ text: confirmText });
+};
+```
+
+### 处理操作取消回调
+
+```typescript
+const handleOperationsCancelled = async (messageId, operations) => {
+  // 1. 更新 metadata 标记为已取消
+  await store.acceptActions([
+    new UpdateAIMessageMetadataAction(messageId, {
+      operationsApplied: true,
+      operationsCancelled: true,
+      cancelledAt: new Date().toISOString(),
+    }),
+  ]);
+
+  // 2. 更新本地 metadata 映射
+  setMessageMetadataMap((prev) => {
+    const newMap = new Map(prev);
+    newMap.set(messageId, {
+      ...prev.get(messageId),
+      operationsApplied: true,
+      operationsCancelled: true,
+      cancelledAt: new Date().toISOString(),
+    });
+    return newMap;
+  });
+
+  // 3. 发送取消消息
+  const cancellationText = `我已取消了你建议的 ${operations.length} 个操作。`;
+  sendMessage({ text: cancellationText });
 };
 ```
 
@@ -397,7 +688,38 @@ const handleOperationsApplied = async (messageId, selectedIds, operations) => {
 - 更好的控制体验
 - 避免全有或全无的限制
 
-### 4. 确认消息策略
+### 4. 参数转换策略
+
+**选择**：在操作执行前转换参数（UUID → short_id）
+
+**理由**：
+
+- AI 对话使用 UUID（数据库持久化标准）
+- 命令系统使用 short_id（内部操作标准）
+- 转换层解耦两个系统
+- 转换失败能及时发现并报错
+
+**替代方案**：让命令系统同时支持 UUID 和 short_id
+
+- **未采用原因**：增加命令系统复杂度，破坏单一职责原则
+
+### 5. 操作验证策略
+
+**选择**：执行前验证所有操作
+
+**理由**：
+
+- 提前发现错误，避免部分执行
+- 给用户明确的错误提示
+- 保护系统不执行非法操作
+
+**验证内容**：
+
+- 命令是否存在
+- 节点是否存在
+- 参数类型是否正确
+
+### 6. 确认消息策略
 
 **选择**：自动发送用户消息告知 LLM
 
@@ -406,6 +728,21 @@ const handleOperationsApplied = async (messageId, selectedIds, operations) => {
 - 保持对话上下文完整
 - LLM 知道用户执行了哪些操作
 - 后续对话更加连贯
+
+### 7. 取消操作策略
+
+**选择**：取消时也发送消息并更新 metadata
+
+**理由**：
+
+- 让 LLM 知道用户拒绝了建议
+- 避免 LLM 重复提出相同建议
+- 保持对话连续性
+
+**实现方式**：
+
+- 设置 `operationsApplied=true`（表示用户已处理）
+- 同时设置 `operationsCancelled=true`（表示是取消而非执行）
 
 ## 替代方案
 
@@ -433,6 +770,30 @@ const handleOperationsApplied = async (messageId, selectedIds, operations) => {
 - 执行速度快，预览价值有限
 - 增加实现复杂度
 
+### 4. 命令系统同时支持 UUID 和 short_id
+
+**未采用原因**：
+
+- 增加命令系统复杂度
+- 破坏单一职责原则
+- 参数转换层更清晰
+
+### 5. 不验证操作直接执行
+
+**未采用原因**：
+
+- 可能导致部分执行失败
+- 错误信息不清晰
+- 用户体验差
+
+### 6. 取消操作时不通知 LLM
+
+**未采用原因**：
+
+- LLM 不知道用户拒绝了建议
+- 可能重复提出相同建议
+- 对话上下文不完整
+
 ## FAQ
 
 **Q: 为什么 node.addChild 的参数是 [parentId, null, title] 而不是 [parentId, title]？**
@@ -455,6 +816,26 @@ A: AI 消息只有新增，没有更新，不会产生冲突。同步时批量�
 
 A: 是的。`buildNodeContext` 函数会为 `currentNode` 和 `parentChain` 中的每个节点提取 note 字段。AI 可以根据当前节点和父节点的笔记内容生成更精准的建议。兄弟节点和子节点只包含标题，不包含笔记，以控制上下文大小。
 
+**Q: 为什么需要参数转换（UUID → short_id）？**
+
+A: AI 对话持久化使用 UUID（数据库标准），但命令系统内部使用 short_id 进行节点操作（符合 ID 设计规范）。参数转换层解耦了两个系统，保持各自的设计一致性。
+
+**Q: 操作验证失败会怎样？**
+
+A: 验证失败时会立即中断执行，显示具体错误信息（如"节点不存在"或"未知命令"），不会执行任何操作。用户可以查看错误后重试或取消。
+
+**Q: 用户取消操作后会发生什么？**
+
+A: 系统会：1）更新消息 metadata 标记为已取消；2）发送取消消息给 LLM；3）隐藏操作面板并显示"已取消"状态。LLM 会知道用户拒绝了建议，避免重复提出相同建议。
+
+**Q: 如何保证操作原子性？**
+
+A: 所有 undoable 操作被组合成一个 CompositeCommand 执行，任何一个失败都会回滚所有操作。Non-undoable 操作（如 save）在 undoable 操作成功后才依次执行。
+
+**Q: 支持哪些 AI 模型？**
+
+A: 当前支持 GPT-4 Turbo、GPT-3.5 Turbo、Claude 3.5 Sonnet、Claude 3 Haiku、DeepSeek Chat、Moonshot v1、Qwen Turbo 等模型，通过配置文件统一管理。
+
 ## 参考资料
 
 - [AI SDK v5 文档](https://ai.vercel.com/docs)
@@ -463,7 +844,8 @@ A: 是的。`buildNodeContext` 函数会为 `currentNode` 和 `parentChain` 中�
 
 ## 修订历史
 
-| 日期       | 版本 | 修改内容                                                             | 作者        |
-| ---------- | ---- | -------------------------------------------------------------------- | ----------- |
-| 2025-11-16 | 1.1  | 为 currentNode 和 parentChain 添加 note 字段，增强 AI 上下文理解能力 | Claude Code |
-| 2025-11-16 | 1.0  | 初始版本，整合对话持久化、操作系统、UI 设计                          | Claude Code |
+| 日期       | 版本 | 修改内容                                                                                                                           | 作者        |
+| ---------- | ---- | ---------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| 2025-11-24 | 1.2  | 补充参数转换机制、操作验证、取消操作流程、AI 模型配置、动态命令生成、流式输出优化、UI 交互细节等实现内容，使文档与代码实现完全一致 | Claude Code |
+| 2025-11-16 | 1.1  | 为 currentNode 和 parentChain 添加 note 字段，增强 AI 上下文理解能力                                                               | Claude Code |
+| 2025-11-16 | 1.0  | 初始版本，整合对话持久化、操作系统、UI 设计                                                                                        | Claude Code |
