@@ -13,13 +13,14 @@
 
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Undo2, Redo2, Save, Download } from "lucide-react";
 import { useMindmapStore, useMindmapEditorState } from "@/domain/mindmap-store";
 import { MindmapEditorLayout } from "./mindmap-editor-layout";
 import { CommandButton } from "@/components/common/command-button";
+import { getRootNodeTitle } from "@/lib/utils/mindmap-utils";
 
 /**
  * MindmapEditor Props
@@ -34,6 +35,12 @@ export interface MindmapEditorProps {
 export function MindmapEditor({ mindmapId }: MindmapEditorProps) {
   const { openMindmap, shortcutManager, historyManager } = useMindmapStore();
   const editorState = useMindmapEditorState();
+
+  // 从根节点获取思维导图标题
+  const rootTitle = useMemo(() => {
+    if (!editorState) return "未命名思维导图";
+    return getRootNodeTitle(editorState.nodes);
+  }, [editorState]);
 
   const keyHandle = useCallback(
     (e: KeyboardEvent) => shortcutManager?.handleKeydown(e),
@@ -57,12 +64,12 @@ export function MindmapEditor({ mindmapId }: MindmapEditorProps) {
 
   // 动态设置页面标题
   useEffect(() => {
-    if (editorState?.currentMindmap?.title) {
+    if (editorState) {
       const envName = process.env["NEXT_PUBLIC_ENV_NAME"];
       const baseTitle = envName ? `Spider Mind (${envName})` : "Spider Mind";
-      document.title = `${baseTitle} - ${editorState.currentMindmap.title}`;
+      document.title = `${baseTitle} - ${rootTitle}`;
     }
-  }, [editorState?.currentMindmap?.title]);
+  }, [editorState, rootTitle]);
 
   if (!editorState) {
     return (
@@ -112,7 +119,7 @@ export function MindmapEditor({ mindmapId }: MindmapEditorProps) {
 
             {/* 中间：思维导图标题 */}
             <h1 className="absolute left-1/2 transform -translate-x-1/2 text-xl font-semibold text-gray-900 dark:text-white">
-              {editorState.currentMindmap.title}
+              {rootTitle}
             </h1>
 
             {/* 右侧：工具栏 */}
