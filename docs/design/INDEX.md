@@ -16,6 +16,7 @@
 | [思维导图节点卡片设计](./mindmap-node-card-design.md)       | 节点卡片布局和迷你工具栏  | ✅ 已确认 | 2025-11-23 |
 | [CompositeCommand 设计](./composite-command.md)             | 组合命令系统设计和实现    | ✅ 已确认 | 2025-11-15 |
 | [AI 助手系统设计](./ai-assistant-system-design.md)          | AI 对话、操作执行和持久化 | ✅ 已确认 | 2025-11-16 |
+| [XMind 导出功能设计](./export-xmind-design.md)              | XMind 格式导出实现        | ✅ 已确认 | 2025-11-23 |
 
 ## 🏗️ 按模块分类
 
@@ -105,6 +106,15 @@
   - 操作状态管理和确认机制
   - LLM 提示词设计和细粒度操作策略
 
+#### 导出功能
+
+- **[XMind 导出功能设计](./export-xmind-design.md)**
+  - XMind 文件格式实现（ZIP + XML）
+  - 树结构遍历和 XML 生成
+  - 基于 Command 系统的导出命令
+  - 浏览器端文件下载
+  - 文件名清理和特殊字符处理
+
 ## 🔗 文档关系图
 
 ```mermaid
@@ -117,6 +127,7 @@ graph TD
     C --> D[Command 层架构设计]
     D --> E[命令参考手册]
     D --> F[CompositeCommand 设计]
+    D --> X[XMind 导出设计]
     F --> L[AI 助手系统设计]
 
     B -.->|定义| G[数据模型]
@@ -134,6 +145,8 @@ graph TD
     L -.->|使用| M[AI SDK v5]
     L -.->|使用| N[IndexedDB]
     L -.->|复用| F
+    X -.->|使用| V[JSZip]
+    X -.->|读取| B
 
     style G fill:#e8f5e9
     style H fill:#e1f5fe
@@ -146,6 +159,7 @@ graph TD
     style Q fill:#e8f5e9
     style S fill:#e8f5e9
     style U fill:#e1f5fe
+    style V fill:#e1f5fe
 ```
 
 **图例**:
@@ -171,6 +185,7 @@ graph TD
 | **AI 集成**    | AI SDK v5           | 流式响应、React Hooks、类型安全     | [AI 助手系统](./ai-assistant-system-design.md)      |
 | **本地存储**   | IndexedDB (idb)     | 大容量、异步 API、离线优先          | [AI 助手系统](./ai-assistant-system-design.md)      |
 | **节点布局**   | dagre               | 成熟的分层布局算法、TypeScript 支持 | [节点布局设计](./mindmap-layout-design.md)          |
+| **文件导出**   | JSZip               | 纯 JS、浏览器支持、体积小           | [XMind 导出设计](./export-xmind-design.md)          |
 
 ### 核心设计原则
 
@@ -257,6 +272,11 @@ graph TD
 | Viewport, 视口, 坐标系转换             | [视口管理设计](./viewport-management-design.md) |
 | 双向同步, 值比较, 防抖                 | [视口管理设计](./viewport-management-design.md) |
 | 缩放, 平移, 聚焦, fitView              | [视口管理设计](./viewport-management-design.md) |
+| XMind, 导出, ZIP, XML                  | [XMind 导出设计](./export-xmind-design.md)      |
+| JSZip, content.xml, manifest.xml       | [XMind 导出设计](./export-xmind-design.md)      |
+| 文件下载, Blob API, 浏览器下载         | [XMind 导出设计](./export-xmind-design.md)      |
+| 树遍历, 节点排序, order_index          | [XMind 导出设计](./export-xmind-design.md)      |
+| XML 转义, 特殊字符, 文件名清理         | [XMind 导出设计](./export-xmind-design.md)      |
 | 节点可见性, ensureNodeVisible          | [视口管理设计](./viewport-management-design.md) |
 | SetViewportAction, 视图命令            | [视口管理设计](./viewport-management-design.md) |
 | MiniToolbar, 迷你工具栏, Portal        | [节点卡片设计](./mindmap-node-card-design.md)   |
@@ -300,6 +320,11 @@ graph TD
 | 如何防止视口同步循环？                  | [视口管理设计](./viewport-management-design.md) |
 | 如何实现缩放、平移命令？                | [视口管理设计](./viewport-management-design.md) |
 | 如何确保节点在视口中可见？              | [视口管理设计](./viewport-management-design.md) |
+| 如何导出思维导图为 XMind？              | [XMind 导出设计](./export-xmind-design.md)      |
+| XMind 文件格式是什么？                  | [XMind 导出设计](./export-xmind-design.md)      |
+| 如何生成 ZIP 文件？                     | [XMind 导出设计](./export-xmind-design.md)      |
+| 如何处理特殊字符？                      | [XMind 导出设计](./export-xmind-design.md)      |
+| 如何触发浏览器下载？                    | [XMind 导出设计](./export-xmind-design.md)      |
 | 节点坐标系和屏幕坐标系如何转换？        | [视口管理设计](./viewport-management-design.md) |
 | 节点卡片布局如何设计？                  | [节点卡片设计](./mindmap-node-card-design.md)   |
 | 迷你工具栏如何避免被其他节点遮挡？      | [节点卡片设计](./mindmap-node-card-design.md)   |
@@ -309,6 +334,7 @@ graph TD
 
 | 日期       | 更新内容                                                              | 更新者      |
 | ---------- | --------------------------------------------------------------------- | ----------- |
+| 2025-11-23 | 添加 XMind 导出功能设计文档（ZIP + XML 格式、命令系统集成、UI 按钮）  | Claude Code |
 | 2025-11-23 | 添加思维导图节点卡片设计文档（迷你工具栏、状态图标区域）              | Claude Code |
 | 2025-11-23 | 更新 Action 层设计（双层订阅机制）和布局设计（布局预测与精确化）      | Claude Code |
 | 2025-11-23 | 添加视口管理设计文档、更新命令层架构和命令参考手册（视图操作命令）    | Claude Code |
