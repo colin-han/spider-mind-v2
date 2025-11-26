@@ -215,9 +215,18 @@ export function loadEnvironmentVariables(): Record<string, string> {
   // 5. 平台环境变量优先 (process.env 中已存在的值不会被覆盖)
   const finalConfig: Record<string, string> = {};
 
+  // 首先添加 YAML 配置中的变量
   for (const [key, value] of Object.entries(expandedConfig)) {
     // 如果环境变量已经在 process.env 中存在,使用 process.env 的值
     finalConfig[key] = process.env[key] || value;
+  }
+
+  // 然后添加所有 process.env 中存在但 YAML 中未定义的变量
+  // 这样可以支持仅在 .env.local 中配置的变量
+  for (const [key, value] of Object.entries(process.env)) {
+    if (value && !finalConfig[key]) {
+      finalConfig[key] = value;
+    }
   }
 
   // 6. 添加 PROFILE 和 PORT (如果 process.env 中有)
