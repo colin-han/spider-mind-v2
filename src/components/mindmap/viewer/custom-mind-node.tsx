@@ -100,7 +100,7 @@ function CustomMindNodeComponent({ data }: NodeProps) {
       className={cn(
         "mind-node relative",
         "flex flex-col",
-        "min-w-[150px] pt-2 px-4 pb-0",
+        "min-w-[150px] max-w-[250px] pt-2 px-4 pb-0",
         "rounded-lg border-2 bg-white",
         "transition-all duration-150",
         "cursor-pointer",
@@ -129,10 +129,14 @@ function CustomMindNodeComponent({ data }: NodeProps) {
       {/* 节点标题 (只读) */}
       <span
         data-testid={`mindmap-node-${nodeData.shortId}-title`}
-        className={cn("title text-sm select-none py-1", {
-          "text-white": isRoot,
-          "text-gray-900 dark:text-gray-900": !isRoot,
-        })}
+        className={cn(
+          "title text-sm select-none py-1",
+          "break-words whitespace-normal",
+          {
+            "text-white": isRoot,
+            "text-gray-900 dark:text-gray-900": !isRoot,
+          }
+        )}
       >
         {nodeData.title}
       </span>

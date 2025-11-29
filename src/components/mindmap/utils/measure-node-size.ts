@@ -60,17 +60,18 @@ export async function measureNodeSize(node: MindmapNode): Promise<NodeSize> {
     nodeElement.className = "mind-node";
     Object.assign(nodeElement.style, {
       display: "flex",
-      alignItems: "center",
-      gap: "0.5rem", // gap-2
+      flexDirection: "column", // flex-col
+      gap: "0.25rem", // 减小间距
       minWidth: "150px",
-      padding: "0.75rem 1rem", // py-3 px-4
+      maxWidth: "250px", // 添加最大宽度
+      padding: "0.5rem 1rem 0", // pt-2 px-4 pb-0
       borderRadius: "0.5rem", // rounded-lg
       border: "2px solid",
       borderColor: "#e5e7eb", // border-gray-200
       backgroundColor: "#ffffff",
       fontSize: "0.875rem", // text-sm
       lineHeight: "1.25rem",
-      whiteSpace: "nowrap",
+      // 移除 whiteSpace: "nowrap"
     });
 
     // 根节点特殊样式
@@ -88,40 +89,55 @@ export async function measureNodeSize(node: MindmapNode): Promise<NodeSize> {
     const titleElement = document.createElement("span");
     titleElement.className = "title";
     titleElement.textContent = node.title || "Untitled";
-    titleElement.style.flex = "1";
     titleElement.style.userSelect = "none";
-    nodeElement.appendChild(titleElement);
+    titleElement.style.wordWrap = "break-word"; // 允许换行
+    titleElement.style.whiteSpace = "normal"; // 正常换行
+    titleElement.style.padding = "0.25rem 0"; // py-1
 
-    // 4. 添加 Note 图标空间（如果有 note）
+    // 4. 创建状态图标容器（匹配实际 DOM 结构）
+    const statusContainer = document.createElement("div");
+    statusContainer.style.height = "0.375rem"; // h-1.5
+    statusContainer.style.display = "flex";
+    statusContainer.style.justifyContent = "flex-end";
+    statusContainer.style.alignItems = "center";
+    statusContainer.style.gap = "0.25rem";
+    statusContainer.style.marginBottom = "0.25rem"; // mb-1
+    statusContainer.style.padding = "0";
+
+    // 添加 Note 图标空间（如果有 note）
     if (node.note) {
       const iconSpace = document.createElement("span");
-      iconSpace.style.width = "1rem"; // w-4
-      iconSpace.style.height = "1rem"; // h-4
+      iconSpace.style.width = "0.875rem"; // w-3.5
+      iconSpace.style.height = "0.875rem"; // h-3.5
       iconSpace.style.flexShrink = "0";
-      nodeElement.appendChild(iconSpace);
+      statusContainer.appendChild(iconSpace);
     }
 
-    // 5. 将元素添加到容器并挂载到 DOM
+    // 5. 将元素添加到节点
+    nodeElement.appendChild(titleElement);
+    nodeElement.appendChild(statusContainer);
+
+    // 6. 将元素添加到容器并挂载到 DOM
     container.appendChild(nodeElement);
     document.body.appendChild(container);
 
-    // 6. 测量尺寸（使用 getBoundingClientRect 获取实际渲染尺寸）
+    // 7. 测量尺寸（使用 getBoundingClientRect 获取实际渲染尺寸）
     const rect = nodeElement.getBoundingClientRect();
     let { width, height } = rect;
 
-    // 7. 清理 DOM
+    // 8. 清理 DOM
     document.body.removeChild(container);
 
-    // 8. 确保最小尺寸
+    // 9. 确保最小尺寸
     width = Math.max(width, 150);
     height = Math.max(height, 40);
 
-    // 9. 根节点额外宽度
+    // 10. 根节点额外宽度
     if (isRoot) {
       width += ROOT_NODE_EXTRA_WIDTH;
     }
 
-    // 10. 四舍五入到整数（布局算法通常使用整数）
+    // 11. 四舍五入到整数（布局算法通常使用整数）
     width = Math.ceil(width);
     height = Math.ceil(height);
 
