@@ -386,6 +386,12 @@ batch_delete_branches() {
 # ============================================================================
 
 run_interactive_mode() {
+    # 获取脚本路径，用于 reload 命令
+    local SCRIPT_PATH="${BASH_SOURCE[0]}"
+
+    # 构建 reload 命令：在子 shell 中 source 脚本并生成分支列表
+    local RELOAD_CMD="FZF_RELOAD_MODE=1 source '$SCRIPT_PATH' 2>/dev/null && generate_branch_list 2>/dev/null || echo ''"
+
     while true; do
         # 生成分支列表
         local branch_list=$(generate_branch_list)
@@ -400,7 +406,8 @@ run_interactive_mode() {
         # fzf 选择
         local selected=$(echo "$branch_list" | fzf \
             --height=100% \
-            --header="Feature 分支管理 | m:合并 d:差异 r:删除 ctrl-d:批量删除 q:退出" \
+            --header="Feature 分支管理 | F2:刷新 m:合并 d:差异 r:删除 ctrl-d:批量删除 q:退出" \
+            --bind="f2:reload($RELOAD_CMD)" \
             --bind="m:execute-silent(echo merge > $ACTION_FILE; echo {..} > $SELECTED_FILE)+abort" \
             --bind="d:execute-silent(echo diff > $ACTION_FILE; echo {..} > $SELECTED_FILE)+abort" \
             --bind="r:execute-silent(echo remove > $ACTION_FILE; echo {..} > $SELECTED_FILE)+abort" \
@@ -491,4 +498,7 @@ main() {
 }
 
 # 执行主流程
-main "$@"
+# 当在 fzf reload 模式下被 source 时，不执行 main 函数
+if [[ -z "$FZF_RELOAD_MODE" ]]; then
+    main "$@"
+fi
