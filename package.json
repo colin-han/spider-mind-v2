@@ -48,7 +48,8 @@
     "db:start": "supabase start",
     "db:stop": "supabase stop",
     "db:status": "supabase status",
-    "feat:new": "./scripts/new-feature.sh"
+    "feat:new": "./scripts/new-feature.sh",
+    "feat:state": "./scripts/feature-manager.sh"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^2.0.41",
