@@ -135,11 +135,29 @@ format_worktree_path() {
     local main_repo_dir=$(dirname "$git_dir")
 
     # 计算相对路径（从主仓库目录开始）
+    # 优先使用 python3（兼容性最好）
+    if command -v python3 >/dev/null 2>&1; then
+        python3 -c "import os.path; print(os.path.relpath('$absolute_path', '$main_repo_dir'))" 2>/dev/null && return
+    fi
+
+    # 尝试使用 realpath（GNU coreutils 版本支持 --relative-to）
     if command -v realpath >/dev/null 2>&1; then
-        realpath --relative-to="$main_repo_dir" "$absolute_path" 2>/dev/null || echo "$absolute_path"
-    elif command -v python3 >/dev/null 2>&1; then
-        python3 -c "import os.path; print(os.path.relpath('$absolute_path', '$main_repo_dir'))" 2>/dev/null || echo "$absolute_path"
+        realpath --relative-to="$main_repo_dir" "$absolute_path" 2>/dev/null && return
+    fi
+
+    # 使用纯 Bash 实现
+    # 移除共同的前缀路径
+    local target="${absolute_path}"
+    local base="${main_repo_dir}"
+
+    # 确保路径以 / 结尾
+    [[ "${base}" != */ ]] && base="${base}/"
+
+    # 如果 target 以 base 开头，移除 base 部分
+    if [[ "${target}" == "${base}"* ]]; then
+        echo "${target#$base}"
     else
+        # 如果不是子路径，返回绝对路径
         echo "$absolute_path"
     fi
 }
@@ -210,8 +228,30 @@ merge_branch() {
     fi
 }
 
+# 显示分支差异
+show_branch_diff() {
+    local branch_line="$1"
+    # 从格式化的行中提取分支名
+    local branch=$(echo "$branch_line" | sed -E 's/^\[[✓ ]\] ([^ ]+)( →.*)?$/\1/')
+
+    clear
+    echo ""
+    log_info "显示分支差异: $branch vs develop"
+    echo ""
+    echo "========================================"
+    echo ""
+
+    # 显示差异
+    git diff develop.."$branch"
+
+    echo ""
+    echo "========================================"
+    echo ""
+    read -p "按回车继续..."
+}
+
 # 删除分支
-delete_branch() {
+remove_branch() {
     local branch_line="$1"
     # 从格式化的行中提取信息
     local merged_mark=$(echo "$branch_line" | sed -E 's/^(\[[✓ ]\]).*$/\1/')
@@ -360,9 +400,10 @@ run_interactive_mode() {
         # fzf 选择
         local selected=$(echo "$branch_list" | fzf \
             --height=100% \
-            --header="Feature 分支管理 | m:合并 d:删除 ctrl-d:批量删除 q:退出" \
+            --header="Feature 分支管理 | m:合并 d:差异 r:删除 ctrl-d:批量删除 q:退出" \
             --bind="m:execute-silent(echo merge > $ACTION_FILE; echo {..} > $SELECTED_FILE)+abort" \
-            --bind="d:execute-silent(echo delete > $ACTION_FILE; echo {..} > $SELECTED_FILE)+abort" \
+            --bind="d:execute-silent(echo diff > $ACTION_FILE; echo {..} > $SELECTED_FILE)+abort" \
+            --bind="r:execute-silent(echo remove > $ACTION_FILE; echo {..} > $SELECTED_FILE)+abort" \
             --bind="ctrl-d:execute-silent(echo batch-delete > $ACTION_FILE)+abort" \
             --bind="q:abort" \
             --prompt="选择分支: " \
@@ -390,12 +431,19 @@ run_interactive_mode() {
                         read -p "按回车继续..."
                     fi
                     ;;
-                delete)
+                diff)
+                    if [[ -f "$SELECTED_FILE" ]]; then
+                        local selected_branch=$(cat "$SELECTED_FILE")
+                        rm -f "$SELECTED_FILE"
+                        show_branch_diff "$selected_branch"
+                    fi
+                    ;;
+                remove)
                     if [[ -f "$SELECTED_FILE" ]]; then
                         local selected_branch=$(cat "$SELECTED_FILE")
                         rm -f "$SELECTED_FILE"
                         clear
-                        delete_branch "$selected_branch"
+                        remove_branch "$selected_branch"
                         echo ""
                         read -p "按回车继续..."
                     fi
