@@ -3,8 +3,8 @@
 ## 文档信息
 
 - **创建日期**: 2025-11-06
-- **最后更新**: 2025-11-24
-- **版本**: 1.1.0
+- **最后更新**: 2025-11-29
+- **版本**: 1.1.1
 - **相关文档**:
   - [领域层架构设计](./domain-layer-architecture.md)
   - [Action 层架构设计](./action-layer-design.md)
@@ -50,6 +50,7 @@ interface EditorState {
   // 状态
   isLoading: boolean; // 是否正在加载
   isSaved: boolean; // 是否已保存
+  isSaving: boolean; // 是否正在保存中
 
   // 版本号（每次 acceptActions 递增）
   version: number;

@@ -3,8 +3,8 @@
 ## 文档信息
 
 - **创建日期**: 2025-11-06
-- **最后更新**: 2025-01-23
-- **版本**: 1.2.0
+- **最后更新**: 2025-11-29
+- **版本**: 1.2.1
 - **相关文档**:
   - [领域层架构设计](./domain-layer-architecture.md)
   - [Command 层架构设计](./command-layer-design.md)
@@ -373,6 +373,85 @@ await db.put("mindmap_nodes", {
 - 使用值比较机制防止同步循环
 
 **详细设计**: 参见 [视口管理设计](./viewport-management-design.md)
+
+---
+
+#### SetSavingStatusAction
+
+**职责**: 管理保存操作的状态显示（保存中、已保存、未保存）
+
+**参数**:
+
+```typescript
+{
+  isSaving: boolean,  // 是否正在保存
+  isSaved: boolean    // 是否已保存
+}
+```
+
+**状态变更**:
+
+- 更新 `EditorState.isSaving` - 保存操作进行中的标志
+- 更新 `EditorState.isSaved` - 数据已同步到服务器的标志
+
+**数据库操作**: 无（保存状态是瞬时 UI 状态，不需要持久化到 IndexedDB）
+
+**逆操作**: 不支持（throw Error）
+
+**使用场景**:
+
+- 保存命令（global.save）的状态管理
+  - 开始保存: `{ isSaving: true, isSaved: false }`
+  - 保存成功: `{ isSaving: false, isSaved: true }`
+  - 保存失败: `{ isSaving: false, isSaved: false }`
+- UI 显示：
+  - 🔵 保存中...（isSaving = true）
+  - 🟢 已保存（isSaving = false, isSaved = true）
+  - 🟠 未保存（isSaving = false, isSaved = false）
+
+**⚠️ 约束**:
+
+- 此 Action 仅用于 UI 状态管理，不可撤销
+- 必须配合保存命令使用，确保所有退出路径都正确重置状态
+- 保存命令应在 try-catch 中使用此 Action，避免状态卡住
+
+**实现示例**:
+
+```typescript
+// src/domain/commands/global/save.ts
+export const saveMindmapCommand: CommandDefinition = {
+  handler: async (root: MindmapStore) => {
+    // 设置保存中状态
+    await root.acceptActions([
+      new SetSavingStatusAction({ isSaving: true, isSaved: false }),
+    ]);
+
+    try {
+      // 执行保存逻辑
+      if (noChangesToSave) {
+        // ✅ 必须重置状态，避免卡在 saving
+        await root.acceptActions([
+          new SetSavingStatusAction({ isSaving: false, isSaved: true }),
+        ]);
+        return;
+      }
+
+      // ... 保存到服务器 ...
+
+      // 保存成功
+      await root.acceptActions([
+        new SetSavingStatusAction({ isSaving: false, isSaved: true }),
+      ]);
+    } catch (error) {
+      // 保存失败
+      await root.acceptActions([
+        new SetSavingStatusAction({ isSaving: false, isSaved: false }),
+      ]);
+      throw error;
+    }
+  },
+};
+```
 
 ---
 

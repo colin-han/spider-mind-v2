@@ -69,6 +69,7 @@ export interface EditorState {
   // 状态
   isLoading: boolean;
   isSaved: boolean;
+  isSaving: boolean; // 是否正在保存
 
   version: number;
 }

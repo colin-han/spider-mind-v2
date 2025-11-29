@@ -14,7 +14,7 @@ export class SetCurrentNodeAction implements EditorAction {
 
   applyToEditorState(draft: EditorState): void {
     draft.currentNode = this.params.newNodeId;
-    draft.isSaved = false;
+    // 注意：选择节点是纯 UI 操作，不影响保存状态
   }
 
   async applyToIndexedDB(_db: IDBPDatabase<MindmapDB>): Promise<void> {

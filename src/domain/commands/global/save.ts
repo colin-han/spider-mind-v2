@@ -6,7 +6,7 @@ import {
 } from "@/lib/actions/mindmap-sync";
 import { getDB } from "@/lib/db/schema";
 import { syncAIMessages } from "@/lib/ai/conversation-persistence";
-import { useMindmapStore } from "../../mindmap-store";
+import { SetSavingStatusAction } from "../../actions/set-saving-status";
 
 /**
  * 保存思维导图到服务器
@@ -47,100 +47,115 @@ export const saveMindmapCommand: CommandDefinition = {
 
     const { currentMindmap } = currentEditor;
 
-    // 1. 收集 dirty 数据
-    const dirtyMindmap = await db.get("mindmaps", currentMindmap.short_id);
-    if (!dirtyMindmap) {
-      throw new Error("Mindmap not found in local database");
-    }
+    // 设置保存中状态
+    await root.acceptActions([
+      new SetSavingStatusAction({ isSaving: true, isSaved: false }),
+    ]);
 
-    // 收集所有 dirty 节点
-    const allNodes = await db
-      .transaction("mindmap_nodes")
-      .store.index("by-mindmap")
-      .getAll(currentMindmap.id);
+    try {
+      // 1. 收集 dirty 数据
+      const dirtyMindmap = await db.get("mindmaps", currentMindmap.short_id);
+      if (!dirtyMindmap) {
+        throw new Error("Mindmap not found in local database");
+      }
 
-    const dirtyNodes = allNodes.filter((node) => node.dirty);
-    if (dirtyNodes.length === 0) {
-      console.log("No dirty nodes found, nothing to save");
-      return;
-    }
+      // 收集所有 dirty 节点
+      const allNodes = await db
+        .transaction("mindmap_nodes")
+        .store.index("by-mindmap")
+        .getAll(currentMindmap.id);
 
-    // 分离已删除和未删除的节点
-    const deletedNodes = dirtyNodes.filter((node) => node.deleted);
-    const updatedNodes = dirtyNodes.filter((node) => !node.deleted);
+      const dirtyNodes = allNodes.filter((node) => node.dirty);
+      if (dirtyNodes.length === 0) {
+        console.log("No dirty nodes found, nothing to save");
+        // 没有需要保存的内容，重置状态
+        await root.acceptActions([
+          new SetSavingStatusAction({ isSaving: false, isSaved: true }),
+        ]);
+        return;
+      }
 
-    console.log(
-      `Found ${dirtyNodes.length} dirty nodes to save (${updatedNodes.length} updated, ${deletedNodes.length} deleted)`
-    );
+      // 分离已删除和未删除的节点
+      const deletedNodes = dirtyNodes.filter((node) => node.deleted);
+      const updatedNodes = dirtyNodes.filter((node) => !node.deleted);
 
-    // 2. 查询服务器版本
-    const serverVersion = await fetchServerVersion(currentMindmap.short_id);
+      console.log(
+        `Found ${dirtyNodes.length} dirty nodes to save (${updatedNodes.length} updated, ${deletedNodes.length} deleted)`
+      );
 
-    // 3. 冲突检测
-    if (serverVersion.updated_at !== dirtyMindmap.server_updated_at) {
-      // 服务器版本已更新，存在冲突
-      throw new ConflictError({
-        message: "服务器版本已更新，存在冲突",
-        localVersion: dirtyMindmap.server_updated_at,
-        serverVersion: serverVersion.updated_at,
-        dirtyNodesCount: dirtyNodes.length,
+      // 2. 查询服务器版本
+      const serverVersion = await fetchServerVersion(currentMindmap.short_id);
+
+      // 3. 冲突检测
+      if (serverVersion.updated_at !== dirtyMindmap.server_updated_at) {
+        // 服务器版本已更新，存在冲突
+        throw new ConflictError({
+          message: "服务器版本已更新，存在冲突",
+          localVersion: dirtyMindmap.server_updated_at,
+          serverVersion: serverVersion.updated_at,
+          dirtyNodesCount: dirtyNodes.length,
+        });
+      }
+
+      // 4. 上传到服务器
+      const uploadResult = await uploadMindmapChanges({
+        mindmapId: currentMindmap.short_id,
+        mindmap: dirtyMindmap.dirty
+          ? (currentMindmap as Partial<typeof currentMindmap>)
+          : undefined,
+        nodes: updatedNodes,
+        deletedNodeIds: deletedNodes.map((node) => node.id),
       });
-    }
 
-    // 4. 上传到服务器
-    const uploadResult = await uploadMindmapChanges({
-      mindmapId: currentMindmap.short_id,
-      mindmap: dirtyMindmap.dirty
-        ? (currentMindmap as Partial<typeof currentMindmap>)
-        : undefined,
-      nodes: updatedNodes,
-      deletedNodeIds: deletedNodes.map((node) => node.id),
-    });
+      // 5. 更新 IndexedDB
+      const tx = db.transaction(["mindmaps", "mindmap_nodes"], "readwrite");
 
-    // 5. 更新 IndexedDB
-    const tx = db.transaction(["mindmaps", "mindmap_nodes"], "readwrite");
-
-    // 更新 mindmap（不管mindmap本身是否dirty，只要有数据上传，就需要更新server_updated_at）
-    await tx.objectStore("mindmaps").put({
-      ...dirtyMindmap,
-      dirty: false,
-      server_updated_at: uploadResult.updated_at,
-      local_updated_at: new Date().toISOString(),
-    });
-
-    // 更新所有已修改的节点
-    for (const node of updatedNodes) {
-      await tx.objectStore("mindmap_nodes").put({
-        ...node,
+      // 更新 mindmap（不管mindmap本身是否dirty，只要有数据上传，就需要更新server_updated_at）
+      await tx.objectStore("mindmaps").put({
+        ...dirtyMindmap,
         dirty: false,
+        server_updated_at: uploadResult.updated_at,
         local_updated_at: new Date().toISOString(),
       });
-    }
 
-    // ✅ 真正删除已删除的节点（已同步到服务器）
-    for (const node of deletedNodes) {
-      await tx.objectStore("mindmap_nodes").delete(node.short_id);
-    }
-
-    await tx.done;
-
-    // 6. 同步 AI 消息
-    try {
-      await syncAIMessages(currentMindmap.id);
-      console.log("AI messages synced successfully");
-    } catch (error) {
-      // AI 消息同步失败不影响主流程
-      console.error("Failed to sync AI messages:", error);
-    }
-
-    // 7. 更新保存状态
-    useMindmapStore.setState((state) => {
-      if (state.currentEditor) {
-        state.currentEditor.isSaved = true;
+      // 更新所有已修改的节点
+      for (const node of updatedNodes) {
+        await tx.objectStore("mindmap_nodes").put({
+          ...node,
+          dirty: false,
+          local_updated_at: new Date().toISOString(),
+        });
       }
-    });
 
-    console.log("Mindmap saved successfully");
+      // ✅ 真正删除已删除的节点（已同步到服务器）
+      for (const node of deletedNodes) {
+        await tx.objectStore("mindmap_nodes").delete(node.short_id);
+      }
+
+      await tx.done;
+
+      // 6. 同步 AI 消息
+      try {
+        await syncAIMessages(currentMindmap.id);
+        console.log("AI messages synced successfully");
+      } catch (error) {
+        // AI 消息同步失败不影响主流程
+        console.error("Failed to sync AI messages:", error);
+      }
+
+      // 7. 更新保存状态 - 保存成功
+      await root.acceptActions([
+        new SetSavingStatusAction({ isSaving: false, isSaved: true }),
+      ]);
+
+      console.log("Mindmap saved successfully");
+    } catch (error) {
+      // 保存失败，重置 isSaving 状态
+      await root.acceptActions([
+        new SetSavingStatusAction({ isSaving: false, isSaved: false }),
+      ]);
+      throw error; // 重新抛出错误
+    }
   },
 
   when: (root: MindmapStore) => {

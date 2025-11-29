@@ -16,7 +16,7 @@
 import { useCallback, useEffect, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Undo2, Redo2, Save, Download } from "lucide-react";
+import { Undo2, Redo2, Save, Download, Loader2 } from "lucide-react";
 import { useMindmapStore, useMindmapEditorState } from "@/domain/mindmap-store";
 import { MindmapEditorLayout } from "./mindmap-editor-layout";
 import { CommandButton } from "@/components/common/command-button";
@@ -148,7 +148,7 @@ export function MindmapEditor({ mindmapId }: MindmapEditorProps) {
                 commandId="global.save"
                 icon={Save}
                 testId="save-button"
-                disabled={editorState.isSaved}
+                disabled={editorState.isSaved || editorState.isSaving}
               />
 
               {/* 分隔线 */}
@@ -162,8 +162,13 @@ export function MindmapEditor({ mindmapId }: MindmapEditorProps) {
               />
 
               {/* 状态指示器 */}
-              <div className="flex items-center gap-2 text-sm ml-2">
-                {!editorState.isSaved ? (
+              <div className="flex items-center justify-center text-sm ml-2 min-w-[100px]">
+                {editorState.isSaving ? (
+                  <span className="text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    保存中...
+                  </span>
+                ) : !editorState.isSaved ? (
                   <span className="text-orange-600 dark:text-orange-400">
                     ● 未保存
                   </span>

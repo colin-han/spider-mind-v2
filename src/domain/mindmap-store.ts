@@ -196,6 +196,7 @@ export const useMindmapStore = create<MindmapStore>()(
           isLoading: false,
           // 如果从服务器加载，数据总是已保存状态；如果从本地加载，检查 dirty 标志
           isSaved: loadedFromServer ? true : !localMindmap?.dirty,
+          isSaving: false, // 初始状态不在保存中
           version: 0,
         };
 
