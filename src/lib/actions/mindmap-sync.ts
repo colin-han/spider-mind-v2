@@ -4,6 +4,65 @@ import { createServerComponentClient } from "@/lib/supabase/server";
 import type { Mindmap, MindmapNode } from "@/lib/types";
 
 /**
+ * 按层级顺序排序节点（父节点优先）
+ *
+ * 目的：确保在批量插入节点时，父节点总是在子节点之前被插入
+ * 避免外键约束错误（子节点的parent_id必须指向已存在的父节点）
+ *
+ * 算法：广度优先遍历（BFS）
+ * 1. 构建节点ID到节点的映射
+ * 2. 构建父节点ID到子节点列表的映射
+ * 3. 从根节点开始，按层级遍历所有节点
+ */
+function sortNodesByHierarchy(
+  nodes: Partial<MindmapNode>[]
+): Partial<MindmapNode>[] {
+  if (nodes.length === 0) return [];
+
+  // 构建节点映射
+  const nodeMap = new Map<string, Partial<MindmapNode>>();
+  const childrenMap = new Map<string, Partial<MindmapNode>[]>();
+
+  // 填充映射
+  for (const node of nodes) {
+    if (!node.id) continue;
+    nodeMap.set(node.id, node);
+
+    const parentId = node.parent_id;
+    if (parentId) {
+      if (!childrenMap.has(parentId)) {
+        childrenMap.set(parentId, []);
+      }
+      childrenMap.get(parentId)!.push(node);
+    }
+  }
+
+  // 按层级排序（BFS）
+  const sorted: Partial<MindmapNode>[] = [];
+  const queue: Partial<MindmapNode>[] = [];
+
+  // 找到所有根节点（parent_id不在当前节点列表中的节点）
+  for (const node of nodes) {
+    const parentId = node.parent_id;
+    if (!parentId || !nodeMap.has(parentId)) {
+      queue.push(node);
+    }
+  }
+
+  // BFS遍历
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    sorted.push(current);
+
+    // 添加当前节点的所有子节点到队列
+    const children = childrenMap.get(current.id!) || [];
+    queue.push(...children);
+  }
+
+  return sorted;
+}
+
+/**
  * 从服务器获取完整的思维导图数据（mindmap + nodes）
  */
 export async function fetchMindmapData(mindmapId: string): Promise<{
@@ -158,7 +217,39 @@ export async function uploadMindmapChanges(data: {
       updatedAt = currentMindmap.updated_at;
     }
 
-    // 2. 批量上传节点（使用 UPSERT）
+    // 2. 先删除已标记删除的节点（必须在更新节点之前）
+    // 原因：避免外键约束错误（要更新的节点可能引用即将被删除的父节点）
+    if (data.deletedNodeIds && data.deletedNodeIds.length > 0) {
+      const { error: deleteError } = await supabase
+        .from("mindmap_nodes")
+        .delete()
+        .in("id", data.deletedNodeIds);
+
+      if (deleteError) {
+        throw new Error(`Failed to delete nodes: ${deleteError.message}`);
+      }
+
+      // 更新 mindmap 的 updated_at（因为节点有删除）
+      const { data: finalMindmap, error: finalError } = await supabase
+        .from("mindmaps")
+        .update({
+          updated_at: new Date().toISOString(),
+        })
+        .eq("short_id", data.mindmapId)
+        .eq("user_id", user.id)
+        .select("updated_at")
+        .single();
+
+      if (finalError || !finalMindmap) {
+        throw new Error(
+          `Failed to update mindmap timestamp: ${finalError?.message}`
+        );
+      }
+
+      updatedAt = finalMindmap.updated_at;
+    }
+
+    // 3. 批量上传节点（使用 UPSERT）
     if (data.nodes.length > 0) {
       // 获取 mindmap.id 用于节点更新
       const { data: mindmap, error: mindmapError } = await supabase
@@ -174,8 +265,12 @@ export async function uploadMindmapChanges(data: {
 
       const currentTime = new Date().toISOString();
 
+      // ✅ 按层级顺序排序节点（父节点优先）
+      // 避免外键约束错误：子节点的parent_id必须指向已存在的父节点
+      const sortedNodes = sortNodesByHierarchy(data.nodes);
+
       // ✅ 使用 UPSERT 批量上传节点（支持新增和更新）
-      const nodesToUpsert = data.nodes.map((node) => ({
+      const nodesToUpsert = sortedNodes.map((node) => ({
         id: node.id!,
         short_id: node.short_id!,
         mindmap_id: mindmap.id,
@@ -203,37 +298,6 @@ export async function uploadMindmapChanges(data: {
         .from("mindmaps")
         .update({
           updated_at: currentTime,
-        })
-        .eq("short_id", data.mindmapId)
-        .eq("user_id", user.id)
-        .select("updated_at")
-        .single();
-
-      if (finalError || !finalMindmap) {
-        throw new Error(
-          `Failed to update mindmap timestamp: ${finalError?.message}`
-        );
-      }
-
-      updatedAt = finalMindmap.updated_at;
-    }
-
-    // 3. 删除已标记删除的节点
-    if (data.deletedNodeIds && data.deletedNodeIds.length > 0) {
-      const { error: deleteError } = await supabase
-        .from("mindmap_nodes")
-        .delete()
-        .in("id", data.deletedNodeIds);
-
-      if (deleteError) {
-        throw new Error(`Failed to delete nodes: ${deleteError.message}`);
-      }
-
-      // 更新 mindmap 的 updated_at（因为节点有删除）
-      const { data: finalMindmap, error: finalError } = await supabase
-        .from("mindmaps")
-        .update({
-          updated_at: new Date().toISOString(),
         })
         .eq("short_id", data.mindmapId)
         .eq("user_id", user.id)
