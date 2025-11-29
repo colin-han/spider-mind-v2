@@ -130,16 +130,15 @@ get_branch_worktree() {
 format_worktree_path() {
     local absolute_path="$1"
 
-    # 获取主 .git 目录所在目录的父级目录
+    # 获取主 .git 目录的父级目录（主仓库目录）
     local git_dir=$(git rev-parse --git-common-dir)
     local main_repo_dir=$(dirname "$git_dir")
-    local parent_dir=$(dirname "$main_repo_dir")
 
-    # 计算相对路径
+    # 计算相对路径（从主仓库目录开始）
     if command -v realpath >/dev/null 2>&1; then
-        realpath --relative-to="$parent_dir" "$absolute_path" 2>/dev/null || echo "$absolute_path"
+        realpath --relative-to="$main_repo_dir" "$absolute_path" 2>/dev/null || echo "$absolute_path"
     elif command -v python3 >/dev/null 2>&1; then
-        python3 -c "import os.path; print(os.path.relpath('$absolute_path', '$parent_dir'))" 2>/dev/null || echo "$absolute_path"
+        python3 -c "import os.path; print(os.path.relpath('$absolute_path', '$main_repo_dir'))" 2>/dev/null || echo "$absolute_path"
     else
         echo "$absolute_path"
     fi
