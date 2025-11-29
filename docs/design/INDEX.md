@@ -10,6 +10,7 @@
 | [数据库设计](./database-schema.md)                     | 数据库表结构和约束设计    | ✅ 已确认 | 2025-11-06 |
 | [编辑器 UI 布局设计](./editor-ui-layout-design.md)     | 编辑器界面布局和组件协作  | ✅ 已确认 | 2025-10-19 |
 | [节点布局引擎设计](./node-layout-engine-design.md)     | 节点布局计算引擎和服务    | ✅ 已确认 | 2025-01-23 |
+| [节点最大宽度设计](./node-max-width-design.md)         | 节点宽度限制和自动折行    | ✅ 已确认 | 2025-11-29 |
 | [视口管理设计](./viewport-management-design.md)        | 视口状态管理和双向同步    | ✅ 已确认 | 2025-11-23 |
 | [Command 层架构设计](./command-layer-design.md)        | 命令系统架构和实现        | ✅ 已确认 | 2025-11-23 |
 | [命令参考手册](./command-reference.md)                 | 所有命令和快捷键快速查询  | ✅ 已确认 | 2025-11-23 |
@@ -67,6 +68,12 @@
   - 节点尺寸缓存和测量
   - Action 订阅机制（自动响应）
   - order_index 排序和同级对齐
+
+- **[节点最大宽度设计](./node-max-width-design.md)**
+  - 节点宽度限制（250px）
+  - 内容自动折行
+  - 多行文本高度预测
+  - 样式同步机制
 
 #### 节点卡片设计
 
@@ -282,6 +289,9 @@ graph TD
 | dagre, 分层布局, 同级对齐              | [节点布局设计](./node-layout-engine-design.md)                                     |
 | order_index, 兄弟节点排序              | [节点布局设计](./node-layout-engine-design.md)                                     |
 | Action 订阅, 自动响应                  | [节点布局设计](./node-layout-engine-design.md)                                     |
+| 最大宽度, 自动折行, break-words        | [节点最大宽度设计](./node-max-width-design.md)                                     |
+| 多行高度预测, 可用宽度, lineCount      | [节点最大宽度设计](./node-max-width-design.md)                                     |
+| 样式同步, STYLE_CONSTANTS              | [节点最大宽度设计](./node-max-width-design.md)                                     |
 | Viewport, 视口, 坐标系转换             | [视口管理设计](./viewport-management-design.md)                                    |
 | 双向同步, 值比较, 防抖                 | [视口管理设计](./viewport-management-design.md)                                    |
 | 缩放, 平移, 聚焦, fitView              | [视口管理设计](./viewport-management-design.md)                                    |
@@ -337,6 +347,10 @@ graph TD
 | 如何实现布局引擎？                      | [节点布局设计](./node-layout-engine-design.md)                                     |
 | 如何响应节点变化自动更新布局？          | [节点布局设计](./node-layout-engine-design.md)                                     |
 | 兄弟节点如何排序和对齐？                | [节点布局设计](./node-layout-engine-design.md)                                     |
+| 如何限制节点最大宽度？                  | [节点最大宽度设计](./node-max-width-design.md)                                     |
+| 节点内容如何自动折行？                  | [节点最大宽度设计](./node-max-width-design.md)                                     |
+| 如何预测多行文本的高度？                | [节点最大宽度设计](./node-max-width-design.md)                                     |
+| 如何保持样式同步？                      | [节点最大宽度设计](./node-max-width-design.md)                                     |
 | 如何管理视口状态？                      | [视口管理设计](./viewport-management-design.md)                                    |
 | 如何实现 Store 和 React Flow 双向同步？ | [视口管理设计](./viewport-management-design.md)                                    |
 | 如何防止视口同步循环？                  | [视口管理设计](./viewport-management-design.md)                                    |
@@ -356,6 +370,7 @@ graph TD
 
 | 日期       | 更新内容                                                                                                      | 更新者      |
 | ---------- | ------------------------------------------------------------------------------------------------------------- | ----------- |
+| 2025-11-29 | 添加节点最大宽度设计文档（宽度限制、自动折行、多行高度预测）                                                  | Claude Code |
 | 2025-11-24 | 阶段3+4重构：添加阅读指南、统一流程图、拆分持久化中间件设计、全局验证、布局文档重命名、CompositeCommand合并   | Claude Code |
 | 2025-11-24 | 更新 AI 助手系统设计文档（补充参数转换、操作验证、取消操作、AI 模型配置等实现细节，使文档与代码实现完全一致） | Claude Code |
 | 2025-11-23 | 添加 XMind 导出功能设计文档（ZIP + XML 格式、命令系统集成、UI 按钮）                                          | Claude Code |

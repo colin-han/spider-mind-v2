@@ -23,6 +23,7 @@
   - ✅ 添加字段注释（COMMENT ON COLUMN）
 
 - [ ] **测试迁移**
+
   ```bash
   npx supabase db reset
   ```
@@ -115,15 +116,8 @@
 
   - ⚠️ 必须无错误输出
 
-- [ ] **构建项目**
-
-  ```bash
-  volta run yarn build
-  ```
-
-  - ⚠️ 必须构建成功
-
 - [ ] **检查代码修改**
+
   ```bash
   git status
   git diff
@@ -198,8 +192,8 @@ npx supabase gen types typescript --local > src/lib/types/supabase.ts
 # 类型检查
 npx tsc --noEmit
 
-# 构建
-volta run yarn build
+# 类型检查
+volta run yarn type-check
 
 # 查找创建节点的位置
 grep -r "new AddNodeAction" src/domain/commands/node/

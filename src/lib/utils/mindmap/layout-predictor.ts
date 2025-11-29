@@ -11,14 +11,15 @@ import type { NodeSize } from "./mindmap-layout";
  * 这些值必须与 CustomMindNode 组件的实际样式保持一致
  */
 const STYLE_CONSTANTS = {
-  // 最小尺寸
+  // 尺寸限制
   minWidth: 150,
   minHeight: 40,
+  maxWidth: 250, // 新增：最大宽度
 
-  // 内边距 (padding: 0.75rem 1rem)
+  // 内边距 (pt-2 px-4 pb-0)
   padding: {
-    horizontal: 32, // 1rem * 2 (左右各 1rem，1rem = 16px)
-    vertical: 24, // 0.75rem * 2 (上下各 0.75rem)
+    horizontal: 32, // px-4: 1rem * 2 (左右各 1rem，1rem = 16px)
+    vertical: 8, // pt-2: 0.5rem = 8px，pb-0 = 0
   },
 
   // 字体
@@ -26,8 +27,15 @@ const STYLE_CONSTANTS = {
   lineHeight: 20, // 1.25rem (20px)
 
   // 间距和图标
-  gap: 8, // 0.5rem (gap-2)
-  iconWidth: 16, // 1rem (w-4)
+  gap: 4, // 0.25rem (gap 减小)
+  iconWidth: 14, // 0.875rem (w-3.5)
+
+  // 状态容器
+  statusContainerHeight: 6, // h-1.5 = 0.375rem = 6px
+  statusContainerMargin: 4, // mb-1 = 0.25rem = 4px
+
+  // 标题 padding (py-1)
+  titlePadding: 8, // 0.25rem * 2 = 8px
 
   // 边框
   border: 4, // 2px * 2
@@ -131,39 +139,50 @@ function measureText(text: string, fontSize: number): number {
  */
 export function predictNodeSize(node: MindmapNode): NodeSize {
   const isRoot = !node.parent_short_id;
-  const hasNote = !!node.note;
   const title = node.title || "Untitled";
 
-  // 1. 估算文本宽度
+  // 1. 估算单行文本宽度
   const textWidth = estimateTextWidth(title);
 
-  // 2. 计算总宽度
+  // 2. 计算可用的内容宽度（考虑 padding 和边框）
+  const availableWidth =
+    STYLE_CONSTANTS.maxWidth -
+    STYLE_CONSTANTS.padding.horizontal -
+    STYLE_CONSTANTS.border;
+
+  // 3. 计算节点宽度
   let width =
     textWidth + STYLE_CONSTANTS.padding.horizontal + STYLE_CONSTANTS.border;
-
-  // 添加 note 图标空间
-  if (hasNote) {
-    width += STYLE_CONSTANTS.iconWidth + STYLE_CONSTANTS.gap;
-  }
 
   // 根节点额外宽度
   if (isRoot) {
     width += STYLE_CONSTANTS.rootExtraWidth;
   }
 
-  // 保守预测：宽度增加 10% 冗余（宁可偏大）
-  width = Math.ceil(width * 1.1);
-
-  // 应用最小宽度
+  // 应用最小/最大宽度限制
   width = Math.max(width, STYLE_CONSTANTS.minWidth);
+  width = Math.min(width, STYLE_CONSTANTS.maxWidth);
 
-  // 3. 高度（单行文本高度固定）
-  const height = Math.max(
-    STYLE_CONSTANTS.lineHeight +
-      STYLE_CONSTANTS.padding.vertical +
-      STYLE_CONSTANTS.border,
-    STYLE_CONSTANTS.minHeight
-  );
+  // 4. 计算行数（如果文本宽度超过可用宽度）
+  let lineCount = 1;
+  if (textWidth > availableWidth) {
+    lineCount = Math.ceil(textWidth / availableWidth);
+  }
+
+  // 5. 计算高度
+  let height =
+    lineCount * STYLE_CONSTANTS.lineHeight + // 文本高度
+    STYLE_CONSTANTS.titlePadding + // 标题 padding (py-1)
+    STYLE_CONSTANTS.statusContainerHeight + // 状态容器高度
+    STYLE_CONSTANTS.statusContainerMargin + // 状态容器 margin
+    STYLE_CONSTANTS.padding.vertical + // 节点 padding
+    STYLE_CONSTANTS.border; // 边框
+
+  // 保守预测：高度增加 10% 冗余
+  height = Math.ceil(height * 1.1);
+
+  // 应用最小高度
+  height = Math.max(height, STYLE_CONSTANTS.minHeight);
 
   return { width, height };
 }
