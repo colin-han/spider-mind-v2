@@ -148,16 +148,31 @@ const SpiderIllustration: React.FC<{ type: "404" | "403" }> = ({ type }) => {
             strokeWidth="3"
           />
 
-          {/* Broken Thread End */}
-          <path
-            d="M190 100 Q 200 110 210 100"
-            fill="none"
-            stroke="#e5e7eb"
-            strokeWidth="3"
-          />
-
           {/* Spider Body (Hanging upside down slightly) */}
           <g transform="translate(200, 160) rotate(10)">
+            {/* 小红花发卡 - 在头顶上 */}
+            <g transform="translate(12, -51)">
+              {/* 发卡底座（绿色小夹子） */}
+              <rect
+                x="-1.5"
+                y="0"
+                width="3"
+                height="4"
+                rx="0.5"
+                fill="#22c55e"
+              />
+
+              {/* 花朵 - 5个花瓣 */}
+              <circle cx="-4" cy="-4" r="2.5" fill="#f43f5e" />
+              <circle cx="4" cy="-4" r="2.5" fill="#f43f5e" />
+              <circle cx="-2.5" cy="-7.5" r="2.5" fill="#f43f5e" />
+              <circle cx="2.5" cy="-7.5" r="2.5" fill="#f43f5e" />
+              <circle cx="0" cy="-9" r="2.5" fill="#f43f5e" />
+
+              {/* 花芯（黄色） */}
+              <circle cx="0" cy="-5" r="2" fill="#fbbf24" />
+            </g>
+
             {/* Legs */}
             <path
               d="M-30 -20 Q -50 -50 -70 -10"

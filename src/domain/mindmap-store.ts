@@ -87,17 +87,6 @@ export const useMindmapStore = create<MindmapStore>()(
             // 检查是否是认证错误
             const errorMessage =
               error instanceof Error ? error.message : String(error);
-            console.log(
-              "[openMindmap] Caught error when checking server version:",
-              {
-                errorMessage,
-                errorType:
-                  error instanceof Error
-                    ? error.constructor.name
-                    : typeof error,
-                includesAuth: errorMessage.includes("User not authenticated"),
-              }
-            );
             if (errorMessage.includes("User not authenticated")) {
               // 用户未登录，不应该访问任何数据（即使是本地缓存）
               console.error(
@@ -240,13 +229,7 @@ export const useMindmapStore = create<MindmapStore>()(
         // 9. 清空历史栈
         get().historyManager?.clear();
       } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
-        console.error("[openMindmap] Error in openMindmap:", {
-          errorMessage,
-          errorType:
-            error instanceof Error ? error.constructor.name : typeof error,
-        });
+        console.error("[openMindmap] Failed to open mindmap:", error);
         set((state) => {
           state.isLoading = false;
         });
