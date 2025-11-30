@@ -84,11 +84,33 @@ export const useMindmapStore = create<MindmapStore>()(
               );
             }
           } catch (error) {
+            // 检查是否是认证错误
+            const errorMessage =
+              error instanceof Error ? error.message : String(error);
+            console.log(
+              "[openMindmap] Caught error when checking server version:",
+              {
+                errorMessage,
+                errorType:
+                  error instanceof Error
+                    ? error.constructor.name
+                    : typeof error,
+                includesAuth: errorMessage.includes("User not authenticated"),
+              }
+            );
+            if (errorMessage.includes("User not authenticated")) {
+              // 用户未登录，不应该访问任何数据（即使是本地缓存）
+              console.error(
+                "[openMindmap] User not authenticated, re-throwing error to prevent access"
+              );
+              throw error; // 重新抛出认证错误
+            }
+
+            // 其他错误（如网络错误），使用本地数据作为降级方案
             console.warn(
               "[openMindmap] Failed to check server timestamp, using local data:",
               error
             );
-            // 服务器检查失败，使用本地数据
           }
         }
 
@@ -218,6 +240,13 @@ export const useMindmapStore = create<MindmapStore>()(
         // 9. 清空历史栈
         get().historyManager?.clear();
       } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        console.error("[openMindmap] Error in openMindmap:", {
+          errorMessage,
+          errorType:
+            error instanceof Error ? error.constructor.name : typeof error,
+        });
         set((state) => {
           state.isLoading = false;
         });

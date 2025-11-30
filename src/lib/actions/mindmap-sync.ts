@@ -2,6 +2,10 @@
 
 import { createServerComponentClient } from "@/lib/supabase/server";
 import type { Mindmap, MindmapNode } from "@/lib/types";
+import {
+  UnauthorizedError,
+  MindmapNotFoundError,
+} from "@/lib/errors/mindmap-errors";
 
 /**
  * 按层级顺序排序节点（父节点优先）
@@ -69,45 +73,101 @@ export async function fetchMindmapData(mindmapId: string): Promise<{
   mindmap: Mindmap;
   nodes: MindmapNode[];
 }> {
-  const supabase = await createServerComponentClient();
+  try {
+    const supabase = await createServerComponentClient();
 
-  // 获取当前用户
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    // 获取当前用户
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
 
-  if (!user) {
-    throw new Error("Unauthorized");
+    if (authError) {
+      console.error("[fetchMindmapData] Auth error:", authError);
+      // 检查是否是 session missing（用户未登录）
+      if (authError.message?.includes("Auth session missing")) {
+        // 用户未登录，抛出 UnauthorizedError
+        throw new UnauthorizedError();
+      }
+      // 其他认证错误（配置问题）
+      throw new Error(
+        `认证失败: ${authError.message}。请检查 Supabase 配置是否正确。`
+      );
+    }
+
+    if (!user) {
+      throw new UnauthorizedError();
+    }
+
+    // 获取思维导图
+    const { data: mindmap, error: mindmapError } = await supabase
+      .from("mindmaps")
+      .select("*")
+      .eq("short_id", mindmapId)
+      .eq("user_id", user.id)
+      .is("deleted_at", null)
+      .maybeSingle();
+
+    if (mindmapError) {
+      console.error("[fetchMindmapData] Database error:", mindmapError);
+      throw new Error(
+        `数据库查询失败: ${mindmapError.message}。请检查数据库连接。`
+      );
+    }
+
+    if (!mindmap) {
+      // 思维导图不存在或用户无权访问
+      // 为了安全考虑，统一返回 404，不泄露思维导图是否存在
+      throw new MindmapNotFoundError(mindmapId);
+    }
+
+    // 获取所有节点
+    const { data: nodes, error: nodesError } = await supabase
+      .from("mindmap_nodes")
+      .select("*")
+      .eq("mindmap_id", mindmap.id)
+      .order("order_index", { ascending: true });
+
+    if (nodesError) {
+      console.error("[fetchMindmapData] Nodes query error:", nodesError);
+      throw new Error(`加载节点失败: ${nodesError.message}`);
+    }
+
+    return {
+      mindmap,
+      nodes: nodes || [],
+    };
+  } catch (error) {
+    // 检查错误消息来识别错误类型
+    // 注意：不能使用 instanceof，因为 Next.js server actions 无法正确序列化自定义错误类
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    // 重新抛出认证错误和404错误（保持原始错误消息）
+    if (
+      errorMessage.includes("User not authenticated") ||
+      errorMessage.includes("Mindmap not found")
+    ) {
+      throw error;
+    }
+
+    // 网络错误或其他错误
+    if (error instanceof Error) {
+      // 检查是否是 fetch 失败（网络问题）
+      if (error.message.includes("fetch failed") || error.cause) {
+        console.error("[fetchMindmapData] Network error:", error);
+        throw new Error(
+          "网络连接失败，无法连接到 Supabase 服务器。请检查：\n" +
+            "1. 网络连接是否正常\n" +
+            "2. Supabase 服务是否启动（本地开发需要启动 Docker）\n" +
+            "3. .env.local 中的 SUPABASE_URL 配置是否正确\n" +
+            `\n原始错误: ${error.message}`
+        );
+      }
+      throw error;
+    }
+
+    throw new Error("加载思维导图时发生未知错误");
   }
-
-  // 获取思维导图
-  const { data: mindmap, error: mindmapError } = await supabase
-    .from("mindmaps")
-    .select("*")
-    .eq("short_id", mindmapId)
-    .eq("user_id", user.id)
-    .is("deleted_at", null)
-    .single();
-
-  if (mindmapError || !mindmap) {
-    throw new Error(`Mindmap not found: ${mindmapError?.message}`);
-  }
-
-  // 获取所有节点
-  const { data: nodes, error: nodesError } = await supabase
-    .from("mindmap_nodes")
-    .select("*")
-    .eq("mindmap_id", mindmap.id)
-    .order("order_index", { ascending: true });
-
-  if (nodesError) {
-    throw new Error(`Failed to load nodes: ${nodesError.message}`);
-  }
-
-  return {
-    mindmap,
-    nodes: nodes || [],
-  };
 }
 
 /**
@@ -116,42 +176,90 @@ export async function fetchMindmapData(mindmapId: string): Promise<{
 export async function fetchServerVersion(mindmapId: string): Promise<{
   updated_at: string;
 }> {
-  const supabase = await createServerComponentClient();
+  try {
+    const supabase = await createServerComponentClient();
 
-  // 获取当前用户
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    // 获取当前用户
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
 
-  if (!user) {
-    throw new Error("Unauthorized");
+    if (authError) {
+      console.error("[fetchServerVersion] Auth error:", authError);
+      // 检查是否是 session missing（用户未登录）
+      if (authError.message?.includes("Auth session missing")) {
+        // 用户未登录，抛出 UnauthorizedError
+        throw new UnauthorizedError();
+      }
+      // 其他认证错误（配置问题）
+      throw new Error(
+        `认证失败: ${authError.message}。请检查 Supabase 配置是否正确。`
+      );
+    }
+
+    if (!user) {
+      throw new UnauthorizedError();
+    }
+
+    // 获取思维导图版本信息
+    const { data: mindmap, error } = await supabase
+      .from("mindmaps")
+      .select("updated_at")
+      .eq("short_id", mindmapId)
+      .eq("user_id", user.id)
+      .is("deleted_at", null)
+      .maybeSingle();
+
+    if (error) {
+      console.error("[fetchServerVersion] Database error:", error);
+      throw new Error(`数据库查询失败: ${error.message}。请检查数据库连接。`);
+    }
+
+    if (!mindmap) {
+      console.error("[fetchServerVersion] Mindmap not found:", {
+        mindmapId,
+        userId: user.id,
+      });
+      // 思维导图不存在或用户无权访问
+      // 为了安全考虑，统一返回 404
+      throw new MindmapNotFoundError(mindmapId);
+    }
+
+    return {
+      updated_at: mindmap.updated_at,
+    };
+  } catch (error) {
+    // 检查错误消息来识别错误类型
+    // 注意：不能使用 instanceof，因为 Next.js server actions 无法正确序列化自定义错误类
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    // 重新抛出认证错误和404错误（保持原始错误消息）
+    if (
+      errorMessage.includes("User not authenticated") ||
+      errorMessage.includes("Mindmap not found")
+    ) {
+      throw error;
+    }
+
+    // 网络错误或其他错误
+    if (error instanceof Error) {
+      // 检查是否是 fetch 失败（网络问题）
+      if (error.message.includes("fetch failed") || error.cause) {
+        console.error("[fetchServerVersion] Network error:", error);
+        throw new Error(
+          "网络连接失败，无法连接到 Supabase 服务器。请检查：\n" +
+            "1. 网络连接是否正常\n" +
+            "2. Supabase 服务是否启动（本地开发需要启动 Docker）\n" +
+            "3. .env.local 中的 SUPABASE_URL 配置是否正确\n" +
+            `\n原始错误: ${error.message}`
+        );
+      }
+      throw error;
+    }
+
+    throw new Error("获取思维导图版本信息时发生未知错误");
   }
-
-  // 获取思维导图版本信息
-  const { data: mindmap, error } = await supabase
-    .from("mindmaps")
-    .select("updated_at")
-    .eq("short_id", mindmapId)
-    .eq("user_id", user.id)
-    .is("deleted_at", null)
-    .maybeSingle();
-
-  if (error) {
-    console.error("[fetchServerVersion] Database error:", error);
-    throw new Error(`Failed to fetch mindmap version: ${error.message}`);
-  }
-
-  if (!mindmap) {
-    console.error("[fetchServerVersion] Mindmap not found:", {
-      mindmapId,
-      userId: user.id,
-    });
-    throw new Error(`Mindmap not found or access denied: ${mindmapId}`);
-  }
-
-  return {
-    updated_at: mindmap.updated_at,
-  };
 }
 
 /**

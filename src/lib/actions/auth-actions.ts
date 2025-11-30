@@ -90,7 +90,8 @@ export async function signUp(
  */
 export async function signIn(
   email: string,
-  password: string
+  password: string,
+  redirectTo?: string
 ): Promise<AuthResult> {
   try {
     const supabase = await createServerActionClient();
@@ -105,8 +106,16 @@ export async function signIn(
     }
 
     revalidatePath("/", "layout");
+
+    // 根据 redirectTo 参数决定跳转目标
+    // 避免循环：如果 redirectTo 指向登录页，跳转到 dashboard
+    const destination =
+      redirectTo && !redirectTo.startsWith("/login")
+        ? redirectTo
+        : "/dashboard";
+
     // 在 Server Action 中直接重定向，确保 cookies 已经设置
-    redirect("/dashboard");
+    redirect(destination);
   } catch (error) {
     // 如果是重定向错误，让它正常抛出
     if (error instanceof Error && error.message === "NEXT_REDIRECT") {

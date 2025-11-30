@@ -2,10 +2,24 @@ import { LoginForm } from "@/components/auth/login-form";
 import { getAuthUser } from "@/lib/utils/auth-helpers";
 import { redirect } from "next/navigation";
 
-export default async function LoginPage() {
+interface LoginPageProps {
+  searchParams: Promise<{ redirect?: string }>;
+}
+
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const params = await searchParams;
   const user = await getAuthUser();
 
-  // 如果已登录，重定向到 dashboard
+  // 如果已登录且有 redirect 参数，跳转到指定页面
+  if (user && params.redirect) {
+    // 避免循环：如果 redirect 指向登录页，跳转到 dashboard
+    const redirectPath = params.redirect.startsWith("/login")
+      ? "/dashboard"
+      : params.redirect;
+    redirect(redirectPath);
+  }
+
+  // 如果已登录但没有 redirect 参数，跳转到 dashboard
   if (user) {
     redirect("/dashboard");
   }
@@ -21,7 +35,7 @@ export default async function LoginPage() {
       >
         登录
       </h2>
-      <LoginForm />
+      <LoginForm {...(params.redirect ? { redirect: params.redirect } : {})} />
     </div>
   );
 }

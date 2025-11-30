@@ -13,14 +13,17 @@
 
 "use client";
 
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { Undo2, Redo2, Save, Download, Loader2 } from "lucide-react";
+import toast from "react-hot-toast";
 import { useMindmapStore, useMindmapEditorState } from "@/domain/mindmap-store";
 import { MindmapEditorLayout } from "./mindmap-editor-layout";
 import { CommandButton } from "@/components/common/command-button";
 import { getRootNodeTitle } from "@/lib/utils/mindmap-utils";
+import { ErrorPage } from "@/components/error/error-page";
 
 /**
  * MindmapEditor Props
@@ -35,6 +38,10 @@ export interface MindmapEditorProps {
 export function MindmapEditor({ mindmapId }: MindmapEditorProps) {
   const { openMindmap, shortcutManager, historyManager } = useMindmapStore();
   const editorState = useMindmapEditorState();
+  const router = useRouter();
+
+  // 错误状态管理
+  const [errorType, setErrorType] = useState<"404" | "403" | null>(null);
 
   // 从根节点获取思维导图标题
   const rootTitle = useMemo(() => {
@@ -59,8 +66,39 @@ export function MindmapEditor({ mindmapId }: MindmapEditorProps) {
   }, [keyHandle]);
 
   useEffect(() => {
-    openMindmap(mindmapId);
-  }, [mindmapId, openMindmap]);
+    async function loadMindmap() {
+      try {
+        await openMindmap(mindmapId);
+      } catch (error) {
+        console.error("[MindmapEditor] Failed to load mindmap:", error);
+
+        // Next.js server actions 无法正确序列化自定义错误类
+        // 所以需要通过错误消息来识别错误类型
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+
+        // 根据错误消息识别错误类型
+        if (errorMessage.includes("User not authenticated")) {
+          // 未登录 -> 跳转登录页（带 redirect 参数）
+          const redirectUrl = `/login?redirect=${encodeURIComponent(
+            `/mindmaps/${mindmapId}`
+          )}`;
+          window.location.href = redirectUrl;
+        } else if (errorMessage.includes("Mindmap not found")) {
+          // 404 -> 显示 404 错误页面
+          setErrorType("404");
+        } else {
+          // 其他错误 -> 显示错误提示
+          console.error("[MindmapEditor] Unhandled error:", errorMessage);
+          toast.error(`加载思维导图失败：${errorMessage}`);
+          // 跳转回 dashboard
+          setTimeout(() => router.push("/dashboard"), 2000);
+        }
+      }
+    }
+
+    loadMindmap();
+  }, [mindmapId, openMindmap, router]);
 
   // 动态设置页面标题
   useEffect(() => {
@@ -71,6 +109,23 @@ export function MindmapEditor({ mindmapId }: MindmapEditorProps) {
     }
   }, [editorState, rootTitle]);
 
+  // 如果有错误，显示错误页面
+  if (errorType) {
+    return (
+      <ErrorPage
+        type={errorType}
+        onGoHome={() => router.push("/dashboard")}
+        onLogin={() => {
+          const redirectUrl = `/login?redirect=${encodeURIComponent(
+            `/mindmaps/${mindmapId}`
+          )}`;
+          router.push(redirectUrl);
+        }}
+      />
+    );
+  }
+
+  // 加载中状态
   if (!editorState) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
