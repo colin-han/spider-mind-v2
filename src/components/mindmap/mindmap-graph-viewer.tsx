@@ -82,7 +82,8 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
   const moveNode = useCommand("node.move");
   const editorState = useMindmapEditorState()!;
   const setFocusedArea = useCommand("global.setFocusedArea");
-  const setCurrentNode = useCommand("navigation.setCurrentNode");
+  // 图形点击使用策略B（0% padding），避免破坏双击交互
+  const setCurrentNode = useCommand("navigation.setCurrentNodeMinimalScroll");
 
   // 容器引用,用于计算相对坐标
   const containerRef = useRef<HTMLDivElement>(null);

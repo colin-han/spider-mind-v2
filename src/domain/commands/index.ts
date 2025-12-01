@@ -25,6 +25,7 @@ import "./navigation/collapse-node";
 import "./navigation/expand-node";
 import "./navigation/toggle-collapse";
 import "./navigation/set-current-node";
+import "./navigation/set-current-node-minimal-scroll";
 
 // 全局操作命令
 import "./global/save";

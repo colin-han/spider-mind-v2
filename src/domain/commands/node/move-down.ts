@@ -2,6 +2,7 @@ import { MindmapStore } from "../../mindmap-store.types";
 import { CommandDefinition, registerCommand } from "../../command-registry";
 import { UpdateNodeAction } from "../../actions/update-node";
 import { getChildNodes } from "../../editor-utils";
+import { EnsureCurrentNodeVisibleAction } from "../../actions/ensure-current-node-visible";
 
 type MoveNodeParams = [string?];
 
@@ -66,6 +67,10 @@ export const moveNodeDownCommand: CommandDefinition = {
         newNode: { order_index: targetNode.order_index },
       })
     );
+
+    // 策略A: 确保当前节点在安全区域内（15% padding）
+    // 使用 EnsureCurrentNodeVisibleAction，在执行时才检查和滚动
+    actions.push(new EnsureCurrentNodeVisibleAction(0.15));
 
     return actions;
   },

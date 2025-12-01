@@ -5,6 +5,7 @@ import { AddNodeAction } from "../../actions/add-node";
 import { UpdateNodeAction } from "../../actions/update-node";
 import { SetCurrentNodeAction } from "../../actions/set-current-node";
 import { getChildNodes } from "../../editor-utils";
+import { EnsureCurrentNodeVisibleAction } from "../../actions/ensure-current-node-visible";
 
 type AddChildNodeParams = [string, number?, string?];
 
@@ -95,6 +96,10 @@ export const addChildNodeCommand: CommandDefinition = {
         oldNodeId: root.currentEditor!.currentNode,
       })
     );
+
+    // 策略A: 确保新节点在安全区域内（15% padding）
+    // 使用 EnsureCurrentNodeVisibleAction，在执行时才检查和滚动
+    actions.push(new EnsureCurrentNodeVisibleAction(0.15));
 
     return actions;
   },
