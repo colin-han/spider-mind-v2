@@ -29,6 +29,10 @@ import {
   type AIChatPanelHandle,
 } from "@/components/ai/ai-chat-panel";
 import { useFocusedArea } from "@/lib/hooks/use-focused-area";
+import {
+  getPendingInputChar,
+  clearPendingInputChar,
+} from "@/lib/auto-edit-manager";
 
 /**
  * NodePanel 组件
@@ -64,8 +68,27 @@ export const NodePanel = () => {
   useFocusedArea({
     id: "title-editor",
     onEnter: () => {
+      // 保存原始标题
+      if (node) {
+        setOriginalTitle(node.title);
+      }
+
+      // 检查是否有待输入的字符（自动编辑模式）
+      const pendingChar = getPendingInputChar();
+      if (pendingChar) {
+        // 清空标题（替换模式）并应用待输入字符
+        setEditingTitle(pendingChar);
+        clearPendingInputChar();
+      } else {
+        // 正常模式：选中全部文本
+        // 延迟执行，确保 focus 后再 select
+        setTimeout(() => {
+          titleInputRef.current?.select();
+        }, 0);
+      }
+
+      // 聚焦输入框
       titleInputRef.current?.focus();
-      titleInputRef.current?.select();
     },
     onLeave: (_to, reason) => {
       // 如果是 ESC 触发的离开，回滚到原始值
@@ -237,6 +260,12 @@ export const NodePanel = () => {
               }
             }}
             onFocus={() => setFocusedArea("title-editor")}
+            onCompositionStart={() => {
+              // IME 输入开始
+            }}
+            onCompositionEnd={() => {
+              // IME 输入结束
+            }}
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 outline-none text-gray-900 dark:text-white bg-white dark:bg-gray-800"
             placeholder="节点标题"
           />

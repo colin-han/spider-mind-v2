@@ -42,6 +42,8 @@ import {
   nodeViewportToRfViewport,
 } from "@/domain/utils/viewport-utils";
 import { calibrateFontMetrics } from "@/lib/utils/mindmap/layout-predictor";
+import { isPrintableCharacter } from "@/lib/utils/keyboard";
+import { setPendingInputChar } from "@/lib/auto-edit-manager";
 
 /**
  * MindmapGraphViewer Props
@@ -164,6 +166,40 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
     }
     return undefined;
   }, [dragState.draggedNodeId]);
+
+  // 监听键盘输入 - 自动进入编辑模式
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // 只在 graph 焦点区域且有选中节点时处理
+      if (editorState.focusedArea !== "graph" || !editorState.currentNode) {
+        return;
+      }
+
+      // IME 输入过程中不处理
+      if (event.isComposing) {
+        return;
+      }
+
+      // 检测是否为可打印字符
+      if (isPrintableCharacter(event)) {
+        // 记录输入字符，供 title input 使用
+        setPendingInputChar(event.key);
+
+        // 切换到编辑模式
+        setFocusedArea("title-editor");
+
+        // 阻止事件继续传播（避免被其他监听器处理）
+        event.preventDefault();
+      }
+    };
+
+    // 使用 capture phase 确保最先处理
+    document.addEventListener("keydown", handleKeyDown, true);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown, true);
+    };
+  }, [editorState.focusedArea, editorState.currentNode, setFocusedArea]);
 
   // 转换数据为 React Flow 格式
   const { nodes, edges } = useMemo(() => {
