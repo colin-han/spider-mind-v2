@@ -248,7 +248,7 @@
 
 **当前状态**: ⏳ 命令未定义
 
-**快捷键**: `Cmd+Shift+E`, `Cmd+Shift+C` (已保留，未绑定)
+**快捷键**: `Cmd+Shift+E` (expandAll, 已保留，未绑定), ~~`Cmd+Shift+C`~~ (collapseAll, 已被 `global.copyAsMarkdown` 占用，需要重新分配)
 
 **技术实现**:
 

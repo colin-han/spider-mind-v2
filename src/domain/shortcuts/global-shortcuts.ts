@@ -18,3 +18,6 @@ registerNonEditShortcut(`${mod}+z`, "global.undo", true);
 
 // Cmd+Shift+Z / Ctrl+Shift+Z - 重做
 registerNonEditShortcut(`${mod}+shift+z`, "global.redo", true);
+
+// Cmd+Shift+C / Ctrl+Shift+C - 复制为 Markdown
+registerNonEditShortcut(`${mod}+shift+c`, "global.copyAsMarkdown", true);

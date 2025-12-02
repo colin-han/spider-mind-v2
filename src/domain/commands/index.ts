@@ -33,6 +33,7 @@ import "./global/undo";
 import "./global/redo";
 import "./global/set-focused-area";
 import "./global/export-xmind";
+import "./global/copy-as-markdown";
 
 // AI 操作命令
 import "./ai/ai-assist";
