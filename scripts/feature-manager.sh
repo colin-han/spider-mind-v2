@@ -590,6 +590,84 @@ batch_delete_branches() {
     return 0
 }
 
+# 显示分支操作菜单（二级菜单）
+show_branch_menu() {
+    local branch_line="$1"
+    local branch=$(extract_branch_name "$branch_line")
+
+    # 定义菜单选项
+    local menu_options="📋查看详情 (i)
+📊查看差异 (d)
+⬆️合并此分支到 develop (m)
+🔄合并 develop 到此分支 (b)
+🗑️删除分支 (r)
+↩️返回"
+
+    clear
+    echo ""
+    echo "╭─────────────────────────────────────────────────╮"
+    echo "│ 分支操作菜单: $branch"
+    echo "╰─────────────────────────────────────────────────╯"
+    echo ""
+
+    # 使用 fzf 显示菜单，支持快捷键
+    local result=$(echo "$menu_options" | fzf \
+        --expect=i,d,m,b,r,q \
+        --height=50% \
+        --header="选择要执行的操作（或按对应快捷键 / q:返回）" \
+        --prompt="➤ " \
+        --no-multi \
+        --reverse \
+        --border \
+        --pointer="▶" \
+        2>/dev/null) || return 0
+
+    # 解析结果：第一行是按键，第二行是选中项
+    local key=$(echo "$result" | head -1)
+    local selected=$(echo "$result" | tail -1)
+
+    # 如果用户按了快捷键，将选中项设置为对应的菜单项
+    case "$key" in
+        i) selected="📋查看详情 (i)" ;;
+        d) selected="📊查看差异 (d)" ;;
+        m) selected="⬆️合并此分支到 develop (m)" ;;
+        b) selected="🔄合并 develop 到此分支 (b)" ;;
+        r) selected="🗑️删除分支 (r)" ;;
+        q) return 0 ;;  # 直接返回
+    esac
+
+    clear
+
+    case "$selected" in
+        "📋查看详情 (i)")
+            show_branch_info "$branch_line"
+            read -p "按回车继续..."
+            ;;
+        "📊查看差异 (d)")
+            show_branch_diff "$branch_line"
+            ;;
+        "⬆️合并此分支到 develop (m)")
+            merge_branch "$branch_line"
+            echo ""
+            read -p "按回车继续..."
+            ;;
+        "🔄合并 develop 到此分支 (b)")
+            merge_back_branch "$branch_line"
+            echo ""
+            read -p "按回车继续..."
+            ;;
+        "🗑️删除分支 (r)")
+            remove_branch "$branch_line"
+            echo ""
+            read -p "按回车继续..."
+            ;;
+        *)
+            # 返回
+            return 0
+            ;;
+    esac
+}
+
 # 显示分支详细信息
 show_branch_info() {
     local branch_line="$1"
@@ -694,8 +772,9 @@ run_interactive_mode() {
         # fzf 选择
         local selected=$(echo "$branch_list" | fzf \
             --height=100% \
-            --header="Feature 分支管理 | F2:刷新 i:详情 b:合并develop m:合并到develop d:差异 r:删除 ctrl-d:批量删除 q:退出" \
+            --header="Feature 分支管理 | Enter:菜单 F2:刷新 i:详情 b:合并develop m:合并到develop d:差异 r:删除 ctrl-d:批量删除 q:退出" \
             --bind="f2:reload($RELOAD_CMD)" \
+            --bind="enter:execute-silent(echo menu > $ACTION_FILE; echo {..} > $SELECTED_FILE)+abort" \
             --bind="i:execute-silent(echo info > $ACTION_FILE; echo {..} > $SELECTED_FILE)+abort" \
             --bind="b:execute-silent(echo merge-back > $ACTION_FILE; echo {..} > $SELECTED_FILE)+abort" \
             --bind="m:execute-silent(echo merge > $ACTION_FILE; echo {..} > $SELECTED_FILE)+abort" \
@@ -719,6 +798,13 @@ run_interactive_mode() {
             rm -f "$ACTION_FILE"
 
             case "$action" in
+                menu)
+                    if [[ -f "$SELECTED_FILE" ]]; then
+                        local selected_branch=$(cat "$SELECTED_FILE")
+                        rm -f "$SELECTED_FILE"
+                        show_branch_menu "$selected_branch"
+                    fi
+                    ;;
                 info)
                     if [[ -f "$SELECTED_FILE" ]]; then
                         local selected_branch=$(cat "$SELECTED_FILE")
