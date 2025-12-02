@@ -369,6 +369,97 @@ show_branch_diff() {
     read -p "按回车继续..."
 }
 
+# 合并 develop 到 feature 分支（merge back）
+merge_back_branch() {
+    local branch_line="$1"
+    local branch=$(extract_branch_name "$branch_line")
+
+    echo ""
+    log_info "合并 develop 到 $branch"
+    echo ""
+
+    # 获取 worktree 路径
+    local worktree_path=$(get_branch_worktree "$branch")
+
+    if [[ -n "$worktree_path" ]]; then
+        # 有 worktree，在 worktree 中操作
+        log_info "检测到 worktree: $worktree_path"
+
+        # 检查是否有未提交修改
+        local worktree_status=$(check_worktree_dirty "$worktree_path")
+
+        if [[ "$worktree_status" == "dirty" ]]; then
+            echo ""
+            log_error "Worktree 有未提交修改，无法合并"
+            log_info "请先提交或暂存 worktree 中的修改"
+            echo ""
+            read -p "按回车继续..."
+            return 1
+        fi
+
+        # 确认
+        read -p "确认在 worktree 中合并 develop？(y/n): " response
+        if [[ ! "$response" =~ ^[Yy]$ ]]; then
+            log_info "操作已取消"
+            return 1
+        fi
+
+        echo ""
+
+        # 在 worktree 中合并
+        log_info "在 worktree 中执行合并..."
+        if git -C "$worktree_path" merge develop --no-edit; then
+            echo ""
+            log_success "合并成功"
+            return 0
+        else
+            echo ""
+            log_error "合并失败，可能存在冲突"
+            log_info "请在 worktree 中解决冲突: $worktree_path"
+            return 1
+        fi
+    else
+        # 没有 worktree，在当前目录操作
+        log_info "在当前目录执行合并"
+
+        # 确认
+        read -p "确认合并 develop 到 $branch？(y/n): " response
+        if [[ ! "$response" =~ ^[Yy]$ ]]; then
+            log_info "操作已取消"
+            return 1
+        fi
+
+        echo ""
+
+        # 保存当前分支
+        local current_branch=$(git branch --show-current)
+
+        # 切换到目标分支
+        log_info "切换到分支: $branch"
+        if ! git checkout "$branch" 2>/dev/null; then
+            log_error "切换到分支失败: $branch"
+            return 1
+        fi
+
+        # 合并 develop
+        log_info "合并 develop..."
+        if git merge develop --no-edit; then
+            echo ""
+            log_success "合并成功"
+            # 切换回原分支
+            git checkout "$current_branch" 2>/dev/null
+            return 0
+        else
+            echo ""
+            log_error "合并失败，可能存在冲突"
+            log_info "请解决冲突后继续"
+            # 切换回原分支
+            git checkout "$current_branch" 2>/dev/null
+            return 1
+        fi
+    fi
+}
+
 # 删除分支
 remove_branch() {
     local branch_line="$1"
@@ -603,9 +694,10 @@ run_interactive_mode() {
         # fzf 选择
         local selected=$(echo "$branch_list" | fzf \
             --height=100% \
-            --header="Feature 分支管理 | F2:刷新 i:详情 m:合并 d:差异 r:删除 ctrl-d:批量删除 q:退出" \
+            --header="Feature 分支管理 | F2:刷新 i:详情 b:合并develop m:合并到develop d:差异 r:删除 ctrl-d:批量删除 q:退出" \
             --bind="f2:reload($RELOAD_CMD)" \
             --bind="i:execute-silent(echo info > $ACTION_FILE; echo {..} > $SELECTED_FILE)+abort" \
+            --bind="b:execute-silent(echo merge-back > $ACTION_FILE; echo {..} > $SELECTED_FILE)+abort" \
             --bind="m:execute-silent(echo merge > $ACTION_FILE; echo {..} > $SELECTED_FILE)+abort" \
             --bind="d:execute-silent(echo diff > $ACTION_FILE; echo {..} > $SELECTED_FILE)+abort" \
             --bind="r:execute-silent(echo remove > $ACTION_FILE; echo {..} > $SELECTED_FILE)+abort" \
@@ -633,6 +725,16 @@ run_interactive_mode() {
                         rm -f "$SELECTED_FILE"
                         clear
                         show_branch_info "$selected_branch"
+                        read -p "按回车继续..."
+                    fi
+                    ;;
+                merge-back)
+                    if [[ -f "$SELECTED_FILE" ]]; then
+                        local selected_branch=$(cat "$SELECTED_FILE")
+                        rm -f "$SELECTED_FILE"
+                        clear
+                        merge_back_branch "$selected_branch"
+                        echo ""
                         read -p "按回车继续..."
                     fi
                     ;;
