@@ -1,7 +1,11 @@
 import { MindmapStore, EditorAction } from "../../mindmap-store.types";
 import { CommandDefinition, registerCommand } from "../../command-registry";
 import { SetCurrentNodeAction } from "../../actions/set-current-node";
-import { getNodeDepth, getNodesAtDepth } from "../../editor-utils";
+import {
+  getNodeDepth,
+  getNodesAtDepth,
+  isNodeVisible,
+} from "../../editor-utils";
 import { ensureNodeVisibleAction } from "../../utils/viewport-utils";
 
 /**
@@ -33,16 +37,21 @@ export const selectNextSiblingCommand: CommandDefinition = {
     }
 
     // 获取所有同深度的节点（按深度优先遍历顺序）
-    const nodesAtSameDepth = getNodesAtDepth(state, currentDepth);
+    const allNodesAtSameDepth = getNodesAtDepth(state, currentDepth);
 
-    // 找到当前节点在列表中的位置
-    const currentIndex = nodesAtSameDepth.findIndex(
+    // 过滤出可见的节点
+    const visibleNodes = allNodesAtSameDepth.filter((node) =>
+      isNodeVisible(state, node.short_id)
+    );
+
+    // 找到当前节点在可见节点列表中的位置
+    const currentIndex = visibleNodes.findIndex(
       (n) => n.short_id === currentNode.short_id
     );
 
-    // 如果不是最后一个，选择下一个
-    if (currentIndex >= 0 && currentIndex < nodesAtSameDepth.length - 1) {
-      const nextNode = nodesAtSameDepth[currentIndex + 1];
+    // 如果不是最后一个，选择下一个可见节点
+    if (currentIndex >= 0 && currentIndex < visibleNodes.length - 1) {
+      const nextNode = visibleNodes[currentIndex + 1];
       if (!nextNode) return;
 
       const actions: EditorAction[] = [
@@ -82,15 +91,23 @@ export const selectNextSiblingCommand: CommandDefinition = {
     }
 
     // 获取所有同深度的节点
-    const nodesAtSameDepth = getNodesAtDepth(root.currentEditor!, currentDepth);
+    const allNodesAtSameDepth = getNodesAtDepth(
+      root.currentEditor!,
+      currentDepth
+    );
+
+    // 过滤出可见的节点
+    const visibleNodes = allNodesAtSameDepth.filter((node) =>
+      isNodeVisible(root.currentEditor!, node.short_id)
+    );
 
     // 找到当前节点的位置
-    const currentIndex = nodesAtSameDepth.findIndex(
+    const currentIndex = visibleNodes.findIndex(
       (n) => n.short_id === currentNode.short_id
     );
 
-    // 如果不是最后一个，就可以选择下一个
-    return currentIndex >= 0 && currentIndex < nodesAtSameDepth.length - 1;
+    // 如果不是最后一个可见节点，就可以选择下一个
+    return currentIndex >= 0 && currentIndex < visibleNodes.length - 1;
   },
 };
 

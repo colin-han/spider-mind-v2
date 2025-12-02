@@ -4,6 +4,7 @@ import { generateShortId } from "@/lib/utils/short-id";
 import { AddNodeAction } from "../../actions/add-node";
 import { UpdateNodeAction } from "../../actions/update-node";
 import { SetCurrentNodeAction } from "../../actions/set-current-node";
+import { ExpandNodeAction } from "../../actions/expand-node";
 import { getChildNodes } from "../../editor-utils";
 
 type AddChildNodeParams = [string, number?, string?];
@@ -60,6 +61,12 @@ export const addChildNodeCommand: CommandDefinition = {
     const shortId = generateShortId();
 
     const actions = [];
+
+    // 如果父节点是折叠状态，先展开它
+    if (root.currentEditor!.collapsedNodes.has(normalizedParentId)) {
+      actions.push(new ExpandNodeAction(normalizedParentId));
+    }
+
     actions.push(
       new AddNodeAction({
         id: crypto.randomUUID(), // UUID,用于数据库主键

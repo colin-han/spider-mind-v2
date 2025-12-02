@@ -29,10 +29,7 @@ import {
   type AIChatPanelHandle,
 } from "@/components/ai/ai-chat-panel";
 import { useFocusedArea } from "@/lib/hooks/use-focused-area";
-import {
-  getPendingInputChar,
-  clearPendingInputChar,
-} from "@/lib/auto-edit-manager";
+import { isInAutoEditMode, exitAutoEditMode } from "@/lib/auto-edit-manager";
 
 /**
  * NodePanel 组件
@@ -73,22 +70,20 @@ export const NodePanel = () => {
         setOriginalTitle(node.title);
       }
 
-      // 检查是否有待输入的字符（自动编辑模式）
-      const pendingChar = getPendingInputChar();
-      if (pendingChar) {
-        // 清空标题（替换模式）并应用待输入字符
-        setEditingTitle(pendingChar);
-        clearPendingInputChar();
+      // 聚焦输入框
+      titleInputRef.current?.focus();
+
+      // 检查是否是自动编辑模式（从 graph 触发）
+      if (isInAutoEditMode()) {
+        // 自动编辑模式：清空标题（替换模式）
+        setEditingTitle("");
+        exitAutoEditMode();
       } else {
-        // 正常模式：选中全部文本
-        // 延迟执行，确保 focus 后再 select
+        // 正常模式（F2或双击）：选中全部文本
         setTimeout(() => {
           titleInputRef.current?.select();
         }, 0);
       }
-
-      // 聚焦输入框
-      titleInputRef.current?.focus();
     },
     onLeave: (_to, reason) => {
       // 如果是 ESC 触发的离开，回滚到原始值

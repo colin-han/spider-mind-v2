@@ -43,7 +43,7 @@ import {
 } from "@/domain/utils/viewport-utils";
 import { calibrateFontMetrics } from "@/lib/utils/mindmap/layout-predictor";
 import { isPrintableCharacter } from "@/lib/utils/keyboard";
-import { setPendingInputChar } from "@/lib/auto-edit-manager";
+import { enterAutoEditMode } from "@/lib/auto-edit-manager";
 
 /**
  * MindmapGraphViewer Props
@@ -182,14 +182,14 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
 
       // 检测是否为可打印字符
       if (isPrintableCharacter(event)) {
-        // 记录输入字符，供 title input 使用
-        setPendingInputChar(event.key);
+        // 标记进入自动编辑模式
+        enterAutoEditMode();
 
         // 切换到编辑模式
         setFocusedArea("title-editor");
 
-        // 阻止事件继续传播（避免被其他监听器处理）
-        event.preventDefault();
+        // 阻止事件传播到其他监听器，但不阻止默认行为（让 IME 正常启动）
+        event.stopPropagation();
       }
     };
 

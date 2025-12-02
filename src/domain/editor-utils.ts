@@ -127,6 +127,29 @@ function traverseDepthFirst(state: EditorState, rootId: string): MindmapNode[] {
 }
 
 /**
+ * 检查节点是否可见（即其所有祖先节点都未被折叠）
+ */
+export function isNodeVisible(state: EditorState, nodeId: string): boolean {
+  const node = state.nodes.get(nodeId);
+  if (!node) return false;
+
+  // 根节点总是可见的
+  if (!node.parent_short_id) return true;
+
+  // 获取所有祖先节点
+  const ancestors = getAscendantNodes(state, nodeId);
+
+  // 如果任何祖先节点被折叠，则该节点不可见
+  for (const ancestor of ancestors) {
+    if (state.collapsedNodes.has(ancestor.short_id)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/**
  * 获取所有同深度的节点，按深度优先遍历顺序排列
  */
 export function getNodesAtDepth(

@@ -23,6 +23,8 @@ import "./navigation/select-previous-sibling";
 import "./navigation/select-next-sibling";
 import "./navigation/collapse-node";
 import "./navigation/expand-node";
+import "./navigation/collapse-subtree-recursive";
+import "./navigation/expand-subtree-recursive";
 import "./navigation/toggle-collapse";
 import "./navigation/set-current-node";
 

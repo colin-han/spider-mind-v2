@@ -1,31 +1,31 @@
 /**
  * 自动编辑模式管理器
  *
- * 管理从 Graph View 到 Node Panel 的待输入字符传递
+ * 管理自动编辑模式的状态标志
  */
 
-let pendingInputChar: string | null = null;
+let isAutoEditMode = false;
 
 /**
- * 设置待输入字符
+ * 标记进入自动编辑模式
  * 当用户在 Graph View 中输入可打印字符时调用
  */
-export function setPendingInputChar(char: string): void {
-  pendingInputChar = char;
+export function enterAutoEditMode(): void {
+  isAutoEditMode = true;
 }
 
 /**
- * 获取待输入字符
- * 在 title input 获得焦点后调用，获取需要应用的字符
+ * 检查是否处于自动编辑模式
+ * 在 title input 获得焦点后调用
  */
-export function getPendingInputChar(): string | null {
-  return pendingInputChar;
+export function isInAutoEditMode(): boolean {
+  return isAutoEditMode;
 }
 
 /**
- * 清除待输入字符
- * 在应用待输入字符后调用
+ * 退出自动编辑模式
+ * 在 title input 处理完自动编辑后调用
  */
-export function clearPendingInputChar(): void {
-  pendingInputChar = null;
+export function exitAutoEditMode(): void {
+  isAutoEditMode = false;
 }

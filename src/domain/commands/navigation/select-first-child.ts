@@ -1,6 +1,7 @@
 import { MindmapStore, EditorAction } from "../../mindmap-store.types";
 import { CommandDefinition, registerCommand } from "../../command-registry";
 import { SetCurrentNodeAction } from "../../actions/set-current-node";
+import { ExpandNodeAction } from "../../actions/expand-node";
 import { getChildNodes } from "../../editor-utils";
 import { ensureNodeVisibleAction } from "../../utils/viewport-utils";
 
@@ -35,12 +36,19 @@ export const selectFirstChildCommand: CommandDefinition = {
       return;
     }
 
-    const actions: EditorAction[] = [
+    const actions: EditorAction[] = [];
+
+    // 如果当前节点是折叠状态，先展开它
+    if (state.collapsedNodes.has(currentNode.short_id)) {
+      actions.push(new ExpandNodeAction(currentNode.short_id));
+    }
+
+    actions.push(
       new SetCurrentNodeAction({
         oldNodeId: currentNode.short_id,
         newNodeId: firstChild.short_id,
-      }),
-    ];
+      })
+    );
 
     // 确保子节点在可视区域内
     const viewportAction = ensureNodeVisibleAction(firstChild.short_id, state);
