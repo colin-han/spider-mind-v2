@@ -1,15 +1,23 @@
+/**
+ * 设置当前节点（最小滚动）命令
+ *
+ * 用于图形视图的鼠标点击交互
+ * 采用策略B（0% padding），仅确保节点完全可见
+ * 避免节点移动导致双击失败
+ */
+
 import { CommandDefinition } from "../../command-registry";
 import { MindmapStore, EditorAction } from "../../mindmap-store.types";
 import { SetCurrentNodeAction } from "../../actions/set-current-node";
 import { registerCommand } from "../../command-registry";
 import { ensureNodeVisibleAction } from "../../utils/viewport-utils";
 
-export type SetCurrentNodeParams = [nodeId: string];
+export type SetCurrentNodeMinimalScrollParams = [nodeId: string];
 
-export const setCurrentNode: CommandDefinition = {
-  id: "navigation.setCurrentNode",
-  name: "设置当前节点",
-  description: "设置当前选中的节点",
+export const setCurrentNodeMinimalScroll: CommandDefinition = {
+  id: "navigation.setCurrentNodeMinimalScroll",
+  name: "设置当前节点（最小滚动）",
+  description: "设置当前节点，仅在节点不完全可见时最小滚动（策略B）",
   category: "navigation",
   actionBased: true,
   undoable: false,
@@ -21,7 +29,7 @@ export const setCurrentNode: CommandDefinition = {
     },
   ],
   handler: (root: MindmapStore, params?: unknown[]) => {
-    const [nodeId] = (params as SetCurrentNodeParams) || [];
+    const [nodeId] = (params as SetCurrentNodeMinimalScrollParams) || [];
     const state = root.currentEditor!;
 
     const actions: EditorAction[] = [
@@ -31,8 +39,8 @@ export const setCurrentNode: CommandDefinition = {
       }),
     ];
 
-    // 策略A: 15% padding (确保在安全区域内)
-    const viewportAction = ensureNodeVisibleAction(nodeId, state, 0.15);
+    // 策略B: 0% padding (仅确保完全可见，不破坏双击)
+    const viewportAction = ensureNodeVisibleAction(nodeId, state, 0);
     if (viewportAction) {
       actions.push(viewportAction);
     }
@@ -41,4 +49,4 @@ export const setCurrentNode: CommandDefinition = {
   },
 };
 
-registerCommand(setCurrentNode);
+registerCommand(setCurrentNodeMinimalScroll);

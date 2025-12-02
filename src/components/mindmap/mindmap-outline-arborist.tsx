@@ -16,8 +16,11 @@
 import { useEffect, useRef, memo, useMemo, useState, useCallback } from "react";
 import { ChevronLeft, ChevronRight, BookOpen } from "lucide-react";
 import { Tree, NodeRendererProps, TreeApi } from "react-arborist";
-import { useMindmapEditorState, useMindmapStore } from "@/domain/mindmap-store";
-import { SetCurrentNodeAction } from "@/domain/actions/set-current-node";
+import {
+  useMindmapEditorState,
+  useMindmapStore,
+  useCommand,
+} from "@/domain/mindmap-store";
 import { SetFocusedAreaAction } from "@/domain/actions/set-focused-area";
 import type { MindmapNode } from "@/lib/types";
 import { cn } from "@/lib/utils/cn";
@@ -73,24 +76,21 @@ function Node({ node, style, dragHandle }: NodeRendererProps<TreeNode>) {
   const editorState = useMindmapEditorState()!;
   const { acceptActions } = useMindmapStore();
   const isSelected = editorState.currentNode === node.id;
+  // 使用命令设置当前节点（自动包含策略A滚动逻辑）
+  const setCurrentNode = useCommand("navigation.setCurrentNode");
 
   const handleClick = useCallback(async () => {
+    // 使用命令设置当前节点（自动包含策略A滚动逻辑）
+    await setCurrentNode(node.id);
+
+    // 设置焦点区域
     await acceptActions([
-      new SetCurrentNodeAction({
-        oldNodeId: editorState.currentNode,
-        newNodeId: node.id,
-      }),
       new SetFocusedAreaAction({
         oldArea: editorState.focusedArea,
         newArea: "outline",
       }),
     ]);
-  }, [
-    node.id,
-    editorState.currentNode,
-    editorState.focusedArea,
-    acceptActions,
-  ]);
+  }, [node.id, editorState.focusedArea, setCurrentNode, acceptActions]);
 
   const handleToggle = (e: React.MouseEvent) => {
     e.stopPropagation(); // 阻止事件冒泡，避免触发节点选中

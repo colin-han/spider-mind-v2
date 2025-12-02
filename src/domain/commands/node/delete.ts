@@ -3,6 +3,7 @@ import { CommandDefinition, registerCommand } from "../../command-registry";
 import { RemoveNodeAction } from "../../actions/remove-node";
 import { SetCurrentNodeAction } from "../../actions/set-current-node";
 import { getDescendantNodes, getChildNodes } from "../../editor-utils";
+import { EnsureCurrentNodeVisibleAction } from "../../actions/ensure-current-node-visible";
 
 type DeleteNodeParams = [string?];
 
@@ -82,6 +83,10 @@ export const deleteNodeCommand: CommandDefinition = {
         newNodeId: nextNodeId,
       })
     );
+
+    // 策略A: 确保新节点在安全区域内（15% padding）
+    // 使用 EnsureCurrentNodeVisibleAction，在执行时才检查和滚动
+    actions.push(new EnsureCurrentNodeVisibleAction(0.15));
 
     return actions;
   },

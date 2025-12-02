@@ -61,10 +61,11 @@ export const selectPreviousSiblingCommand: CommandDefinition = {
         }),
       ];
 
-      // 确保上一个节点在可视区域内
+      // 策略A: 15% padding (确保在安全区域内)
       const viewportAction = ensureNodeVisibleAction(
         previousNode.short_id,
-        state
+        state,
+        0.15
       );
       if (viewportAction) {
         actions.push(viewportAction);

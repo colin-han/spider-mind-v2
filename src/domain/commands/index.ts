@@ -27,6 +27,7 @@ import "./navigation/collapse-subtree-recursive";
 import "./navigation/expand-subtree-recursive";
 import "./navigation/toggle-collapse";
 import "./navigation/set-current-node";
+import "./navigation/set-current-node-minimal-scroll";
 
 // 全局操作命令
 import "./global/save";
@@ -34,6 +35,7 @@ import "./global/undo";
 import "./global/redo";
 import "./global/set-focused-area";
 import "./global/export-xmind";
+import "./global/copy-as-markdown";
 
 // AI 操作命令
 import "./ai/ai-assist";
