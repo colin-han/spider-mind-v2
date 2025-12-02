@@ -326,8 +326,9 @@ merge_branch() {
     log_info "合并分支: $branch 到 develop"
     echo ""
 
-    # 确认
-    read -p "确认合并？(y/n): " response
+    # 确认（默认为 y）
+    read -p "确认合并？[Y/n]: " response
+    response=${response:-y}
     if [[ ! "$response" =~ ^[Yy]$ ]]; then
         log_info "操作已取消"
         return 1
@@ -397,8 +398,9 @@ merge_back_branch() {
             return 1
         fi
 
-        # 确认
-        read -p "确认在 worktree 中合并 develop？(y/n): " response
+        # 确认（默认为 y）
+        read -p "确认在 worktree 中合并 develop？[Y/n]: " response
+        response=${response:-y}
         if [[ ! "$response" =~ ^[Yy]$ ]]; then
             log_info "操作已取消"
             return 1
@@ -422,8 +424,9 @@ merge_back_branch() {
         # 没有 worktree，在当前目录操作
         log_info "在当前目录执行合并"
 
-        # 确认
-        read -p "确认合并 develop 到 $branch？(y/n): " response
+        # 确认（默认为 y）
+        read -p "确认合并 develop 到 $branch？[Y/n]: " response
+        response=${response:-y}
         if [[ ! "$response" =~ ^[Yy]$ ]]; then
             log_info "操作已取消"
             return 1
@@ -482,7 +485,8 @@ remove_branch() {
     if ! is_branch_merged "$branch"; then
         log_warning "警告: 该分支尚未合并到 develop"
         echo ""
-        read -p "确认删除未合并的分支？(y/n): " response
+        read -p "确认删除未合并的分支？[y/N]: " response
+        response=${response:-n}
         if [[ ! "$response" =~ ^[Yy]$ ]]; then
             log_info "操作已取消"
             return 1
@@ -497,7 +501,8 @@ remove_branch() {
             return 1
         fi
     else
-        read -p "确认删除分支 $branch？(y/n): " response
+        read -p "确认删除分支 $branch？[y/N]: " response
+        response=${response:-n}
         if [[ ! "$response" =~ ^[Yy]$ ]]; then
             log_info "操作已取消"
             return 1
@@ -563,8 +568,9 @@ batch_delete_branches() {
     echo "共 ${#branches_to_delete[@]} 个分支"
     echo ""
 
-    # 确认
-    read -p "确认批量删除？(y/n): " response
+    # 确认（默认为 n）
+    read -p "确认批量删除？[y/N]: " response
+    response=${response:-n}
     if [[ ! "$response" =~ ^[Yy]$ ]]; then
         log_info "操作已取消"
         return 1
