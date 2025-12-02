@@ -14,6 +14,8 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+GRAY='\033[0;90m'
 NC='\033[0m' # No Color
 
 # 临时文件
@@ -49,6 +51,109 @@ log_warning() {
 
 log_error() {
     echo -e "${RED}❌ $1${NC}"
+}
+
+# 获取最后提交时间（相对时间）
+get_last_commit_time() {
+    local branch="$1"
+    git log -1 --format="%ar" "$branch" 2>/dev/null || echo "未知"
+}
+
+# 获取提交数量（相对 develop）
+get_commit_count() {
+    local branch="$1"
+    local count=$(git rev-list --count develop.."$branch" 2>/dev/null)
+    echo "${count:-0}"
+}
+
+# 检查 worktree 是否有未提交修改
+check_worktree_dirty() {
+    local worktree_path="$1"
+
+    if [[ -z "$worktree_path" ]]; then
+        echo ""
+        return
+    fi
+
+    if [[ -n $(git -C "$worktree_path" status --porcelain 2>/dev/null) ]]; then
+        echo "dirty"
+    else
+        echo "clean"
+    fi
+}
+
+# 格式化 worktree 状态符号
+format_worktree_status() {
+    local status="$1"
+
+    case "$status" in
+        dirty)
+            echo " ${YELLOW}⚠️${NC}"
+            ;;
+        clean)
+            echo " ${GREEN}✓${NC}"
+            ;;
+        *)
+            echo ""
+            ;;
+    esac
+}
+
+# 从格式化的行中提取分支名
+extract_branch_name() {
+    local branch_line="$1"
+    # 移除 ANSI 颜色代码，提取第二列（分支名）
+    echo "$branch_line" | sed -E 's/\x1b\[[0-9;]*m//g' | awk '{print $2}'
+}
+
+# 获取分支详细信息（用于详情视图）
+get_branch_details() {
+    local branch="$1"
+
+    # 最后提交的绝对时间
+    local commit_time_abs=$(git log -1 --format="%ci" "$branch" 2>/dev/null || echo "未知")
+
+    # 提交者
+    local commit_author=$(git log -1 --format="%an <%ae>" "$branch" 2>/dev/null || echo "未知")
+
+    # 提交信息
+    local commit_message=$(git log -1 --format="%s" "$branch" 2>/dev/null || echo "无提交信息")
+
+    # 文件修改统计
+    local files_stat=$(git diff --shortstat develop.."$branch" 2>/dev/null || echo "")
+
+    # 输出为分隔的字符串（使用 | 分隔）
+    echo "${commit_time_abs}|${commit_author}|${commit_message}|${files_stat}"
+}
+
+# 获取 worktree 详细状态
+get_worktree_details() {
+    local worktree_path="$1"
+
+    if [[ -z "$worktree_path" ]] || [[ ! -d "$worktree_path" ]]; then
+        echo ""
+        return
+    fi
+
+    # 获取状态摘要
+    local status=$(git -C "$worktree_path" status --short 2>/dev/null)
+
+    if [[ -z "$status" ]]; then
+        echo ""
+        return
+    fi
+
+    # 统计修改类型
+    local modified=$(echo "$status" | grep -c "^ M" || echo "0")
+    local added=$(echo "$status" | grep -c "^??" || echo "0")
+    local deleted=$(echo "$status" | grep -c "^ D" || echo "0")
+
+    local result=""
+    [[ "$modified" -gt 0 ]] && result="${modified} 个文件已修改"
+    [[ "$added" -gt 0 ]] && result="${result}${result:+，}${added} 个新文件"
+    [[ "$deleted" -gt 0 ]] && result="${result}${result:+，}${deleted} 个文件已删除"
+
+    echo "$result"
 }
 
 # ============================================================================
@@ -175,21 +280,35 @@ generate_branch_list() {
 
     while IFS= read -r branch; do
         # 检查是否已合并
-        local merged_mark="[ ]"
+        local merged_mark="${GRAY}•${NC}"
         if is_branch_merged "$branch"; then
-            merged_mark="[✓]"
+            merged_mark="${GREEN}✓${NC}"
         fi
+
+        # 获取最后提交时间
+        local commit_time=$(get_last_commit_time "$branch")
+        local time_info="${CYAN}(${commit_time})${NC}"
+
+        # 获取提交数量
+        local commit_count=$(get_commit_count "$branch")
+        local count_info="${BLUE}+${commit_count}↑${NC}"
 
         # 获取 worktree 路径
         local worktree_path=$(get_branch_worktree "$branch")
         local worktree_info=""
+        local worktree_status_symbol=""
+
         if [[ -n "$worktree_path" ]]; then
             local formatted_path=$(format_worktree_path "$worktree_path")
             worktree_info=" → $formatted_path"
+
+            # 检查 worktree 状态
+            local worktree_status=$(check_worktree_dirty "$worktree_path")
+            worktree_status_symbol=$(format_worktree_status "$worktree_status")
         fi
 
         # 输出格式化的分支信息
-        echo "${merged_mark} ${branch}${worktree_info}"
+        echo -e "${merged_mark} ${branch} ${time_info} ${count_info}${worktree_info}${worktree_status_symbol}"
     done <<< "$branches"
 }
 
@@ -201,7 +320,7 @@ generate_branch_list() {
 merge_branch() {
     local branch_line="$1"
     # 从格式化的行中提取分支名
-    local branch=$(echo "$branch_line" | sed -E 's/^\[[✓ ]\] ([^ ]+)( →.*)?$/\1/')
+    local branch=$(extract_branch_name "$branch_line")
 
     echo ""
     log_info "合并分支: $branch 到 develop"
@@ -232,7 +351,7 @@ merge_branch() {
 show_branch_diff() {
     local branch_line="$1"
     # 从格式化的行中提取分支名
-    local branch=$(echo "$branch_line" | sed -E 's/^\[[✓ ]\] ([^ ]+)( →.*)?$/\1/')
+    local branch=$(extract_branch_name "$branch_line")
 
     clear
     echo ""
@@ -253,9 +372,8 @@ show_branch_diff() {
 # 删除分支
 remove_branch() {
     local branch_line="$1"
-    # 从格式化的行中提取信息
-    local merged_mark=$(echo "$branch_line" | sed -E 's/^(\[[✓ ]\]).*$/\1/')
-    local branch=$(echo "$branch_line" | sed -E 's/^\[[✓ ]\] ([^ ]+)( →.*)?$/\1/')
+    # 从格式化的行中提取分支名
+    local branch=$(extract_branch_name "$branch_line")
     local has_worktree=$(echo "$branch_line" | grep -q " → " && echo "yes" || echo "no")
 
     echo ""
@@ -270,7 +388,7 @@ remove_branch() {
     fi
 
     # 检查是否已合并
-    if [[ "$merged_mark" == "[ ]" ]]; then
+    if ! is_branch_merged "$branch"; then
         log_warning "警告: 该分支尚未合并到 develop"
         echo ""
         read -p "确认删除未合并的分支？(y/n): " response
@@ -381,6 +499,85 @@ batch_delete_branches() {
     return 0
 }
 
+# 显示分支详细信息
+show_branch_info() {
+    local branch_line="$1"
+    # 从格式化的行中提取分支名
+    local branch=$(extract_branch_name "$branch_line")
+
+    echo ""
+    echo "╭─────────────────────────────────────────────────╮"
+    echo "│ 分支详情: $branch"
+    echo "╰─────────────────────────────────────────────────╯"
+    echo ""
+
+    # 状态部分
+    echo -e "${BLUE}状态${NC}"
+
+    # 合并状态
+    if is_branch_merged "$branch"; then
+        echo -e "  合并状态: ${GREEN}✓ 已合并到 develop${NC}"
+    else
+        echo -e "  合并状态: ${GRAY}• 未合并${NC}"
+    fi
+
+    # Worktree 信息
+    local worktree_path=$(get_branch_worktree "$branch")
+    if [[ -n "$worktree_path" ]]; then
+        local worktree_status=$(check_worktree_dirty "$worktree_path")
+        if [[ "$worktree_status" == "dirty" ]]; then
+            echo -e "  Worktree: $worktree_path ${YELLOW}⚠️ 有未提交修改${NC}"
+        else
+            echo -e "  Worktree: $worktree_path ${GREEN}✓ 工作区干净${NC}"
+        fi
+    else
+        echo -e "  Worktree: ${GRAY}无关联${NC}"
+    fi
+
+    echo ""
+
+    # 最后提交部分
+    echo -e "${BLUE}最后提交${NC}"
+
+    local details=$(get_branch_details "$branch")
+    IFS='|' read -r commit_time_abs commit_author commit_message files_stat <<< "$details"
+
+    local commit_time_rel=$(get_last_commit_time "$branch")
+    echo "  时间: $commit_time_rel ($commit_time_abs)"
+    echo "  作者: $commit_author"
+    echo "  信息: $commit_message"
+
+    echo ""
+
+    # 分支统计部分
+    echo -e "${BLUE}分支统计${NC}"
+
+    local commit_count=$(get_commit_count "$branch")
+    echo "  相对 develop: 领先 ${commit_count} 个提交"
+
+    if [[ -n "$files_stat" ]]; then
+        echo "  文件修改: $files_stat"
+    else
+        echo "  文件修改: 无修改"
+    fi
+
+    # Worktree 详细状态（如果有）
+    if [[ -n "$worktree_path" ]]; then
+        echo ""
+        echo -e "${BLUE}Worktree 状态${NC}"
+        echo "  工作目录: $worktree_path"
+
+        local worktree_details=$(get_worktree_details "$worktree_path")
+        if [[ -n "$worktree_details" ]]; then
+            echo "  未提交修改: $worktree_details"
+        else
+            echo -e "  未提交修改: ${GREEN}工作区干净${NC}"
+        fi
+    fi
+
+    echo ""
+}
+
 # ============================================================================
 # 交互界面
 # ============================================================================
@@ -406,8 +603,9 @@ run_interactive_mode() {
         # fzf 选择
         local selected=$(echo "$branch_list" | fzf \
             --height=100% \
-            --header="Feature 分支管理 | F2:刷新 m:合并 d:差异 r:删除 ctrl-d:批量删除 q:退出" \
+            --header="Feature 分支管理 | F2:刷新 i:详情 m:合并 d:差异 r:删除 ctrl-d:批量删除 q:退出" \
             --bind="f2:reload($RELOAD_CMD)" \
+            --bind="i:execute-silent(echo info > $ACTION_FILE; echo {..} > $SELECTED_FILE)+abort" \
             --bind="m:execute-silent(echo merge > $ACTION_FILE; echo {..} > $SELECTED_FILE)+abort" \
             --bind="d:execute-silent(echo diff > $ACTION_FILE; echo {..} > $SELECTED_FILE)+abort" \
             --bind="r:execute-silent(echo remove > $ACTION_FILE; echo {..} > $SELECTED_FILE)+abort" \
@@ -419,6 +617,7 @@ run_interactive_mode() {
             --no-multi \
             --reverse \
             --border \
+            --ansi \
             --color="header:italic:underline" \
             2>/dev/null) || true
 
@@ -428,6 +627,15 @@ run_interactive_mode() {
             rm -f "$ACTION_FILE"
 
             case "$action" in
+                info)
+                    if [[ -f "$SELECTED_FILE" ]]; then
+                        local selected_branch=$(cat "$SELECTED_FILE")
+                        rm -f "$SELECTED_FILE"
+                        clear
+                        show_branch_info "$selected_branch"
+                        read -p "按回车继续..."
+                    fi
+                    ;;
                 merge)
                     if [[ -f "$SELECTED_FILE" ]]; then
                         local selected_branch=$(cat "$SELECTED_FILE")

@@ -7,7 +7,11 @@ import { signIn } from "@/lib/actions/auth-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-export function LoginForm() {
+interface LoginFormProps {
+  redirect?: string;
+}
+
+export function LoginForm({ redirect }: LoginFormProps) {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
@@ -19,7 +23,7 @@ export function LoginForm() {
     setLoading(true);
 
     try {
-      const result = await signIn(formData.email, formData.password);
+      const result = await signIn(formData.email, formData.password, redirect);
 
       // 如果返回结果，说明登录失败（成功会直接 redirect）
       if (result && !result.success) {
