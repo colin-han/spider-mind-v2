@@ -310,11 +310,46 @@ generate_branch_list() {
         # 输出格式化的分支信息
         echo -e "${merged_mark} ${branch} ${time_info} ${count_info}${worktree_info}${worktree_status_symbol}"
     done <<< "$branches"
+
+    # 添加底部菜单（用空行分隔，视觉上区分）
+    echo ""
+    echo "📤 推送develop分支代码 (p)"
+    echo "🗑️  批量删除已合并分支 (ctrl-d)"
+    echo "🔄 刷新列表 (F2)"
+    echo "👋 退出 (q)"
 }
 
 # ============================================================================
 # 分支操作
 # ============================================================================
+
+# 推送代码到远程
+push_code() {
+    echo ""
+    log_info "推送 develop 分支到远程"
+    echo ""
+
+    # 确认（默认为 y）
+    read -p "确认推送 develop 到远程？[Y/n]: " response
+    response=${response:-y}
+    if [[ ! "$response" =~ ^[Yy]$ ]]; then
+        log_info "操作已取消"
+        return 1
+    fi
+
+    echo ""
+
+    # 推送到远程
+    if git push origin develop; then
+        echo ""
+        log_success "推送成功"
+        return 0
+    else
+        echo ""
+        log_error "推送失败"
+        return 1
+    fi
+}
 
 # 合并分支
 merge_branch() {
@@ -761,8 +796,8 @@ run_interactive_mode() {
     # 获取脚本路径，用于 reload 命令
     local SCRIPT_PATH="${BASH_SOURCE[0]}"
 
-    # 构建 reload 命令：在子 shell 中 source 脚本并生成分支列表
-    local RELOAD_CMD="FZF_RELOAD_MODE=1 source '$SCRIPT_PATH' 2>/dev/null && generate_branch_list 2>/dev/null || echo ''"
+    # 构建 reload 命令：在子 shell 中 source 脚本并生成分支列表（过滤空行）
+    local RELOAD_CMD="FZF_RELOAD_MODE=1 source '$SCRIPT_PATH' 2>/dev/null && generate_branch_list 2>/dev/null | grep -v '^[[:space:]]*$' || echo ''"
 
     while true; do
         # 生成分支列表
@@ -775,10 +810,10 @@ run_interactive_mode() {
             exit 0
         fi
 
-        # fzf 选择
-        local selected=$(echo "$branch_list" | fzf \
+        # fzf 选择（过滤空行）
+        local selected=$(echo "$branch_list" | grep -v '^[[:space:]]*$' | fzf \
             --height=100% \
-            --header="Feature 分支管理 | Enter:菜单 F2:刷新 i:详情 b:合并develop m:合并到develop d:差异 r:删除 ctrl-d:批量删除 q:退出" \
+            --header="Feature 分支管理 | Enter:菜单 F2:刷新 i:详情 b:合并develop m:合并到develop d:差异 r:删除 ctrl-d:批量删除 p:推送 q:退出" \
             --bind="f2:reload($RELOAD_CMD)" \
             --bind="enter:execute-silent(echo menu > $ACTION_FILE; echo {..} > $SELECTED_FILE)+abort" \
             --bind="i:execute-silent(echo info > $ACTION_FILE; echo {..} > $SELECTED_FILE)+abort" \
@@ -786,6 +821,7 @@ run_interactive_mode() {
             --bind="m:execute-silent(echo merge > $ACTION_FILE; echo {..} > $SELECTED_FILE)+abort" \
             --bind="d:execute-silent(echo diff > $ACTION_FILE; echo {..} > $SELECTED_FILE)+abort" \
             --bind="r:execute-silent(echo remove > $ACTION_FILE; echo {..} > $SELECTED_FILE)+abort" \
+            --bind="p:execute-silent(echo push > $ACTION_FILE)+abort" \
             --bind="ctrl-d:execute-silent(echo batch-delete > $ACTION_FILE)+abort" \
             --bind="q:abort" \
             --prompt="选择分支: " \
@@ -808,7 +844,32 @@ run_interactive_mode() {
                     if [[ -f "$SELECTED_FILE" ]]; then
                         local selected_branch=$(cat "$SELECTED_FILE")
                         rm -f "$SELECTED_FILE"
-                        show_branch_menu "$selected_branch"
+
+                        # 检查是否选中了底部菜单项
+                        case "$selected_branch" in
+                            *"📤 推送develop分支代码"*)
+                                clear
+                                push_code
+                                echo ""
+                                read -p "按回车继续..."
+                                ;;
+                            *"🗑️  批量删除已合并分支"*)
+                                clear
+                                batch_delete_branches
+                                ;;
+                            *"🔄 刷新列表"*)
+                                # 刷新列表（continue到下一次循环）
+                                clear
+                                ;;
+                            *"👋 退出"*)
+                                # 退出（设置退出标志）
+                                break
+                                ;;
+                            *)
+                                # 分支项，显示二级菜单
+                                show_branch_menu "$selected_branch"
+                                ;;
+                        esac
                     fi
                     ;;
                 info)
@@ -861,10 +922,45 @@ run_interactive_mode() {
                     clear
                     batch_delete_branches
                     ;;
+                push)
+                    clear
+                    push_code
+                    echo ""
+                    read -p "按回车继续..."
+                    ;;
             esac
         else
-            # 用户按 q 或 Ctrl+C 退出
-            break
+            # 检查是否选择了菜单项
+            if [[ -n "$selected" ]]; then
+                case "$selected" in
+                    *"📤 推送develop分支代码"*)
+                        clear
+                        push_code
+                        echo ""
+                        read -p "按回车继续..."
+                        ;;
+                    *"🗑️  批量删除已合并分支"*)
+                        clear
+                        batch_delete_branches
+                        ;;
+                    *"🔄 刷新列表"*)
+                        # 刷新列表（continue到下一次循环）
+                        clear
+                        continue
+                        ;;
+                    *"👋 退出"*)
+                        # 退出
+                        break
+                        ;;
+                    *)
+                        # 用户按 q 或 Ctrl+C 退出
+                        break
+                        ;;
+                esac
+            else
+                # 用户按 q 或 Ctrl+C 退出
+                break
+            fi
         fi
 
         # 清屏准备下一次循环
