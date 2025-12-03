@@ -3,8 +3,15 @@
 ## 文档信息
 
 - **创建日期**: 2025-11-06
-- **最后更新**: 2025-11-29
-- **版本**: 1.2.1
+- **最后更新**: 2025-12-03
+- **版本**: 1.3.0
+- **变更说明**:
+  - 添加 Action 汇总表（12 个 Action）
+  - 添加持久化策略决策树
+  - 新增 AI Message 相关 Action（AddAIMessageAction, UpdateAIMessageMetadataAction）
+  - 新增 EnsureCurrentNodeVisibleAction
+  - 更新 AddNodeAction 和 RemoveNodeAction 描述，与实际实现保持一致
+  - 完善相关代码位置索引
 - **相关文档**:
   - [领域层架构设计](./domain-layer-architecture.md)
   - [Command 层架构设计](./command-layer-design.md)
@@ -45,6 +52,51 @@ Action 层是领域层中负责**状态变更**的核心层，它定义了所有
 4. **类型安全**: 完整的 TypeScript 类型定义
 5. **职责单一**: 每个 Action 只做一件事
 
+## Action 汇总表
+
+当前系统中共有 **12 个 Action**，按持久化策略分类如下：
+
+| Action 名称                          | 类型标识                   | 持久化目标                                | 支持 Undo | 主要用途                     |
+| ------------------------------------ | -------------------------- | ----------------------------------------- | --------- | ---------------------------- |
+| **服务端数据（同步到 Supabase）**    |
+| `AddNodeAction`                      | addChildNode               | mindmap_nodes<br>dirty=true               | ✅ 是     | 添加新节点到思维导图         |
+| `RemoveNodeAction`                   | removeNode                 | mindmap_nodes<br>deleted=true, dirty=true | ✅ 是     | 软删除节点                   |
+| `UpdateNodeAction`                   | updateNode                 | mindmap_nodes<br>dirty=true               | ✅ 是     | 更新节点字段（标题、内容等） |
+| `AddAIMessageAction`                 | ADD_AI_MESSAGE             | ai_messages<br>dirty=true                 | ❌ 否     | 添加 AI 对话消息             |
+| `UpdateAIMessageMetadataAction`      | UPDATE_AI_MESSAGE_METADATA | ai_messages<br>dirty=true                 | ❌ 否     | 更新 AI 消息元数据           |
+| **本地会话（暂不持久化，未来可选）** |
+| `SetCurrentNodeAction`               | setCurrentNode             | -                                         | ✅ 是     | 设置当前选中节点             |
+| `CollapseNodeAction`                 | collapseNode               | -                                         | ✅ 是     | 折叠节点，隐藏子树           |
+| `ExpandNodeAction`                   | expandNode                 | -                                         | ✅ 是     | 展开节点，显示子树           |
+| `SetFocusedAreaAction`               | setFocusedArea             | -                                         | ✅ 是     | 设置焦点区域（画布/大纲）    |
+| `SetViewportAction`                  | setViewport                | -                                         | ✅ 是     | 更新视口位置和缩放           |
+| **临时状态（不持久化）**             |
+| `EnsureCurrentNodeVisibleAction`     | ensureCurrentNodeVisible   | -                                         | ❌ 否     | 确保当前节点在可视区域       |
+| `SetSavingStatusAction`              | setSavingStatus            | -                                         | ❌ 否     | 管理保存状态显示             |
+
+### 持久化策略说明
+
+| 持久化目标                 | IndexedDB 表                             | 同步到服务端               | 使用场景                           |
+| -------------------------- | ---------------------------------------- | -------------------------- | ---------------------------------- |
+| **服务端数据**             | mindmaps<br>mindmap_nodes<br>ai_messages | ✅ 是<br>(标记 dirty=true) | 思维导图内容、结构<br>AI 对话记录  |
+| **本地会话**<br>(未来实现) | local_sessions                           | ❌ 否                      | 用户会话状态<br>视口位置、折叠状态 |
+| **不持久化**               | -                                        | ❌ 否                      | 派生状态、临时标志                 |
+
+**决策树**：
+
+```
+这个状态需要在多设备间共享吗？
+├─ 是 → 写入 mindmaps/mindmap_nodes/ai_messages，标记 dirty=true
+│   └─ 示例：节点内容、AI 对话
+│
+└─ 否 → 这个状态需要在本地跨会话保留吗？
+    ├─ 是 → 未来：写入 local_sessions
+    │   └─ 示例：当前节点、视口位置、折叠状态
+    │
+    └─ 否 → applyToIndexedDB() 空实现
+        └─ 示例：保存状态标志、派生布局
+```
+
 ## 核心接口
 
 ### EditorAction 接口
@@ -57,7 +109,7 @@ interface EditorAction {
   applyToEditorState(state: EditorState): void;
 
   // 应用到数据库（异步）
-  applyToIndexedDB(): Promise<void>;
+  applyToIndexedDB(db: IDBPDatabase<MindmapDB>): Promise<void>;
 
   // 生成逆操作（用于撤销）
   reverse(): EditorAction;
@@ -88,8 +140,7 @@ interface EditorAction {
 
 ```typescript
 {
-  node: MindmapNode,              // 完整的节点对象
-  setAsCurrent?: boolean          // 是否设为当前选中节点
+  node: MindmapNode; // 完整的节点对象
 }
 ```
 
@@ -97,7 +148,7 @@ interface EditorAction {
 
 - 将节点添加到 `EditorState.nodes` Map
 - 标记 `isSaved = false`
-- 可选：设置为当前节点
+- 🆕 预测新节点的布局并添加到 `layouts` 中（确保后续操作能立即访问布局信息）
 
 **数据库操作**:
 
@@ -108,6 +159,12 @@ await db.put("mindmap_nodes", {
   deleted: false, // ✅ 确保清除删除标记（用于 undo 删除）
   local_updated_at: new Date().toISOString(),
 });
+```
+
+**辅助方法**:
+
+```typescript
+getNode(): MindmapNode  // 供 Action 订阅者使用，获取要添加的节点
 ```
 
 **为什么要清除 deleted 标记？**
@@ -136,16 +193,16 @@ await db.put("mindmap_nodes", {
 
 ```typescript
 {
-  nodeId: string,                 // 节点的 short_id
-  originalNode?: MindmapNode      // 保存原节点数据用于恢复（自动捕获）
+  nodeId: string,              // 节点的 short_id
+  deletedNode?: MindmapNode    // 保存原节点数据用于恢复（自动捕获）
 }
 ```
 
 **状态变更**:
 
+- 🆕 在删除前使用 `current()` 捕获节点快照（避免保存 revoked proxy）
 - 从 `EditorState.nodes` Map 中移除节点
-- 从 `collapsedNodes` Set 中移除
-- 如果是当前节点，切换到父节点或兄弟节点
+- 如果删除的是当前节点，自动切换到其父节点
 - 标记 `isSaved = false`
 
 **数据库操作（软删除）**:
@@ -218,6 +275,88 @@ await db.put("mindmap_nodes", {
 - 修改节点标题 (title)
 - 更新节点详细说明 (note)
 - 移动节点（更新 parent_id 和 order_index）
+
+---
+
+#### AddAIMessageAction
+
+**职责**: 添加 AI 对话消息到系统
+
+**参数**:
+
+```typescript
+{
+  message: AIMessage; // 完整的 AI 消息对象
+}
+```
+
+**状态变更**:
+
+- 不修改 `EditorState`（AI 消息独立存储）
+
+**数据库操作**:
+
+```typescript
+await db.put("ai_messages", {
+  ...this.message,
+  dirty: true, // ✅ 标记为需要同步
+  local_id: this.message.id,
+  // server_id 在同步后填充
+});
+```
+
+**逆操作**: `NoOpAction`（AI 对话消息不支持撤销）
+
+**使用场景**:
+
+- AI 助手回复用户
+- 保存用户与 AI 的对话历史
+
+**⚠️ 约束**:
+
+- AI 消息是交互记录，设计上不支持 undo/redo
+- reverse() 返回空操作（NoOpAction）
+
+---
+
+#### UpdateAIMessageMetadataAction
+
+**职责**: 更新 AI 消息的元数据
+
+**参数**:
+
+```typescript
+{
+  messageId: string,                                          // AI 消息 ID
+  metadataUpdate: Partial<NonNullable<AIMessage["metadata"]>> // 要更新的元数据字段
+}
+```
+
+**状态变更**:
+
+- 不修改 `EditorState`（AI 消息独立存储）
+
+**数据库操作**:
+
+```typescript
+const existingMessage = await db.get("ai_messages", this.messageId);
+
+await db.put("ai_messages", {
+  ...existingMessage,
+  metadata: {
+    ...existingMessage.metadata,
+    ...this.metadataUpdate,
+  },
+  dirty: true, // ✅ 标记为需要同步
+});
+```
+
+**逆操作**: `NoOpAction`（不支持撤销）
+
+**使用场景**:
+
+- 标记 AI 建议的操作已执行
+- 更新消息的状态信息
 
 ---
 
@@ -373,6 +512,65 @@ await db.put("mindmap_nodes", {
 - 使用值比较机制防止同步循环
 
 **详细设计**: 参见 [视口管理设计](./viewport-management-design.md)
+
+---
+
+#### EnsureCurrentNodeVisibleAction
+
+**职责**: 自动滚动视口，确保当前节点在可视区域内
+
+**参数**:
+
+```typescript
+{
+  padding?: number  // 可选：安全区域内边距比例（默认 0.15，即 15%）
+}
+```
+
+**状态变更**:
+
+- 检查当前节点是否在视口的安全区域内
+- 如果不在，自动调整 `EditorState.viewport` 的 x 和 y
+- 使用节点坐标系计算（pre-zoom）
+
+**数据库操作**: 无（视口状态不持久化）
+
+**逆操作**: 返回自身（空操作，视口变化不需要 undo）
+
+**使用场景**:
+
+- 键盘导航后确保目标节点可见
+- 添加新节点后自动聚焦
+- 配合 SetCurrentNodeAction 使用
+
+**算法说明**:
+
+```typescript
+// 1. 计算安全区域（避免节点贴边）
+const safeLeft = viewport.x + viewport.width * padding;
+const safeRight = viewport.x + viewport.width * (1 - padding);
+const safeTop = viewport.y + viewport.height * padding;
+const safeBottom = viewport.y + viewport.height * (1 - padding);
+
+// 2. 检查节点是否在安全区域内
+if (nodeRight < safeLeft) {
+  // 节点在左侧，向左滚动
+  deltaX = safeLeft - nodeRight;
+} else if (nodeLeft > safeRight) {
+  // 节点在右侧，向右滚动
+  deltaX = safeRight - nodeLeft;
+}
+
+// 3. 更新视口位置
+viewport.x -= deltaX;
+viewport.y -= deltaY;
+```
+
+**特性**:
+
+- 只在节点超出安全区域时才滚动
+- 使用渐进式滚动，体验流畅
+- 在 applyToEditorState 执行时才访问 state，支持处理新添加的节点
 
 ---
 
@@ -1533,8 +1731,32 @@ volta run yarn test src/domain/__tests__/action-subscription-manager.test.ts
 
 ## 相关代码位置
 
+### Action 实现文件
+
+**服务端数据 Action**:
+
+- `src/domain/actions/add-node.ts` - AddNodeAction
+- `src/domain/actions/remove-node.ts` - RemoveNodeAction
+- `src/domain/actions/update-node.ts` - UpdateNodeAction
+- `src/domain/actions/add-ai-message.ts` - AddAIMessageAction
+- `src/domain/actions/update-ai-message-metadata.ts` - UpdateAIMessageMetadataAction
+
+**本地会话 Action**:
+
+- `src/domain/actions/set-current-node.ts` - SetCurrentNodeAction
+- `src/domain/actions/collapse-node.ts` - CollapseNodeAction
+- `src/domain/actions/expand-node.ts` - ExpandNodeAction
+- `src/domain/actions/set-focused-area.ts` - SetFocusedAreaAction
+- `src/domain/actions/set-viewport.ts` - SetViewportAction
+
+**临时状态 Action**:
+
+- `src/domain/actions/ensure-current-node-visible.ts` - EnsureCurrentNodeVisibleAction
+- `src/domain/actions/set-saving-status.ts` - SetSavingStatusAction
+
+### 核心基础设施
+
 - **Action 接口定义**: `src/domain/mindmap-store.types.ts`
-- **Action 实现目录**: `src/domain/actions/`
 - **订阅机制**:
   - 类型定义: `src/domain/action-subscription.types.ts`
   - 管理器实现: `src/domain/action-subscription-manager.ts`
@@ -1545,4 +1767,8 @@ volta run yarn test src/domain/__tests__/action-subscription-manager.test.ts
 
 ---
 
-**文档维护**: 当添加新的 Action 类型时，请更新本文档的 Action 列表部分。
+**文档维护**: 当添加新的 Action 类型时，请同时更新：
+
+1. 本文档顶部的 Action 汇总表
+2. 对应章节的详细描述
+3. 本节的相关代码位置列表
