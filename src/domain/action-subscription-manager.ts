@@ -197,10 +197,6 @@ export class ActionSubscriptionManager {
    * @param mindmapId - 思维导图 ID
    */
   notifySync(actions: EditorAction[], mindmapId: string): void {
-    console.log(
-      `[ActionSubscriptionManager] Notifying sync subscribers for ${actions.length} actions`
-    );
-
     const startTime = performance.now();
 
     // 1. 逐个调用 Sync 订阅
@@ -235,9 +231,6 @@ export class ActionSubscriptionManager {
     this.invokePostSyncHandlers(actions, mindmapId);
 
     const duration = performance.now() - startTime;
-    console.log(
-      `[ActionSubscriptionManager] Sync notification completed in ${duration.toFixed(2)}ms`
-    );
 
     // 性能警告
     if (duration > 10) {
@@ -254,10 +247,6 @@ export class ActionSubscriptionManager {
    * @param mindmapId - 思维导图 ID
    */
   async notifyAsync(actions: EditorAction[], mindmapId: string): Promise<void> {
-    console.log(
-      `[ActionSubscriptionManager] Notifying async subscribers for ${actions.length} actions`
-    );
-
     // 1. 逐个调用 Async 订阅
     for (const action of actions) {
       const subscribers = this.asyncSubscriptions.get(action.type);
@@ -280,8 +269,6 @@ export class ActionSubscriptionManager {
 
     // 2. 调用 Async 后处理（去重）
     await this.invokePostAsyncHandlers(actions, mindmapId);
-
-    console.log(`[ActionSubscriptionManager] Async notification completed`);
   }
 
   // ========================================
