@@ -6,7 +6,7 @@ import {
 } from "@/lib/actions/mindmap-sync";
 import { getDB } from "@/lib/db/schema";
 import { syncAIMessages } from "@/lib/ai/conversation-persistence";
-import { SetSavingStatusAction } from "../../actions/set-saving-status";
+import { SetSavingStatusAction } from "../../actions/ephemeral/set-saving-status";
 
 /**
  * 保存思维导图到服务器

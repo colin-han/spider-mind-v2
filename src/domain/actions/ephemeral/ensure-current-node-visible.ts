@@ -8,7 +8,7 @@
  * 才访问 state，所以可以正确处理新添加的节点。
  */
 
-import { EditorAction, EditorState } from "../mindmap-store.types";
+import { EditorAction, EditorState } from "../../mindmap-store.types";
 import { IDBPDatabase } from "idb";
 import { MindmapDB } from "@/lib/db/schema";
 

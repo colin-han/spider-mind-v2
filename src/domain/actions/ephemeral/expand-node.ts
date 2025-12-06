@@ -1,6 +1,6 @@
 import { MindmapDB } from "@/lib/db/schema";
 import { IDBPDatabase } from "idb";
-import { EditorAction, EditorState } from "../mindmap-store.types";
+import { EditorAction, EditorState } from "../../mindmap-store.types";
 import { CollapseNodeAction } from "./collapse-node";
 
 export class ExpandNodeAction implements EditorAction {

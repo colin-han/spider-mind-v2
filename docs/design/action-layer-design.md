@@ -3,9 +3,10 @@
 ## 文档信息
 
 - **创建日期**: 2025-11-06
-- **最后更新**: 2025-12-03
-- **版本**: 1.3.0
+- **最后更新**: 2025-12-06
+- **版本**: 1.4.0
 - **变更说明**:
+  - 🆕 重组目录结构：按持久化策略分类（persistent/ 和 ephemeral/）
   - 添加 Action 汇总表（12 个 Action）
   - 添加持久化策略决策树
   - 新增 AI Message 相关 Action（AddAIMessageAction, UpdateAIMessageMetadataAction）
@@ -54,25 +55,59 @@ Action 层是领域层中负责**状态变更**的核心层，它定义了所有
 
 ## Action 汇总表
 
-当前系统中共有 **12 个 Action**，按持久化策略分类如下：
+当前系统中共有 **12 个 Action**，按持久化策略分类并组织在不同目录中：
 
-| Action 名称                          | 类型标识                   | 持久化目标                                | 支持 Undo | 主要用途                     |
-| ------------------------------------ | -------------------------- | ----------------------------------------- | --------- | ---------------------------- |
-| **服务端数据（同步到 Supabase）**    |
-| `AddNodeAction`                      | addChildNode               | mindmap_nodes<br>dirty=true               | ✅ 是     | 添加新节点到思维导图         |
-| `RemoveNodeAction`                   | removeNode                 | mindmap_nodes<br>deleted=true, dirty=true | ✅ 是     | 软删除节点                   |
-| `UpdateNodeAction`                   | updateNode                 | mindmap_nodes<br>dirty=true               | ✅ 是     | 更新节点字段（标题、内容等） |
-| `AddAIMessageAction`                 | ADD_AI_MESSAGE             | ai_messages<br>dirty=true                 | ❌ 否     | 添加 AI 对话消息             |
-| `UpdateAIMessageMetadataAction`      | UPDATE_AI_MESSAGE_METADATA | ai_messages<br>dirty=true                 | ❌ 否     | 更新 AI 消息元数据           |
-| **本地会话（暂不持久化，未来可选）** |
-| `SetCurrentNodeAction`               | setCurrentNode             | -                                         | ✅ 是     | 设置当前选中节点             |
-| `CollapseNodeAction`                 | collapseNode               | -                                         | ✅ 是     | 折叠节点，隐藏子树           |
-| `ExpandNodeAction`                   | expandNode                 | -                                         | ✅ 是     | 展开节点，显示子树           |
-| `SetFocusedAreaAction`               | setFocusedArea             | -                                         | ✅ 是     | 设置焦点区域（画布/大纲）    |
-| `SetViewportAction`                  | setViewport                | -                                         | ✅ 是     | 更新视口位置和缩放           |
-| **临时状态（不持久化）**             |
-| `EnsureCurrentNodeVisibleAction`     | ensureCurrentNodeVisible   | -                                         | ❌ 否     | 确保当前节点在可视区域       |
-| `SetSavingStatusAction`              | setSavingStatus            | -                                         | ❌ 否     | 管理保存状态显示             |
+### 目录结构
+
+```
+src/domain/actions/
+├── persistent/              # 持久化 Action（会写入 IndexedDB 并同步到 Supabase）
+│   ├── add-node.ts
+│   ├── remove-node.ts
+│   ├── update-node.ts
+│   ├── add-ai-message.ts
+│   └── update-ai-message-metadata.ts
+│
+└── ephemeral/              # 临时 Action（不持久化到 IndexedDB）
+    ├── set-current-node.ts
+    ├── collapse-node.ts
+    ├── expand-node.ts
+    ├── set-focused-area.ts
+    ├── set-viewport.ts
+    ├── ensure-current-node-visible.ts
+    └── set-saving-status.ts
+```
+
+### Action 列表
+
+| Action 名称                      | 类型标识                   | 目录位置      | 持久化目标                                | 支持 Undo | 主要用途                     |
+| -------------------------------- | -------------------------- | ------------- | ----------------------------------------- | --------- | ---------------------------- |
+| **持久化 Action（persistent/）** |
+| `AddNodeAction`                  | addChildNode               | `persistent/` | mindmap_nodes<br>dirty=true               | ✅ 是     | 添加新节点到思维导图         |
+| `RemoveNodeAction`               | removeNode                 | `persistent/` | mindmap_nodes<br>deleted=true, dirty=true | ✅ 是     | 软删除节点                   |
+| `UpdateNodeAction`               | updateNode                 | `persistent/` | mindmap_nodes<br>dirty=true               | ✅ 是     | 更新节点字段（标题、内容等） |
+| `AddAIMessageAction`             | ADD_AI_MESSAGE             | `persistent/` | ai_messages<br>dirty=true                 | ❌ 否     | 添加 AI 对话消息             |
+| `UpdateAIMessageMetadataAction`  | UPDATE_AI_MESSAGE_METADATA | `persistent/` | ai_messages<br>dirty=true                 | ❌ 否     | 更新 AI 消息元数据           |
+| **临时 Action（ephemeral/）**    |
+| `SetCurrentNodeAction`           | setCurrentNode             | `ephemeral/`  | -                                         | ✅ 是     | 设置当前选中节点             |
+| `CollapseNodeAction`             | collapseNode               | `ephemeral/`  | -                                         | ✅ 是     | 折叠节点，隐藏子树           |
+| `ExpandNodeAction`               | expandNode                 | `ephemeral/`  | -                                         | ✅ 是     | 展开节点，显示子树           |
+| `SetFocusedAreaAction`           | setFocusedArea             | `ephemeral/`  | -                                         | ✅ 是     | 设置焦点区域（画布/大纲）    |
+| `SetViewportAction`              | setViewport                | `ephemeral/`  | -                                         | ✅ 是     | 更新视口位置和缩放           |
+| `EnsureCurrentNodeVisibleAction` | ensureCurrentNodeVisible   | `ephemeral/`  | -                                         | ❌ 否     | 确保当前节点在可视区域       |
+| `SetSavingStatusAction`          | setSavingStatus            | `ephemeral/`  | -                                         | ❌ 否     | 管理保存状态显示             |
+
+**目录分类说明**：
+
+- **`persistent/`**: 持久化 Action，会影响 Supabase 中的数据
+  - ✅ 实现了 `applyToIndexedDB()` 方法
+  - ✅ 会标记 `dirty=true` 等待同步到服务器
+  - ✅ 修改的是业务数据（节点、AI 消息等）
+
+- **`ephemeral/`**: 临时 Action，不会影响 Supabase 中的数据
+  - ✅ `applyToIndexedDB()` 为空实现或返回 `Promise.resolve()`
+  - ✅ 只影响客户端 UI 状态
+  - ✅ 修改的是派生状态或临时标志
 
 ### 持久化策略说明
 
@@ -1733,26 +1768,23 @@ volta run yarn test src/domain/__tests__/action-subscription-manager.test.ts
 
 ### Action 实现文件
 
-**服务端数据 Action**:
+**持久化 Action（persistent/）**:
 
-- `src/domain/actions/add-node.ts` - AddNodeAction
-- `src/domain/actions/remove-node.ts` - RemoveNodeAction
-- `src/domain/actions/update-node.ts` - UpdateNodeAction
-- `src/domain/actions/add-ai-message.ts` - AddAIMessageAction
-- `src/domain/actions/update-ai-message-metadata.ts` - UpdateAIMessageMetadataAction
+- `src/domain/actions/persistent/add-node.ts` - AddNodeAction
+- `src/domain/actions/persistent/remove-node.ts` - RemoveNodeAction
+- `src/domain/actions/persistent/update-node.ts` - UpdateNodeAction
+- `src/domain/actions/persistent/add-ai-message.ts` - AddAIMessageAction
+- `src/domain/actions/persistent/update-ai-message-metadata.ts` - UpdateAIMessageMetadataAction
 
-**本地会话 Action**:
+**临时 Action（ephemeral/）**:
 
-- `src/domain/actions/set-current-node.ts` - SetCurrentNodeAction
-- `src/domain/actions/collapse-node.ts` - CollapseNodeAction
-- `src/domain/actions/expand-node.ts` - ExpandNodeAction
-- `src/domain/actions/set-focused-area.ts` - SetFocusedAreaAction
-- `src/domain/actions/set-viewport.ts` - SetViewportAction
-
-**临时状态 Action**:
-
-- `src/domain/actions/ensure-current-node-visible.ts` - EnsureCurrentNodeVisibleAction
-- `src/domain/actions/set-saving-status.ts` - SetSavingStatusAction
+- `src/domain/actions/ephemeral/set-current-node.ts` - SetCurrentNodeAction
+- `src/domain/actions/ephemeral/collapse-node.ts` - CollapseNodeAction
+- `src/domain/actions/ephemeral/expand-node.ts` - ExpandNodeAction
+- `src/domain/actions/ephemeral/set-focused-area.ts` - SetFocusedAreaAction
+- `src/domain/actions/ephemeral/set-viewport.ts` - SetViewportAction
+- `src/domain/actions/ephemeral/ensure-current-node-visible.ts` - EnsureCurrentNodeVisibleAction
+- `src/domain/actions/ephemeral/set-saving-status.ts` - SetSavingStatusAction
 
 ### 核心基础设施
 
@@ -1772,3 +1804,4 @@ volta run yarn test src/domain/__tests__/action-subscription-manager.test.ts
 1. 本文档顶部的 Action 汇总表
 2. 对应章节的详细描述
 3. 本节的相关代码位置列表
+4. 将 Action 文件放到正确的目录（`persistent/` 或 `ephemeral/`）

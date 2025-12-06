@@ -1,4 +1,4 @@
-import { EditorAction, EditorState } from "../mindmap-store.types";
+import { EditorAction, EditorState } from "../../mindmap-store.types";
 import { IDBPDatabase } from "idb";
 import { MindmapDB } from "@/lib/db/schema";
 import { MindmapNode } from "@/lib/types";

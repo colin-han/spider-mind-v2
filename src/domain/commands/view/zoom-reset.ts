@@ -1,6 +1,6 @@
 import type { CommandDefinition } from "../../command-registry";
 import type { MindmapStore } from "../../mindmap-store.types";
-import { SetViewportAction } from "../../actions/set-viewport";
+import { SetViewportAction } from "../../actions/ephemeral/set-viewport";
 
 export const zoomReset: CommandDefinition = {
   id: "view.zoomReset",

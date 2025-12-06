@@ -1,6 +1,6 @@
 import { MindmapStore } from "../../mindmap-store.types";
 import { CommandDefinition, registerCommand } from "../../command-registry";
-import { CollapseNodeAction } from "../../actions/collapse-node";
+import { CollapseNodeAction } from "../../actions/ephemeral/collapse-node";
 import { getChildNodes, getDescendantNodes } from "../../editor-utils";
 
 type CollapseSubtreeRecursiveParams = [string?];

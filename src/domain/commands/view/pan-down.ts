@@ -1,6 +1,6 @@
 import type { CommandDefinition } from "../../command-registry";
 import type { MindmapStore } from "../../mindmap-store.types";
-import { SetViewportAction } from "../../actions/set-viewport";
+import { SetViewportAction } from "../../actions/ephemeral/set-viewport";
 
 const PAN_STEP = 100; // 平移步进（节点坐标系单位）
 

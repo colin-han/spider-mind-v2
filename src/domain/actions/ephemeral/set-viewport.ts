@@ -2,7 +2,7 @@ import type {
   EditorAction,
   EditorState,
   Viewport,
-} from "../mindmap-store.types";
+} from "../../mindmap-store.types";
 
 export interface SetViewportParams {
   x?: number;

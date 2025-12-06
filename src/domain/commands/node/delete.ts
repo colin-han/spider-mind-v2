@@ -1,9 +1,9 @@
 import { MindmapStore } from "../../mindmap-store.types";
 import { CommandDefinition, registerCommand } from "../../command-registry";
-import { RemoveNodeAction } from "../../actions/remove-node";
-import { SetCurrentNodeAction } from "../../actions/set-current-node";
+import { RemoveNodeAction } from "../../actions/persistent/remove-node";
+import { SetCurrentNodeAction } from "../../actions/ephemeral/set-current-node";
 import { getDescendantNodes, getChildNodes } from "../../editor-utils";
-import { EnsureCurrentNodeVisibleAction } from "../../actions/ensure-current-node-visible";
+import { EnsureCurrentNodeVisibleAction } from "../../actions/ephemeral/ensure-current-node-visible";
 
 type DeleteNodeParams = [string?];
 

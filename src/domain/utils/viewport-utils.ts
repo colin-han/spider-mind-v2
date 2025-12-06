@@ -1,6 +1,6 @@
 import type { Viewport as RFViewport } from "@xyflow/react";
 import type { Viewport, EditorState } from "../mindmap-store.types";
-import { SetViewportAction } from "../actions/set-viewport";
+import { SetViewportAction } from "../actions/ephemeral/set-viewport";
 
 /**
  * 将 React Flow 视口转换为节点坐标系视口

@@ -1,7 +1,7 @@
 import { MindmapStore, EditorAction } from "../../mindmap-store.types";
 import { CommandDefinition, registerCommand } from "../../command-registry";
-import { SetCurrentNodeAction } from "../../actions/set-current-node";
-import { ExpandNodeAction } from "../../actions/expand-node";
+import { SetCurrentNodeAction } from "../../actions/ephemeral/set-current-node";
+import { ExpandNodeAction } from "../../actions/ephemeral/expand-node";
 import { getChildNodes } from "../../editor-utils";
 import { ensureNodeVisibleAction } from "../../utils/viewport-utils";
 

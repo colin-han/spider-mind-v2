@@ -15,8 +15,8 @@
 import { memo, useCallback, useState } from "react";
 import { Handle, Position, type NodeProps, useViewport } from "@xyflow/react";
 import { useMindmapEditorState, useMindmapStore } from "@/domain/mindmap-store";
-import { CollapseNodeAction } from "@/domain/actions/collapse-node";
-import { ExpandNodeAction } from "@/domain/actions/expand-node";
+import { CollapseNodeAction } from "@/domain/actions/ephemeral/collapse-node";
+import { ExpandNodeAction } from "@/domain/actions/ephemeral/expand-node";
 import type { CustomNodeData } from "@/lib/types/react-flow";
 import { cn } from "@/lib/utils/cn";
 import { MiniToolbar } from "./mini-toolbar";
