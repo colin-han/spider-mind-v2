@@ -42,7 +42,9 @@ export const useMindmapStore = create<MindmapStore>()(
         throw new Error("Database not initialized");
       }
 
+      // 立即清除旧状态，避免显示上一个思维导图的内容
       set((state) => {
+        state.currentEditor = undefined;
         state.isLoading = true;
       });
 
@@ -208,6 +210,7 @@ export const useMindmapStore = create<MindmapStore>()(
           // 如果从服务器加载，数据总是已保存状态；如果从本地加载，检查 dirty 标志
           isSaved: loadedFromServer ? true : !localMindmap?.dirty,
           isSaving: false, // 初始状态不在保存中
+          layoutReady: false, // 初始状态布局未准备好
           version: 0,
         };
 
@@ -231,6 +234,7 @@ export const useMindmapStore = create<MindmapStore>()(
       } catch (error) {
         console.error("[openMindmap] Failed to open mindmap:", error);
         set((state) => {
+          state.currentEditor = undefined;
           state.isLoading = false;
         });
         throw error;

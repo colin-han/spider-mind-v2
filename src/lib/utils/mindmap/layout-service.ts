@@ -141,8 +141,22 @@ export class MindmapLayoutServiceImpl implements MindmapLayoutService {
 
       // 重新计算布局（使用实际尺寸）
       this.updateLayout();
+
+      // 标记布局已准备好
+      useMindmapStore.setState((state) => {
+        if (state.currentEditor) {
+          state.currentEditor.layoutReady = true;
+        }
+      });
+      console.log("[LayoutService] Layout ready");
     } catch (error) {
       console.error("[LayoutService] Failed to measure nodes:", error);
+      // 即使失败也标记为准备好，避免永久阻塞
+      useMindmapStore.setState((state) => {
+        if (state.currentEditor) {
+          state.currentEditor.layoutReady = true;
+        }
+      });
     } finally {
       this.isInitializing = false;
     }

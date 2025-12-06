@@ -565,47 +565,63 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
 
     // 检查是否是新的 mindmap（通过 mindmap id 判断）
     const mindmapId = editorState.currentMindmap.id;
-    if (currentMindmapId.current !== mindmapId) {
+    const isNewMindmap = currentMindmapId.current !== mindmapId;
+
+    if (isNewMindmap) {
       currentMindmapId.current = mindmapId;
       hasInitializedRef.current = false;
       lastSyncedViewportRef.current = null; // 重置同步记录
+      return; // 立即返回，等待下一次effect执行（此时layoutReady应该是false）
     }
+
+    // 等待布局准备好
+    if (!editorState.layoutReady) return;
 
     if (nodes.length > 0 && !hasInitializedRef.current) {
       hasInitializedRef.current = true;
+      // 布局已准备好，直接执行 fitView，不需要延迟
+      console.log(
+        `[MindmapGraphViewer] Calling fitView for mindmap ${mindmapId}...`
+      );
+      fitView({ padding: 0.2, duration: 300 });
+      console.log("[MindmapGraphViewer] fitView called");
+
+      // fitView 完成后，同步视口到 Store
       setTimeout(() => {
-        fitView({ padding: 0.2, duration: 300 });
+        const container = containerRef.current;
+        if (!container) return;
 
-        // fitView 完成后，同步视口到 Store
-        setTimeout(() => {
-          const container = containerRef.current;
-          if (!container) return;
+        const rfVp = getViewport();
+        const nodeVp = rfViewportToNodeViewport(
+          rfVp,
+          container.clientWidth,
+          container.clientHeight
+        );
 
-          const rfVp = getViewport();
-          const nodeVp = rfViewportToNodeViewport(
-            rfVp,
-            container.clientWidth,
-            container.clientHeight
-          );
+        // 记录初始同步的值
+        lastSyncedViewportRef.current = {
+          x: nodeVp.x,
+          y: nodeVp.y,
+          zoom: nodeVp.zoom,
+        };
 
-          // 记录初始同步的值
-          lastSyncedViewportRef.current = {
-            x: nodeVp.x,
-            y: nodeVp.y,
-            zoom: nodeVp.zoom,
-          };
-
-          setViewportCmd(
-            nodeVp.x,
-            nodeVp.y,
-            nodeVp.width,
-            nodeVp.height,
-            nodeVp.zoom
-          );
-        }, 350); // 等待 fitView 动画完成
-      }, 50);
+        setViewportCmd(
+          nodeVp.x,
+          nodeVp.y,
+          nodeVp.width,
+          nodeVp.height,
+          nodeVp.zoom
+        );
+      }, 350); // 等待 fitView 动画完成
     }
-  }, [nodes.length, fitView, getViewport, setViewportCmd, editorState]);
+  }, [
+    editorState?.layoutReady,
+    nodes.length,
+    fitView,
+    getViewport,
+    setViewportCmd,
+    editorState,
+  ]);
 
   return (
     <div

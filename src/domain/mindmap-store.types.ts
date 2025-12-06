@@ -70,6 +70,7 @@ export interface EditorState {
   isLoading: boolean;
   isSaved: boolean;
   isSaving: boolean; // 是否正在保存
+  layoutReady: boolean; // 布局是否已准备好（用于初始视图定位）
 
   version: number;
 }
@@ -78,7 +79,7 @@ export interface MindmapStore {
   isLoading: boolean;
   historyVersion: number; // 用于触发 UI 更新的版本号
 
-  readonly currentEditor?: EditorState; // 内存中的编辑状态（immutable 对象）
+  readonly currentEditor?: EditorState | undefined; // 内存中的编辑状态（immutable 对象）
   readonly commandManager?: CommandManager;
   readonly shortcutManager?: ShortcutManager;
   readonly historyManager?: HistoryManager;

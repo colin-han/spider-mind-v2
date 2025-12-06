@@ -24,6 +24,7 @@ import { MindmapEditorLayout } from "./mindmap-editor-layout";
 import { CommandButton } from "@/components/common/command-button";
 import { getRootNodeTitle } from "@/lib/utils/mindmap-utils";
 import { ErrorPage } from "@/components/error/error-page";
+import { LoadingSpinner } from "@/components/common/loading-spinner";
 
 /**
  * MindmapEditor Props
@@ -127,11 +128,7 @@ export function MindmapEditor({ mindmapId }: MindmapEditorProps) {
 
   // 加载中状态
   if (!editorState) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-gray-500 dark:text-gray-400">加载中...</div>
-      </div>
-    );
+    return <LoadingSpinner message="加载思维导图..." />;
   }
 
   return (
