@@ -10,11 +10,11 @@ import type { NodeLayout } from "@/domain/mindmap-store.types";
 const GRAPH_CONFIG = {
   rankdir: "LR", // 从左到右布局（思维导图标准布局）
   // align 不设置，默认居中对齐（父节点在子节点垂直中间）
-  nodesep: 50, // 同层节点间距
+  nodesep: 10, // 同层节点间距（垂直方向，极致紧凑）
   edgesep: 10, // 边的间距
-  ranksep: 80, // 层级间距
-  marginx: 20, // 水平边距
-  marginy: 20, // 垂直边距
+  ranksep: 50, // 层级间距（水平方向，更紧凑）
+  marginx: 15, // 水平边距（减小边距）
+  marginy: 15, // 垂直边距（减小边距）
 };
 
 const DROP_INDICATOR_CONFIG = {
