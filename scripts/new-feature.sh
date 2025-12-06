@@ -44,12 +44,32 @@ log_error() {
 }
 
 # 用户确认函数
+# 参数：
+#   $1 - 提示信息
+#   $2 - 默认值 (可选，"y" 或 "n"，默认为空表示必须输入)
 confirm_continue() {
     local prompt="$1"
+    local default="${2:-}"
     local response
+    local prompt_suffix
+
+    # 根据默认值设置提示后缀
+    if [[ "$default" == "y" ]]; then
+        prompt_suffix="[Y/n]"
+    elif [[ "$default" == "n" ]]; then
+        prompt_suffix="[y/N]"
+    else
+        prompt_suffix="(y/n)"
+    fi
 
     while true; do
-        read -p "$prompt (y/n): " response
+        read -p "$prompt $prompt_suffix: " response
+
+        # 如果直接回车且有默认值，使用默认值
+        if [[ -z "$response" && -n "$default" ]]; then
+            response="$default"
+        fi
+
         case "$response" in
             [Yy]|[Yy][Ee][Ss])
                 return 0
@@ -231,7 +251,7 @@ cleanup_old_branch() {
         should_delete=true
         log_info "自动删除模式，将删除旧分支"
     else
-        if confirm_continue "是否删除旧分支 $OLD_BRANCH_NAME？"; then
+        if confirm_continue "是否删除旧分支 $OLD_BRANCH_NAME？" "y"; then
             should_delete=true
         fi
     fi

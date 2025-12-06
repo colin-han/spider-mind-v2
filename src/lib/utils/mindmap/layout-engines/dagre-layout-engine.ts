@@ -57,7 +57,10 @@ export class DagreLayoutEngine implements MindmapLayoutEngine {
     g.setDefaultEdgeLabel(() => ({}));
 
     // 3. 添加节点到图中
-    for (const node of visibleNodes.values()) {
+    // 🔧 FIX: 按照深度优先遍历 + order_index 顺序添加节点
+    // 这样可以确保 dagre 按照正确的顺序排列同级节点
+    const sortedNodes = this.getSortedNodesForDagre(visibleNodes);
+    for (const node of sortedNodes) {
       const size = sizeCache.get(node.short_id) || { width: 100, height: 40 };
       g.setNode(node.short_id, {
         width: size.width,
@@ -171,6 +174,60 @@ export class DagreLayoutEngine implements MindmapLayoutEngine {
   // ==========================================================================
   // 私有辅助方法
   // ==========================================================================
+
+  /**
+   * 按照深度优先遍历 + order_index 顺序获取节点列表
+   * 这样可以确保 dagre 按照正确的顺序排列同级节点
+   *
+   * @param visibleNodes - 可见节点 Map
+   * @returns 排序后的节点列表
+   */
+  private getSortedNodesForDagre(
+    visibleNodes: Map<string, MindmapNode>
+  ): MindmapNode[] {
+    const result: MindmapNode[] = [];
+    const visited = new Set<string>();
+
+    // 找到根节点
+    const rootNode = Array.from(visibleNodes.values()).find(
+      (node) => !node.parent_short_id
+    );
+
+    if (!rootNode) {
+      // 如果没有根节点，直接返回所有节点
+      return Array.from(visibleNodes.values());
+    }
+
+    // 深度优先遍历
+    const dfs = (nodeId: string) => {
+      if (visited.has(nodeId)) {
+        return;
+      }
+
+      const node = visibleNodes.get(nodeId);
+      if (!node) {
+        return;
+      }
+
+      visited.add(nodeId);
+      result.push(node);
+
+      // 获取子节点并按 order_index 排序
+      const children = Array.from(visibleNodes.values())
+        .filter((n) => n.parent_short_id === nodeId)
+        .sort((a, b) => a.order_index - b.order_index);
+
+      // 递归遍历子节点
+      for (const child of children) {
+        dfs(child.short_id);
+      }
+    };
+
+    // 从根节点开始遍历
+    dfs(rootNode.short_id);
+
+    return result;
+  }
 
   /**
    * 过滤可见节点（排除折叠节点的后代）
