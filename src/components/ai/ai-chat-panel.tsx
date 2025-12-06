@@ -19,8 +19,8 @@ import {
   loadConversation,
   createAIMessage,
 } from "@/lib/ai/conversation-persistence";
-import { AddAIMessageAction } from "@/domain/actions/add-ai-message";
-import { UpdateAIMessageMetadataAction } from "@/domain/actions/update-ai-message-metadata";
+import { AddAIMessageAction } from "@/domain/actions/persistent/add-ai-message";
+import { UpdateAIMessageMetadataAction } from "@/domain/actions/persistent/update-ai-message-metadata";
 import { useMindmapStore } from "@/domain/mindmap-store";
 import type { AINodeContext, AIMessage } from "@/lib/types/ai";
 import type { AIOperation } from "@/domain/ai";

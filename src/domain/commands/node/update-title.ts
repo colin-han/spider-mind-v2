@@ -1,6 +1,6 @@
 import { MindmapStore } from "../../mindmap-store.types";
 import { CommandDefinition, registerCommand } from "../../command-registry";
-import { UpdateNodeAction } from "../../actions/update-node";
+import { UpdateNodeAction } from "../../actions/persistent/update-node";
 
 type UpdateTitleParams = [string?, string?];
 

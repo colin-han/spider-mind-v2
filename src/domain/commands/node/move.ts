@@ -1,8 +1,8 @@
 import { MindmapStore } from "../../mindmap-store.types";
 import { CommandDefinition, registerCommand } from "../../command-registry";
-import { UpdateNodeAction } from "../../actions/update-node";
+import { UpdateNodeAction } from "../../actions/persistent/update-node";
 import { getChildNodes, isDescendant } from "../../editor-utils";
-import { EnsureCurrentNodeVisibleAction } from "../../actions/ensure-current-node-visible";
+import { EnsureCurrentNodeVisibleAction } from "../../actions/ephemeral/ensure-current-node-visible";
 
 type MoveNodeParams = [string?, string?, number?];
 

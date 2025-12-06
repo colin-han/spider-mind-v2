@@ -3,7 +3,7 @@ import { EditorAction, MindmapStore } from "../../mindmap-store.types";
 import {
   SetFocusedAreaAction,
   SetFocusedAreaParams,
-} from "../../actions/set-focused-area";
+} from "../../actions/ephemeral/set-focused-area";
 import { FocusedAreaId } from "../../focused-area.types";
 
 export const setFocusedArea: CommandDefinition = {

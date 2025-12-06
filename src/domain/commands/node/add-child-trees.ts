@@ -1,8 +1,8 @@
 import { CommandDefinition, registerCommand } from "../../command-registry";
 import { MindmapStore, EditorAction } from "../../mindmap-store.types";
 import { MindmapNode } from "@/lib/types";
-import { AddNodeAction } from "../../actions/add-node";
-import { SetCurrentNodeAction } from "../../actions/set-current-node";
+import { AddNodeAction } from "../../actions/persistent/add-node";
+import { SetCurrentNodeAction } from "../../actions/ephemeral/set-current-node";
 import { getChildNodes } from "../../editor-utils";
 import { generateShortId } from "@/lib/utils/short-id";
 

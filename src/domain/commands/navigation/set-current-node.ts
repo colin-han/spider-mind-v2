@@ -1,6 +1,6 @@
 import { CommandDefinition } from "../../command-registry";
 import { MindmapStore, EditorAction } from "../../mindmap-store.types";
-import { SetCurrentNodeAction } from "../../actions/set-current-node";
+import { SetCurrentNodeAction } from "../../actions/ephemeral/set-current-node";
 import { registerCommand } from "../../command-registry";
 import { ensureNodeVisibleAction } from "../../utils/viewport-utils";
 

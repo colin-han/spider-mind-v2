@@ -1,6 +1,6 @@
 import { MindmapStore } from "../../mindmap-store.types";
 import { CommandDefinition, registerCommand } from "../../command-registry";
-import { ExpandNodeAction } from "../../actions/expand-node";
+import { ExpandNodeAction } from "../../actions/ephemeral/expand-node";
 
 type ExpandNodeParams = [string?];
 

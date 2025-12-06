@@ -1,11 +1,11 @@
 import { IDBPDatabase } from "idb";
-import { EditorAction, EditorState } from "../mindmap-store.types";
+import { EditorAction, EditorState } from "../../mindmap-store.types";
 import { MindmapDB } from "@/lib/db/schema";
-import { FocusedAreaId } from "../focused-area.types";
+import { FocusedAreaId } from "../../focused-area.types";
 import {
   beforeSetFocusedArea,
   afterSetFocusedArea,
-} from "../focused-area-registry";
+} from "../../focused-area-registry";
 
 export interface SetFocusedAreaParams {
   oldArea: FocusedAreaId;

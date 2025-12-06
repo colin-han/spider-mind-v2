@@ -1,7 +1,7 @@
 import { MindmapStore } from "../../mindmap-store.types";
 import { CommandDefinition, registerCommand } from "../../command-registry";
-import { CollapseNodeAction } from "../../actions/collapse-node";
-import { ExpandNodeAction } from "../../actions/expand-node";
+import { CollapseNodeAction } from "../../actions/ephemeral/collapse-node";
+import { ExpandNodeAction } from "../../actions/ephemeral/expand-node";
 import { getChildNodes } from "../../editor-utils";
 
 type ToggleCollapseParams = [string?];

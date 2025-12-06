@@ -21,7 +21,7 @@ import {
   useMindmapStore,
   useCommand,
 } from "@/domain/mindmap-store";
-import { SetFocusedAreaAction } from "@/domain/actions/set-focused-area";
+import { SetFocusedAreaAction } from "@/domain/actions/ephemeral/set-focused-area";
 import type { MindmapNode } from "@/lib/types";
 import { cn } from "@/lib/utils/cn";
 import { useFocusedArea } from "@/lib/hooks/use-focused-area";

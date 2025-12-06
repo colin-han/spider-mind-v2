@@ -1,11 +1,11 @@
 import { MindmapStore } from "../../mindmap-store.types";
 import { CommandDefinition, registerCommand } from "../../command-registry";
 import { generateShortId } from "@/lib/utils/short-id";
-import { AddNodeAction } from "../../actions/add-node";
-import { UpdateNodeAction } from "../../actions/update-node";
-import { SetCurrentNodeAction } from "../../actions/set-current-node";
+import { AddNodeAction } from "../../actions/persistent/add-node";
+import { UpdateNodeAction } from "../../actions/persistent/update-node";
+import { SetCurrentNodeAction } from "../../actions/ephemeral/set-current-node";
 import { getChildNodes } from "../../editor-utils";
-import { EnsureCurrentNodeVisibleAction } from "../../actions/ensure-current-node-visible";
+import { EnsureCurrentNodeVisibleAction } from "../../actions/ephemeral/ensure-current-node-visible";
 
 type AddSiblingNodeParams = [string | undefined, string | undefined];
 
