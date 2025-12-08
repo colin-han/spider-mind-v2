@@ -25,7 +25,11 @@ import {
   type Viewport as RFViewport,
   PanOnScrollMode,
 } from "@xyflow/react";
-import { useMindmapEditorState, useCommand } from "@/domain/mindmap-store";
+import {
+  useMindmapEditorState,
+  useCommand,
+  useMindmapStore,
+} from "@/domain/mindmap-store";
 import { convertToFlowData } from "@/lib/utils/mindmap/mindmap-to-flow";
 import { CustomMindNode } from "./viewer/custom-mind-node";
 import { CustomControls } from "./viewer/custom-controls";
@@ -86,6 +90,7 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
   const setFocusedArea = useCommand("global.setFocusedArea");
   // 图形点击使用策略B（0% padding），避免破坏双击交互
   const setCurrentNode = useCommand("navigation.setCurrentNodeMinimalScroll");
+  const { setDragging } = useMindmapStore();
 
   // 容器引用,用于计算相对坐标
   const containerRef = useRef<HTMLDivElement>(null);
@@ -260,9 +265,20 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
     setFocusedArea("graph");
   }, [setFocusedArea]);
 
+  // 画布拖拽开始
+  const onMoveStart = useCallback(() => {
+    setDragging(true);
+  }, [setDragging]);
+
+  // 画布拖拽结束
+  const onMoveEnd = useCallback(() => {
+    setDragging(false);
+  }, [setDragging]);
+
   // 拖拽开始
   const onNodeDragStart = useCallback(
     (_event: React.MouseEvent | React.TouchEvent | MouseEvent, node: Node) => {
+      setDragging(true);
       setDragState({
         draggedNodeId: node.id,
         targetNodeId: null,
@@ -272,7 +288,7 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
         isCancelled: false,
       });
     },
-    []
+    [setDragging]
   );
 
   // 拖拽中
@@ -395,6 +411,8 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
       const { draggedNodeId, targetNodeId, dropIndicatorType, isCancelled } =
         dragState;
 
+      setDragging(false);
+
       // 清空拖拽状态
       setDragState({
         draggedNodeId: null,
@@ -452,7 +470,7 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
         console.error("[MindmapGraphViewer] Failed to move node:", error);
       });
     },
-    [dragState, nodesMap, moveNode]
+    [dragState, nodesMap, moveNode, setDragging]
   );
 
   // === 视口双向同步 ===
@@ -640,6 +658,8 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
         onNodeDragStart={onNodeDragStart}
         onNodeDrag={onNodeDrag}
         onNodeDragStop={onNodeDragStop}
+        onMoveStart={onMoveStart}
+        onMoveEnd={onMoveEnd}
         onViewportChange={debouncedSync}
         disableKeyboardA11y={true}
         fitView
