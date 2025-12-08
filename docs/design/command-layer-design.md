@@ -33,19 +33,25 @@ Command 层是领域层中负责**业务逻辑**的核心层，它将用户意�
 返回 EditorAction[] 的命令，支持 undo/redo：
 
 ```typescript
-export interface ActionBasedCommandDefinition {
+export interface ActionBasedCommandDefinition<
+  TParams extends CommandParamsSchema = CommandParamsSchema,
+> {
   id: string; // 唯一标识符
   name: string; // 命令名称
   description: string; // 命令描述
   category: CommandCategory; // 命令分类
   actionBased: true; // 类型标记
   undoable?: boolean; // 是否可撤销，默认为 true
+
+  /** 参数 schema（Zod 定义） */
+  paramsSchema: TParams;
+
   handler: (
     root: MindmapStore,
-    params?: unknown[]
+    params: z.infer<TParams>
   ) => EditorAction[] | Promise<EditorAction[]> | void | Promise<void>;
-  when?: (root: MindmapStore, params?: unknown[]) => boolean;
-  getDescription?: (root: MindmapStore, params?: unknown[]) => string;
+  when?: (root: MindmapStore, params: z.infer<TParams>) => boolean;
+  getDescription?: (root: MindmapStore, params: z.infer<TParams>) => string;
 }
 ```
 
@@ -60,16 +66,25 @@ export interface ActionBasedCommandDefinition {
 直接执行、不返回 actions 的命令：
 
 ```typescript
-export interface ImperativeCommandDefinition {
+export interface ImperativeCommandDefinition<
+  TParams extends CommandParamsSchema = CommandParamsSchema,
+> {
   id: string; // 唯一标识符
   name: string; // 命令名称
   description: string; // 命令描述
   category: CommandCategory; // 命令分类
   actionBased: false; // 类型标记
-  undoable?: boolean; // 是否可撤销
-  handler: (root: MindmapStore, params?: unknown[]) => void | Promise<void>;
-  when?: (root: MindmapStore, params?: unknown[]) => boolean;
-  getDescription?: (root: MindmapStore, params?: unknown[]) => string;
+  undoable?: boolean; // 是否可撤���
+
+  /** 参数 schema（Zod 定义） */
+  paramsSchema: TParams;
+
+  handler: (
+    root: MindmapStore,
+    params: z.infer<TParams>
+  ) => void | Promise<void>;
+  when?: (root: MindmapStore, params: z.infer<TParams>) => boolean;
+  getDescription?: (root: MindmapStore, params: z.infer<TParams>) => string;
 }
 ```
 
@@ -81,9 +96,11 @@ export interface ImperativeCommandDefinition {
 #### 联合类型
 
 ```typescript
-export type CommandDefinition =
-  | ActionBasedCommandDefinition
-  | ImperativeCommandDefinition;
+export type CommandDefinition<
+  TParams extends CommandParamsSchema = CommandParamsSchema,
+> =
+  | ActionBasedCommandDefinition<TParams>
+  | ImperativeCommandDefinition<TParams>;
 ```
 
 ### 关键特性
@@ -94,9 +111,79 @@ export type CommandDefinition =
 - **category**: 命令分类（node、navigation、global、ai）
 - **actionBased**: 类型标记，用于编译时和运行时类型区分
 - **undoable**: 控制是否记录到历史栈
-- **when**: 可选的前置条件检查
-- **handler**: 执行逻辑，根据 actionBased 返回不同类型
-- **getDescription**: 可选的动态描述生成函数
+- **paramsSchema**: 使用 Zod 定义的参数 schema，提供类型安全和运行时验证
+- **when**: 可选的前置条件检查（接收命名参数对象）
+- **handler**: 执行逻辑（接收命名参数对象），根据 actionBased 返回不同类型
+- **getDescription**: 可选的动态描述生成函数（接收命名参数对象）
+
+### 命令参数系统
+
+命令参数采用**命名参数**（Named Parameters）模式，使用 Zod schema 进行类型定义和运行时验证。
+
+#### 参数定义（Zod Schema）
+
+每个命令必须定义 `paramsSchema` 字段，使用 Zod 定义参数结构：
+
+```typescript
+import { z } from "zod";
+
+export const AddChildNodeParamsSchema = z.object({
+  parentId: z.string().optional().describe("父节点的 ID，默认为当前选中节点"),
+  position: z.number().optional().describe("插入位置（在兄弟节点中的索引）"),
+  title: z.string().optional().describe("节点标题"),
+});
+
+export type AddChildNodeParams = z.infer<typeof AddChildNodeParamsSchema>;
+```
+
+#### 参数传递
+
+调用命令时传递对象形式的参数：
+
+```typescript
+// ❌ 旧方式（数组参数）
+executeCommand("node.addChild", ["parent-id", 0, "新节点"]);
+
+// ✅ 新方式（命名参数）
+executeCommand("node.addChild", {
+  parentId: "parent-id",
+  position: 0,
+  title: "新节点",
+});
+
+// 可选参数可以省略
+executeCommand("node.addChild", {}); // 使用默认值
+```
+
+#### 参数验证
+
+CommandManager 在执行命令前会自动验证参数：
+
+```typescript
+// src/domain/command-manager.ts
+executeCommand: async (commandId: string, params?: Record<string, unknown>) => {
+  const command = getCommand(commandId);
+
+  // 使用 Zod schema 验证参数
+  const parseResult = command.paramsSchema.safeParse(params ?? {});
+  if (!parseResult.success) {
+    throw new Error(
+      `Invalid params for ${commandId}: ${parseResult.error.message}`
+    );
+  }
+
+  // 执行命令，传递验证后的参数
+  return command.handler(root, parseResult.data);
+};
+```
+
+#### 优势
+
+1. **类型安全**: TypeScript 编译时检查参数类型
+2. **运行时验证**: Zod 在运行时验证参数，提供清晰的错误信息
+3. **可读性**: 命名参数比位置参数更易理解
+4. **可维护性**: 添加新参数不影响现有调用（可选参数）
+5. **文档化**: Zod 的 `describe()` 提供内置文档
 
 ## Command 分类
 
@@ -1056,11 +1143,11 @@ CompositeCommand 实现了组合命令执行器，允许将多个子命令组合
 
 ### 关键概念
 
-| 概念             | 定义                                                                               | 示例/说明                                                            |
-| ---------------- | ---------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| CompositeCommand | 将多个子命令组合为一个原子操作的命令，所有子命令的 actions 在同一个 HistoryItem 中 | AI 批量操作：一次创建多个节点，一次 undo 撤销所有                    |
-| SubCommand       | 组成 CompositeCommand 的子命令定义，包含 commandId 和参数                          | `{ commandId: "node.addChild", params: ["parent-123", 0, "节点1"] }` |
-| 原子性           | 批量操作作为一个整体，要么全部成功，要么全部失败                                   | 避免部分执行导致的不一致状态                                         |
+| 概念             | 定义                                                                               | 示例/说明                                                                                         |
+| ---------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| CompositeCommand | 将多个子命令组合为一个原子操作的命令，所有子命令的 actions 在同一个 HistoryItem 中 | AI 批量操作：一次创建多个节点，一次 undo 撤销所有                                                 |
+| SubCommand       | 组成 CompositeCommand 的子命令定义，包含 commandId 和参数                          | `{ commandId: "node.addChild", params: { parentId: "parent-123", position: 0, title: "节点1" } }` |
+| 原子性           | 批量操���作为一个整体，要么全部成功，要么全部失败                                  | 避免部分执行导致的不一致状态                                                                      |
 
 ### 背景和动机
 
@@ -1128,7 +1215,7 @@ historyManager.execute(allActions)
  */
 export interface SubCommand {
   commandId: string; // 子命令ID，如 "node.addChild"
-  params: unknown[]; // 子命令参数
+  params: Record<string, unknown>; // 子命令参数（命名参数对象）
 }
 ```
 
@@ -1202,9 +1289,18 @@ const root = useMindmapStore.getState();
 
 // 1. 创建组合命令
 const compositeCommand = createCompositeCommand("批量创建子节点", [
-  { commandId: "node.addChild", params: ["parent-123", 0, "节点1"] },
-  { commandId: "node.addChild", params: ["parent-123", 1, "节点2"] },
-  { commandId: "node.addChild", params: ["parent-123", 2, "节点3"] },
+  {
+    commandId: "node.addChild",
+    params: { parentId: "parent-123", position: 0, title: "节点1" },
+  },
+  {
+    commandId: "node.addChild",
+    params: { parentId: "parent-123", position: 1, title: "节点2" },
+  },
+  {
+    commandId: "node.addChild",
+    params: { parentId: "parent-123", position: 2, title: "节点3" },
+  },
 ]);
 
 // 2. 通过 commandManager 执行
@@ -1228,9 +1324,26 @@ await root.commandManager!.executeCommand(
 const batch = {
   description: "重组节点结构",
   operations: [
-    { commandId: "node.addChild", params: ["parent-id", 0, "重要功能"] },
-    { commandId: "node.move", params: ["node-a-id", "group-node-id", 0] },
-    { commandId: "node.move", params: ["node-b-id", "group-node-id", 1] },
+    {
+      commandId: "node.addChild",
+      params: { parentId: "parent-id", position: 0, title: "重要功能" },
+    },
+    {
+      commandId: "node.move",
+      params: {
+        nodeId: "node-a-id",
+        targetParentId: "group-node-id",
+        position: 0,
+      },
+    },
+    {
+      commandId: "node.move",
+      params: {
+        nodeId: "node-b-id",
+        targetParentId: "group-node-id",
+        position: 1,
+      },
+    },
   ],
 };
 

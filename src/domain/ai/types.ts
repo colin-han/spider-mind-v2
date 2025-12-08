@@ -21,8 +21,8 @@ export interface AIOperation {
   /** 对应的命令ID，如 "node.addChild" */
   commandId: string;
 
-  /** 命令参数 */
-  params: unknown[];
+  /** 命令参数（命名参数对象） */
+  params: Record<string, unknown>;
 
   /** 用户可读描述，如 "为'产品规划'创建5个子节点" */
   description: string;

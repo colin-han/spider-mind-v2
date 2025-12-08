@@ -6,18 +6,28 @@ import { getModifierKey } from "./platform-utils";
 
 const mod = getModifierKey();
 
-registerShortcut("f1", "global.setFocusedArea", ["outline"], true);
-registerShortcut("f2", "global.setFocusedArea", ["title-editor"], true);
-registerShortcut("f3", "global.setFocusedArea", ["note-editor"], true);
-registerShortcut("f4", "global.setFocusedArea", ["ai-chat"], true);
-registerShortcut(`${mod}+i`, "global.setFocusedArea", ["ai-chat"], true);
-registerShortcut(`${mod}+enter`, "global.setFocusedArea", ["graph"], true);
+registerShortcut("f1", "global.setFocusedArea", { area: "outline" }, true);
+registerShortcut("f2", "global.setFocusedArea", { area: "title-editor" }, true);
+registerShortcut("f3", "global.setFocusedArea", { area: "note-editor" }, true);
+registerShortcut("f4", "global.setFocusedArea", { area: "ai-chat" }, true);
+registerShortcut(
+  `${mod}+i`,
+  "global.setFocusedArea",
+  { area: "ai-chat" },
+  true
+);
+registerShortcut(
+  `${mod}+enter`,
+  "global.setFocusedArea",
+  { area: "graph" },
+  true
+);
 
 registerShortcutForArea(
   "title-editor",
   "enter",
   "global.setFocusedArea",
-  ["graph"],
+  { area: "graph" },
   true
 );
 
@@ -25,7 +35,7 @@ registerShortcutForArea(
   "title-editor",
   "escape",
   "global.setFocusedArea",
-  ["graph", "escape"],
+  { area: "graph", reason: "escape" },
   true
 );
 
@@ -33,7 +43,7 @@ registerShortcutForArea(
   "note-editor",
   "escape",
   "global.setFocusedArea",
-  ["graph", "escape"],
+  { area: "graph", reason: "escape" },
   true
 );
 
@@ -41,6 +51,6 @@ registerShortcutForArea(
   "outline",
   "escape",
   "global.setFocusedArea",
-  ["graph", "escape"],
+  { area: "graph", reason: "escape" },
   true
 );

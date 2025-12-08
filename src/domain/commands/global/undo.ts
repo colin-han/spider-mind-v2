@@ -1,19 +1,21 @@
 import { MindmapStore } from "../../mindmap-store.types";
 import { CommandDefinition, registerCommand } from "../../command-registry";
+import { EmptyParamsSchema } from "../../command-schema";
 import { useMindmapStore } from "../../mindmap-store";
 
 /**
  * 撤销上一次操作
  */
-export const undoCommand: CommandDefinition = {
+export const undoCommand: CommandDefinition<typeof EmptyParamsSchema> = {
   id: "global.undo",
   name: "撤销",
   description: "撤销上一次操作",
   category: "global",
   actionBased: false,
   undoable: false, // 撤销操作本身不可撤销
+  paramsSchema: EmptyParamsSchema,
 
-  handler: async (root: MindmapStore) => {
+  handler: async (root: MindmapStore, _params) => {
     if (!root.historyManager) {
       throw new Error("HistoryManager not initialized");
     }

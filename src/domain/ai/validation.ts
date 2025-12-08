@@ -17,13 +17,16 @@ import { useMindmapStore } from "../mindmap-store";
  */
 export function extractNodeIds(operation: AIOperation): string[] {
   const nodeIds: string[] = [];
+  const params = operation.params;
 
   // 根据命令类型提取节点ID
   switch (operation.commandId) {
     case "node.addChild":
     case "node.addChildTrees":
-      // 第一个参数是 parentId
-      nodeIds.push(operation.params[0] as string);
+      // parentId 参数
+      if (params["parentId"]) {
+        nodeIds.push(params["parentId"] as string);
+      }
       break;
 
     case "node.addSiblingAbove":
@@ -33,19 +36,27 @@ export function extractNodeIds(operation: AIOperation): string[] {
     case "node.delete":
     case "node.moveUp":
     case "node.moveDown":
-      // 第一个参数是 nodeId
-      nodeIds.push(operation.params[0] as string);
+      // nodeId 参数
+      if (params["nodeId"]) {
+        nodeIds.push(params["nodeId"] as string);
+      }
       break;
 
     case "node.move":
-      // 第一个参数是 nodeId，第二个参数是 targetParentId
-      nodeIds.push(operation.params[0] as string);
-      nodeIds.push(operation.params[1] as string);
+      // nodeId 和 targetParentId 参数
+      if (params["nodeId"]) {
+        nodeIds.push(params["nodeId"] as string);
+      }
+      if (params["targetParentId"]) {
+        nodeIds.push(params["targetParentId"] as string);
+      }
       break;
 
     case "navigation.setCurrentNode":
-      // 第一个参数是 nodeId
-      nodeIds.push(operation.params[0] as string);
+      // nodeId 参数
+      if (params["nodeId"]) {
+        nodeIds.push(params["nodeId"] as string);
+      }
       break;
 
     // 其他命令不涉及节点ID验证

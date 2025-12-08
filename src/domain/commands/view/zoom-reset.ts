@@ -1,15 +1,17 @@
 import type { CommandDefinition } from "../../command-registry";
 import type { MindmapStore } from "../../mindmap-store.types";
+import { EmptyParamsSchema } from "../../command-schema";
 import { SetViewportAction } from "../../actions/ephemeral/set-viewport";
 
-export const zoomReset: CommandDefinition = {
+export const zoomReset: CommandDefinition<typeof EmptyParamsSchema> = {
   id: "view.zoomReset",
   name: "重置缩放",
   description: "重置缩放为 100%",
   category: "view",
   actionBased: true,
   undoable: false,
-  handler: (root: MindmapStore) => {
+  paramsSchema: EmptyParamsSchema,
+  handler: (root: MindmapStore, _params) => {
     const viewport = root.currentEditor!.viewport;
     const newZoom = 1.0;
 

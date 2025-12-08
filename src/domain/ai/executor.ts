@@ -78,7 +78,7 @@ export class AIOperationExecutor {
       await root.commandManager!.executeCommand(
         {
           commandId: compositeCommand.id,
-          params: [],
+          params: {},
         },
         compositeCommand
       );

@@ -1,5 +1,6 @@
 import { getCommand, CommandDefinition } from "../../command-registry";
 import { MindmapStore, EditorAction } from "../../mindmap-store.types";
+import { EmptyParamsSchema } from "../../command-schema";
 
 /**
  * 子命令定义
@@ -10,7 +11,7 @@ import { MindmapStore, EditorAction } from "../../mindmap-store.types";
  */
 export interface SubCommand {
   commandId: string; // 子命令ID，如 "node.addChild"
-  params: unknown[]; // 子命令参数
+  params: Record<string, unknown>; // 子命令参数（对象格式）
 }
 
 /**
@@ -29,16 +30,17 @@ export interface SubCommand {
 export function createCompositeCommand(
   description: string,
   subCommands: SubCommand[]
-): CommandDefinition {
+): CommandDefinition<typeof EmptyParamsSchema> {
   return {
     id: `ai.composite.${Date.now()}`, // 临时 id，仅用于显示
     name: description,
     description,
     category: "ai",
     actionBased: true,
+    paramsSchema: EmptyParamsSchema,
 
     // handler 实现收集 actions 的逻辑
-    handler: async (root: MindmapStore): Promise<EditorAction[]> => {
+    handler: async (root: MindmapStore, _params): Promise<EditorAction[]> => {
       const allActions: EditorAction[] = [];
 
       // 收集所有 actions
@@ -64,15 +66,18 @@ export function createCompositeCommand(
           );
         }
 
+        // 验证参数
+        const validatedParams = command.paramsSchema.parse(params);
+
         // 检查前置条件
-        if (command.when && !command.when(root, params)) {
+        if (command.when && !command.when(root, validatedParams)) {
           throw new Error(
             `Command ${commandId} precondition not met, execution aborted`
           );
         }
 
         // 执行子命令，收集 actions（不执行）
-        const actions = await command.handler(root, params);
+        const actions = await command.handler(root, validatedParams);
 
         if (actions && Array.isArray(actions)) {
           allActions.push(...actions);

@@ -37,31 +37,40 @@ function isUUID(str: string): boolean {
 }
 
 /**
- * 转换参数数组中的 UUID 为 short_id
+ * 转换参数对象中的 UUID 为 short_id
  *
- * @param params - 原始参数数组
- * @returns 转换后的参数数组
+ * @param params - 原始参数对象
+ * @returns 转换后的参数对象
  */
-function transformParams(params: unknown[]): unknown[] {
-  return params.map((param) => {
-    // 如果参数不是字符串，直接返回
-    if (typeof param !== "string") {
-      return param;
+function transformParams(
+  params: Record<string, unknown>
+): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(params)) {
+    // 如果参数不是字符串，直接复制
+    if (typeof value !== "string") {
+      result[key] = value;
+      continue;
     }
 
     // 检测是否是 UUID 格式
-    if (isUUID(param)) {
-      const shortId = uuidToShortId(param);
+    if (isUUID(value)) {
+      const shortId = uuidToShortId(value);
       if (shortId) {
-        console.log(`[参数转换] UUID ${param} -> short_id ${shortId}`);
-        return shortId;
+        console.log(`[参数转换] UUID ${value} -> short_id ${shortId}`);
+        result[key] = shortId;
+      } else {
+        // 如果找不到对应的 short_id，保持原值（验证阶段会报错）
+        console.warn(`[参数转换] 无法找到 UUID ${value} 对应的节点`);
+        result[key] = value;
       }
-      // 如果找不到对应的 short_id，保持原值（验证阶段会报错）
-      console.warn(`[参数转换] 无法找到 UUID ${param} 对应的节点`);
+    } else {
+      result[key] = value;
     }
+  }
 
-    return param;
-  });
+  return result;
 }
 
 /**

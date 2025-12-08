@@ -6,6 +6,7 @@ import {
   ImperativeCommandDefinition,
 } from "../../../command-registry";
 import { MindmapStore, EditorAction } from "../../../mindmap-store.types";
+import { EmptyParamsSchema } from "../../../command-schema";
 
 // Mock EditorAction
 class MockAction implements EditorAction {
@@ -50,21 +51,27 @@ describe("createCompositeCommand", () => {
 
     it("应该收集所有子命令的 actions", async () => {
       // 注册测试命令
-      const testCommand1: ActionBasedCommandDefinition = {
+      const testCommand1: ActionBasedCommandDefinition<
+        typeof EmptyParamsSchema
+      > = {
         id: "test.command1",
         name: "测试命令1",
         description: "测试",
         category: "node",
         actionBased: true,
+        paramsSchema: EmptyParamsSchema,
         handler: () => [new MockAction("action1"), new MockAction("action2")],
       };
 
-      const testCommand2: ActionBasedCommandDefinition = {
+      const testCommand2: ActionBasedCommandDefinition<
+        typeof EmptyParamsSchema
+      > = {
         id: "test.command2",
         name: "测试命令2",
         description: "测试",
         category: "node",
         actionBased: true,
+        paramsSchema: EmptyParamsSchema,
         handler: () => [new MockAction("action3")],
       };
 
@@ -73,13 +80,13 @@ describe("createCompositeCommand", () => {
 
       // 创建组合命令
       const compositeCommand = createCompositeCommand("批量操作", [
-        { commandId: "test.command1", params: [] },
-        { commandId: "test.command2", params: [] },
+        { commandId: "test.command1", params: {} },
+        { commandId: "test.command2", params: {} },
       ]);
 
       // 执行 handler
       const mockRoot = {} as MindmapStore;
-      const actions = await compositeCommand.handler(mockRoot, []);
+      const actions = await compositeCommand.handler(mockRoot, {});
 
       expect(actions).toHaveLength(3);
     });
@@ -88,24 +95,27 @@ describe("createCompositeCommand", () => {
   describe("错误处理", () => {
     it("应该在命令不存在时抛出错误", async () => {
       const compositeCommand = createCompositeCommand("测试", [
-        { commandId: "non.existent", params: [] },
+        { commandId: "non.existent", params: {} },
       ]);
 
       const mockRoot = {} as MindmapStore;
 
-      await expect(compositeCommand.handler(mockRoot, [])).rejects.toThrow(
+      await expect(compositeCommand.handler(mockRoot, {})).rejects.toThrow(
         "Command non.existent not found"
       );
     });
 
     it("应该在命令不是 actionBased 时抛出错误", async () => {
       // 注册命令式命令
-      const imperativeCommand: ImperativeCommandDefinition = {
+      const imperativeCommand: ImperativeCommandDefinition<
+        typeof EmptyParamsSchema
+      > = {
         id: "test.imperative",
         name: "命令式命令",
         description: "测试",
         category: "global",
         actionBased: false,
+        paramsSchema: EmptyParamsSchema,
         handler: () => {
           // 直接执行
         },
@@ -114,49 +124,55 @@ describe("createCompositeCommand", () => {
       registerCommand(imperativeCommand);
 
       const compositeCommand = createCompositeCommand("测试", [
-        { commandId: "test.imperative", params: [] },
+        { commandId: "test.imperative", params: {} },
       ]);
 
       const mockRoot = {} as MindmapStore;
 
-      await expect(compositeCommand.handler(mockRoot, [])).rejects.toThrow(
+      await expect(compositeCommand.handler(mockRoot, {})).rejects.toThrow(
         "is not action-based"
       );
     });
 
     it("应该在命令是 undoable: false 时抛出错误", async () => {
       // 注册不可撤销命令
-      const nonUndoableCommand: ActionBasedCommandDefinition = {
+      const nonUndoableCommand: ActionBasedCommandDefinition<
+        typeof EmptyParamsSchema
+      > = {
         id: "test.nonundoable",
         name: "不可撤销命令",
         description: "测试",
         category: "navigation",
         actionBased: true,
         undoable: false,
+        paramsSchema: EmptyParamsSchema,
         handler: () => [new MockAction("action1")],
       };
 
       registerCommand(nonUndoableCommand);
 
       const compositeCommand = createCompositeCommand("测试", [
-        { commandId: "test.nonundoable", params: [] },
+        { commandId: "test.nonundoable", params: {} },
       ]);
 
       const mockRoot = {} as MindmapStore;
 
-      await expect(compositeCommand.handler(mockRoot, [])).rejects.toThrow(
+      await expect(compositeCommand.handler(mockRoot, {})).rejects.toThrow(
         "is not undoable"
       );
     });
 
     it("应该在前置条件不满足时抛出错误", async () => {
       // 注册带前置条件的命令
-      const conditionalCommand: ActionBasedCommandDefinition = {
+      const conditionalCommand: ActionBasedCommandDefinition<
+        typeof EmptyParamsSchema
+      > = {
         id: "test.conditional",
         name: "条件命令",
         description: "测试",
         category: "node",
         actionBased: true,
+        paramsSchema: EmptyParamsSchema,
         handler: () => [new MockAction("action1")],
         when: () => false, // 前置条件总是不满足
       };
@@ -164,12 +180,12 @@ describe("createCompositeCommand", () => {
       registerCommand(conditionalCommand);
 
       const compositeCommand = createCompositeCommand("测试", [
-        { commandId: "test.conditional", params: [] },
+        { commandId: "test.conditional", params: {} },
       ]);
 
       const mockRoot = {} as MindmapStore;
 
-      await expect(compositeCommand.handler(mockRoot, [])).rejects.toThrow(
+      await expect(compositeCommand.handler(mockRoot, {})).rejects.toThrow(
         "precondition not met"
       );
     });
@@ -178,12 +194,13 @@ describe("createCompositeCommand", () => {
       const executionOrder: string[] = [];
 
       // 注册第一个命令
-      const command1: ActionBasedCommandDefinition = {
+      const command1: ActionBasedCommandDefinition<typeof EmptyParamsSchema> = {
         id: "test.first",
         name: "第一个命令",
         description: "测试",
         category: "node",
         actionBased: true,
+        paramsSchema: EmptyParamsSchema,
         handler: () => {
           executionOrder.push("first");
           return [new MockAction("action1")];
@@ -191,12 +208,15 @@ describe("createCompositeCommand", () => {
       };
 
       // 注册会失败的命令
-      const failingCommand: ActionBasedCommandDefinition = {
+      const failingCommand: ActionBasedCommandDefinition<
+        typeof EmptyParamsSchema
+      > = {
         id: "test.failing",
         name: "失败命令",
         description: "测试",
         category: "node",
         actionBased: true,
+        paramsSchema: EmptyParamsSchema,
         handler: () => {
           executionOrder.push("failing");
           throw new Error("Command execution failed");
@@ -204,12 +224,13 @@ describe("createCompositeCommand", () => {
       };
 
       // 注册第三个命令（不应该被执行）
-      const command3: ActionBasedCommandDefinition = {
+      const command3: ActionBasedCommandDefinition<typeof EmptyParamsSchema> = {
         id: "test.third",
         name: "第三个命令",
         description: "测试",
         category: "node",
         actionBased: true,
+        paramsSchema: EmptyParamsSchema,
         handler: () => {
           executionOrder.push("third");
           return [new MockAction("action3")];
@@ -221,14 +242,14 @@ describe("createCompositeCommand", () => {
       registerCommand(command3);
 
       const compositeCommand = createCompositeCommand("测试", [
-        { commandId: "test.first", params: [] },
-        { commandId: "test.failing", params: [] },
-        { commandId: "test.third", params: [] },
+        { commandId: "test.first", params: {} },
+        { commandId: "test.failing", params: {} },
+        { commandId: "test.third", params: {} },
       ]);
 
       const mockRoot = {} as MindmapStore;
 
-      await expect(compositeCommand.handler(mockRoot, [])).rejects.toThrow();
+      await expect(compositeCommand.handler(mockRoot, {})).rejects.toThrow();
 
       // 验证第三个命令没有执行
       expect(executionOrder).toEqual(["first", "failing"]);

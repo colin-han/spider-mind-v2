@@ -1,33 +1,35 @@
-import { MindmapStore } from "../../mindmap-store.types";
+import { z } from "zod";
 import { CommandDefinition, registerCommand } from "../../command-registry";
 import { ExpandNodeAction } from "../../actions/ephemeral/expand-node";
 import { getChildNodes, getDescendantNodes } from "../../editor-utils";
 
-type ExpandSubtreeRecursiveParams = [string?];
+export const ExpandSubtreeRecursiveParamsSchema = z.object({
+  nodeId: z
+    .string()
+    .optional()
+    .describe("要展开的节点 ID(可选,默认为当前节点)"),
+});
+export type ExpandSubtreeRecursiveParams = z.infer<
+  typeof ExpandSubtreeRecursiveParamsSchema
+>;
 
 /**
  * 递归展开子树命令
  * 展开当前节点及其所有子孙节点
  */
-export const expandSubtreeRecursiveCommand: CommandDefinition = {
+export const expandSubtreeRecursiveCommand: CommandDefinition<
+  typeof ExpandSubtreeRecursiveParamsSchema
+> = {
   id: "navigation.expandSubtreeRecursive",
   name: "递归展开子树",
   description: "展开当前节点及其所有子孙节点",
   category: "navigation",
   actionBased: true,
   undoable: false,
+  paramsSchema: ExpandSubtreeRecursiveParamsSchema,
 
-  parameters: [
-    {
-      name: "nodeId",
-      type: "string",
-      description: "要展开的节点 ID（可选，默认为当前节点）",
-      optional: true,
-    },
-  ],
-
-  handler: (root: MindmapStore, params?: unknown[]) => {
-    const [nodeId] = (params as ExpandSubtreeRecursiveParams) || [];
+  handler: (root, params) => {
+    const { nodeId } = params;
     const targetNodeId = nodeId || root.currentEditor!.currentNode;
 
     const targetNode = root.currentEditor?.nodes.get(targetNodeId);
@@ -72,7 +74,7 @@ export const expandSubtreeRecursiveCommand: CommandDefinition = {
     return nodesToExpand.map((id) => new ExpandNodeAction(id));
   },
 
-  when: (root: MindmapStore) => {
+  when: (root) => {
     const targetNodeId = root.currentEditor?.currentNode;
     if (!targetNodeId) return false;
 

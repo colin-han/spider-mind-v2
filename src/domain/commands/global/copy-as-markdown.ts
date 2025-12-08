@@ -6,20 +6,24 @@
 
 import { MindmapStore } from "../../mindmap-store.types";
 import { CommandDefinition, registerCommand } from "../../command-registry";
+import { EmptyParamsSchema } from "../../command-schema";
 import { buildMarkdownFromNode } from "@/lib/utils/export/markdown-builder";
 
 /**
  * 复制为 Markdown 命令
  */
-export const copyAsMarkdownCommand: CommandDefinition = {
+export const copyAsMarkdownCommand: CommandDefinition<
+  typeof EmptyParamsSchema
+> = {
   id: "global.copyAsMarkdown",
   name: "复制为 Markdown",
   description: "将当前选中的节点及其子节点复制为 Markdown 格式",
   category: "global",
-  actionBased: false, // 不需要 undo/redo
+  actionBased: false, // ���需要 undo/redo
   undoable: false,
+  paramsSchema: EmptyParamsSchema,
 
-  handler: async (root: MindmapStore) => {
+  handler: async (root: MindmapStore, _params) => {
     const { currentEditor } = root;
 
     if (!currentEditor) {

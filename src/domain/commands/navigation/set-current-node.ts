@@ -1,27 +1,27 @@
+import { z } from "zod";
 import { CommandDefinition } from "../../command-registry";
-import { MindmapStore, EditorAction } from "../../mindmap-store.types";
+import { EditorAction } from "../../mindmap-store.types";
 import { SetCurrentNodeAction } from "../../actions/ephemeral/set-current-node";
 import { registerCommand } from "../../command-registry";
 import { ensureNodeVisibleAction } from "../../utils/viewport-utils";
 
-export type SetCurrentNodeParams = [nodeId: string];
+export const SetCurrentNodeParamsSchema = z.object({
+  nodeId: z.string().describe("要选中的节点 ID"),
+});
+export type SetCurrentNodeParams = z.infer<typeof SetCurrentNodeParamsSchema>;
 
-export const setCurrentNode: CommandDefinition = {
+export const setCurrentNode: CommandDefinition<
+  typeof SetCurrentNodeParamsSchema
+> = {
   id: "navigation.setCurrentNode",
   name: "设置当前节点",
   description: "设置当前选中的节点",
   category: "navigation",
   actionBased: true,
   undoable: false,
-  parameters: [
-    {
-      name: "nodeId",
-      type: "string",
-      description: "要选中的节点 ID",
-    },
-  ],
-  handler: (root: MindmapStore, params?: unknown[]) => {
-    const [nodeId] = (params as SetCurrentNodeParams) || [];
+  paramsSchema: SetCurrentNodeParamsSchema,
+  handler: (root, params) => {
+    const { nodeId } = params;
     const state = root.currentEditor!;
 
     const actions: EditorAction[] = [

@@ -37,7 +37,7 @@ registerShortcut({
   key: " ",
   run: () => ({
     commandId: "global.setFocusedArea",
-    params: ["title-editor"],
+    params: { area: "title-editor" },
     preventDefault: true,
   }),
   when: (root) => {

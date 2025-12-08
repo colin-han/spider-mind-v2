@@ -1,33 +1,29 @@
-import { MindmapStore } from "../../mindmap-store.types";
+import { z } from "zod";
 import { CommandDefinition, registerCommand } from "../../command-registry";
 import { UpdateNodeAction } from "../../actions/persistent/update-node";
 
-type UpdateNoteParams = [(string | undefined)?, (string | null | undefined)?];
+export const UpdateNoteParamsSchema = z.object({
+  nodeId: z.string().optional().describe("节点 ID"),
+  newNote: z.string().nullable().optional().describe("新的笔记内容"),
+});
+
+export type UpdateNoteParams = z.infer<typeof UpdateNoteParamsSchema>;
 
 /**
  * 更新节点笔记
  */
-export const updateNoteCommand: CommandDefinition = {
+export const updateNoteCommand: CommandDefinition<
+  typeof UpdateNoteParamsSchema
+> = {
   id: "node.updateNote",
   name: "更新节点笔记",
   description: "更新节点的详细说明（note）",
   category: "node",
   actionBased: true,
-  parameters: [
-    {
-      name: "nodeId",
-      type: "string",
-      description: "节点 ID",
-    },
-    {
-      name: "newNote",
-      type: "string",
-      description: "新的笔记内容",
-    },
-  ],
+  paramsSchema: UpdateNoteParamsSchema,
 
-  handler: (root: MindmapStore, params?: unknown[]) => {
-    const [nodeId, newNote] = (params as UpdateNoteParams) || [];
+  handler: (root, params) => {
+    const { nodeId, newNote } = params;
     const targetNodeId = nodeId || root.currentEditor!.currentNode;
     const node = root.currentEditor?.nodes.get(targetNodeId);
 
@@ -57,14 +53,14 @@ export const updateNoteCommand: CommandDefinition = {
     return actions;
   },
 
-  when: (root: MindmapStore, params?: unknown[]) => {
-    const [nodeId] = (params as UpdateNoteParams) || [];
+  when: (root, params) => {
+    const { nodeId } = params;
     const targetNodeId = nodeId || root.currentEditor?.currentNode;
     return root.currentEditor?.nodes.has(targetNodeId || "") || false;
   },
 
-  getDescription: (root: MindmapStore, params?: unknown[]) => {
-    const [nodeId, newNote] = (params as UpdateNoteParams) || [];
+  getDescription: (root, params) => {
+    const { nodeId, newNote } = params;
     const targetNodeId = nodeId || root.currentEditor?.currentNode;
     const node = root.currentEditor?.nodes.get(targetNodeId || "");
 

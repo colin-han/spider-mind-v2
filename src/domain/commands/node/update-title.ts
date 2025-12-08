@@ -1,33 +1,29 @@
-import { MindmapStore } from "../../mindmap-store.types";
+import { z } from "zod";
 import { CommandDefinition, registerCommand } from "../../command-registry";
 import { UpdateNodeAction } from "../../actions/persistent/update-node";
 
-type UpdateTitleParams = [string?, string?];
+export const UpdateTitleParamsSchema = z.object({
+  nodeId: z.string().optional().describe("节点 ID"),
+  newTitle: z.string().optional().describe("新的标题内容"),
+});
+
+export type UpdateTitleParams = z.infer<typeof UpdateTitleParamsSchema>;
 
 /**
  * 更新节点标题
  */
-export const updateTitleCommand: CommandDefinition = {
+export const updateTitleCommand: CommandDefinition<
+  typeof UpdateTitleParamsSchema
+> = {
   id: "node.updateTitle",
   name: "更新节点标题",
   description: "更新节点标题",
   category: "node",
   actionBased: true,
-  parameters: [
-    {
-      name: "nodeId",
-      type: "string",
-      description: "节点 ID",
-    },
-    {
-      name: "newTitle",
-      type: "string",
-      description: "新的标题内容",
-    },
-  ],
+  paramsSchema: UpdateTitleParamsSchema,
 
-  handler: (root: MindmapStore, params?: unknown[]) => {
-    const [nodeId, newTitle] = (params as UpdateTitleParams) || [];
+  handler: (root, params) => {
+    const { nodeId, newTitle } = params;
     const targetNodeId = nodeId || root.currentEditor!.currentNode;
     const node = root.currentEditor?.nodes.get(targetNodeId);
 
@@ -58,14 +54,14 @@ export const updateTitleCommand: CommandDefinition = {
     return actions;
   },
 
-  when: (root: MindmapStore, params?: unknown[]) => {
-    const [nodeId] = (params as UpdateTitleParams) || [];
+  when: (root, params) => {
+    const { nodeId } = params;
     const targetNodeId = nodeId || root.currentEditor?.currentNode;
     return root.currentEditor?.nodes.has(targetNodeId || "") || false;
   },
 
-  getDescription: (root: MindmapStore, params?: unknown[]) => {
-    const [nodeId] = (params as UpdateTitleParams) || [];
+  getDescription: (root, params) => {
+    const { nodeId } = params;
     const targetNodeId = nodeId || root.currentEditor?.currentNode;
     const node = root.currentEditor?.nodes.get(targetNodeId || "");
     return node ? `更新标题：${node.title}` : "更新节点标题";

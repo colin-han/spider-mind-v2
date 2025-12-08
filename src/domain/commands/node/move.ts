@@ -1,10 +1,16 @@
-import { MindmapStore } from "../../mindmap-store.types";
+import { z } from "zod";
 import { CommandDefinition, registerCommand } from "../../command-registry";
 import { UpdateNodeAction } from "../../actions/persistent/update-node";
 import { getChildNodes, isDescendant } from "../../editor-utils";
 import { EnsureCurrentNodeVisibleAction } from "../../actions/ephemeral/ensure-current-node-visible";
 
-type MoveNodeParams = [string?, string?, number?];
+export const MoveNodeParamsSchema = z.object({
+  nodeId: z.string().optional().describe("要移动的节点 ID"),
+  targetParentId: z.string().optional().describe("目标父节点 ID"),
+  position: z.number().optional().describe("在新父节点下的位置"),
+});
+
+export type MoveNodeParams = z.infer<typeof MoveNodeParamsSchema>;
 
 /**
  * 移动节点到新位置
@@ -13,32 +19,16 @@ type MoveNodeParams = [string?, string?, number?];
  * 1. 同级重排序：newParentId === oldParentId
  * 2. 跨节点移动：newParentId !== oldParentId
  */
-export const moveNodeCommand: CommandDefinition = {
+export const moveNodeCommand: CommandDefinition<typeof MoveNodeParamsSchema> = {
   id: "node.move",
   name: "移动节点",
   description: "移动节点到新的父节点或位置",
   category: "node",
   actionBased: true,
-  parameters: [
-    {
-      name: "nodeId",
-      type: "string",
-      description: "要移动的节点 ID",
-    },
-    {
-      name: "targetParentId",
-      type: "string",
-      description: "目标父节点 ID",
-    },
-    {
-      name: "position",
-      type: "number",
-      description: "在新父节点下的位置",
-    },
-  ],
+  paramsSchema: MoveNodeParamsSchema,
 
-  handler: (root: MindmapStore, params?: unknown[]) => {
-    const [nodeId, newParentId, position] = (params as MoveNodeParams) || [];
+  handler: (root, params) => {
+    const { nodeId, targetParentId: newParentId, position } = params;
 
     if (!nodeId || !root.currentEditor) {
       return;
@@ -183,8 +173,8 @@ export const moveNodeCommand: CommandDefinition = {
     return actions;
   },
 
-  when: (root: MindmapStore, params?: unknown[]) => {
-    const [nodeId] = (params as MoveNodeParams) || [];
+  when: (root, params) => {
+    const { nodeId } = params;
     if (!nodeId || !root.currentEditor) {
       return false;
     }
@@ -194,8 +184,8 @@ export const moveNodeCommand: CommandDefinition = {
     return node !== undefined && node.parent_id !== null;
   },
 
-  getDescription: (root: MindmapStore, params?: unknown[]) => {
-    const [nodeId] = (params as MoveNodeParams) || [];
+  getDescription: (root, params) => {
+    const { nodeId } = params;
     const node = root.currentEditor?.nodes.get(nodeId || "");
     return node ? `移动：${node.title}` : "移动节点";
   },
