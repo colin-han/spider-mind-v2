@@ -176,6 +176,17 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
         return;
       }
 
+      // 检查焦点是否在 input 或 textarea 内（防止在 chat panel 等输入框中触发）
+      const activeElement = document.activeElement;
+      if (
+        activeElement &&
+        (activeElement.tagName === "INPUT" ||
+          activeElement.tagName === "TEXTAREA" ||
+          (activeElement as HTMLElement).isContentEditable)
+      ) {
+        return;
+      }
+
       // IME 输入过程中不处理
       if (event.isComposing) {
         return;

@@ -222,13 +222,13 @@ export const AIChatPanel = forwardRef<AIChatPanelHandle, AIChatPanelProps>(
             return newMap;
           });
 
-          // 3. 生成并发送确认消息给 LLM
+          // 3. 生成确认消息（仅保存本地，不触发 AI 请求）
           const selectedOps = operations.filter((op) =>
             selectedIds.includes(op.id)
           );
           const confirmationText = `我已执行以下操作：\n${selectedOps.map((op) => `- ${op.description}`).join("\n")}`;
 
-          // 保存用户消息
+          // 保存用户消息到数据库
           const userMessageId = `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
           const userMessage = createAIMessage(
             userMessageId,
@@ -239,13 +239,20 @@ export const AIChatPanel = forwardRef<AIChatPanelHandle, AIChatPanelProps>(
           );
           await store.acceptActions([new AddAIMessageAction(userMessage)]);
 
-          // 发送到 AI
-          sendMessage({ text: confirmationText });
+          // 将确认消息添加到界面显示（不触发 AI 请求）
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: userMessageId,
+              role: "user" as const,
+              parts: [{ type: "text" as const, text: confirmationText }],
+            },
+          ]);
         } catch (error) {
           console.error("Failed to handle operations applied:", error);
         }
       },
-      [mindmapId, nodeContext, store, sendMessage]
+      [mindmapId, nodeContext, store, setMessages]
     );
 
     // 处理操作取消回调
@@ -275,10 +282,10 @@ export const AIChatPanel = forwardRef<AIChatPanelHandle, AIChatPanelProps>(
             return newMap;
           });
 
-          // 3. 生成并发送取消消息给 LLM
+          // 3. 生成取消消息（仅保存本地，不触发 AI 请求）
           const cancellationText = `我已取消了你建议的 ${operations.length} 个操作。`;
 
-          // 保存用户消息
+          // 保存用户消息到数据库
           const userMessageId = `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
           const userMessage = createAIMessage(
             userMessageId,
@@ -289,13 +296,20 @@ export const AIChatPanel = forwardRef<AIChatPanelHandle, AIChatPanelProps>(
           );
           await store.acceptActions([new AddAIMessageAction(userMessage)]);
 
-          // 发送到 AI
-          sendMessage({ text: cancellationText });
+          // 将取消消息添加到界面显示（不触发 AI 请求）
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: userMessageId,
+              role: "user" as const,
+              parts: [{ type: "text" as const, text: cancellationText }],
+            },
+          ]);
         } catch (error) {
           console.error("Failed to handle operations cancelled:", error);
         }
       },
-      [mindmapId, nodeContext, store, sendMessage]
+      [mindmapId, nodeContext, store, setMessages]
     );
 
     // 自动滚动到底部
