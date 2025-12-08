@@ -5,15 +5,11 @@
 import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
-import type { AIOperation } from "@/domain/ai";
-import {
-  createAIOperationExecutor,
-  validateOperations,
-  transformOperationsParams,
-} from "@/domain/ai";
+import type { OperationWithId } from "@/lib/ai/tools";
+import { executeSelectedOperations } from "@/lib/ai/tools";
 
 interface OperationsPanelProps {
-  operations: AIOperation[];
+  operations: OperationWithId[];
   loading: boolean; // 是否正在加载操作
   onAccept: (selectedIds: string[]) => void; // 执行选中的操作
   onReject: () => void; // 拒绝所有操作
@@ -60,20 +56,8 @@ export function OperationsPanel({
         selectedIds.includes(op.id)
       );
 
-      // 转换参数（UUID -> short_id）
-      const transformedOps = transformOperationsParams(selectedOps);
-
-      // 验证操作
-      const validationResult = validateOperations(transformedOps);
-      if (!validationResult.valid) {
-        toast.error(`验证失败: ${validationResult.error}`);
-        setIsExecuting(false);
-        return;
-      }
-
-      // 执行选中的操作（使用转换后的参数）
-      const executor = createAIOperationExecutor();
-      await executor.executeSelected(transformedOps, "执行 AI 建议的操作");
+      // 使用新的执行函数（自动处理 UUID -> short_id 转换）
+      await executeSelectedOperations(selectedOps, "执行 AI 建议的操作");
 
       // 执行成功
       toast.success(`成功执行 ${selectedOps.length} 个操作`);
@@ -129,18 +113,9 @@ export function OperationsPanel({
                 />
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium text-gray-900">
-                    {op.description}
+                    {(op as unknown as { description: string }).description ||
+                      "操作"}
                   </div>
-                  {op.preview && (
-                    <div className="text-xs text-gray-500 mt-1">
-                      {op.preview.summary}
-                    </div>
-                  )}
-                  {op.metadata && (
-                    <div className="text-xs text-gray-400 mt-1">
-                      置信度: {(op.metadata.confidence * 100).toFixed(0)}%
-                    </div>
-                  )}
                 </div>
               </label>
             ))}

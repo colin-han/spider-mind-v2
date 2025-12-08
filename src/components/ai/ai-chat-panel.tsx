@@ -23,7 +23,7 @@ import { AddAIMessageAction } from "@/domain/actions/persistent/add-ai-message";
 import { UpdateAIMessageMetadataAction } from "@/domain/actions/persistent/update-ai-message-metadata";
 import { useMindmapStore } from "@/domain/mindmap-store";
 import type { AINodeContext, AIMessage } from "@/lib/types/ai";
-import type { AIOperation } from "@/domain/ai";
+import type { OperationWithId } from "@/lib/ai/tools";
 import { getDB } from "@/lib/db/schema";
 
 interface AIChatPanelProps {
@@ -196,7 +196,7 @@ export const AIChatPanel = forwardRef<AIChatPanelHandle, AIChatPanelProps>(
       async (
         messageId: string,
         selectedIds: string[],
-        operations: AIOperation[]
+        operations: OperationWithId[]
       ) => {
         if (!mindmapId || !nodeContext) return;
 
@@ -226,7 +226,7 @@ export const AIChatPanel = forwardRef<AIChatPanelHandle, AIChatPanelProps>(
           const selectedOps = operations.filter((op) =>
             selectedIds.includes(op.id)
           );
-          const confirmationText = `我已执行以下操作：\n${selectedOps.map((op) => `- ${op.description}`).join("\n")}`;
+          const confirmationText = `我已执行以下操作：\n${selectedOps.map((op) => `- ${(op as unknown as { description: string }).description || "操作"}`).join("\n")}`;
 
           // 保存用户消息到数据库
           const userMessageId = `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -257,7 +257,7 @@ export const AIChatPanel = forwardRef<AIChatPanelHandle, AIChatPanelProps>(
 
     // 处理操作取消回调
     const handleOperationsCancelled = useCallback(
-      async (messageId: string, operations: AIOperation[]) => {
+      async (messageId: string, operations: OperationWithId[]) => {
         if (!mindmapId || !nodeContext) return;
 
         try {
