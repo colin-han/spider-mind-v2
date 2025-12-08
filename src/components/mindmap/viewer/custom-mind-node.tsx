@@ -64,7 +64,8 @@ function CustomMindNodeComponent({ data }: NodeProps) {
   const isSelected = editorState.currentNode === nodeData.shortId;
   const isExpanded = !editorState.collapsedNodes.has(nodeData.shortId);
   const isRoot = !nodeData.parentId;
-  const showToolbar = isSelected || isHovered;
+  const isDragging = editorState.isDragging;
+  const showToolbar = !isDragging && (isSelected || isHovered);
 
   // 获取完整节点数据（用于工具栏）
   const node = editorState.nodes.get(nodeData.shortId);
@@ -117,11 +118,12 @@ function CustomMindNodeComponent({ data }: NodeProps) {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* 迷你工具栏 - 选中或 hover 时显示 */}
-      {showToolbar && node && (
+      {/* 迷你工具栏 - 始终渲染，通过 visible 控制显示 */}
+      {node && (
         <MiniToolbar
           node={node}
           zoom={zoom}
+          visible={showToolbar}
           testId={`mindmap-node-${nodeData.shortId}-mini-toolbar`}
         />
       )}

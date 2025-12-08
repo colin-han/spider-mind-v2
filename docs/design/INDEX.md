@@ -21,6 +21,7 @@
 | [复制为 Markdown 功能设计](./copy-as-markdown-design.md) | Markdown 格式导出和剪贴板集成 | ✅ 已确认 | 2025-12-02 |
 | [错误处理设计](./error-handling-design.md)               | 错误页面和错误处理机制        | ✅ 已确认 | 2025-11-30 |
 | [思维导图加载体验优化](./mindmap-loading-experience.md)  | 加载动画、状态清除和布局定位  | ✅ 已确认 | 2025-12-06 |
+| [拖拽时隐藏 Mini Toolbar](./drag-hide-mini-toolbar.md)   | 拖拽交互优化和动画效果        | ✅ 已确认 | 2025-12-06 |
 
 ## 🏗️ 按模块分类
 
@@ -165,6 +166,13 @@
   - TypeScript exactOptionalPropertyTypes 处理
   - React useEffect 依赖优化
 
+- **[拖拽时隐藏 Mini Toolbar](./drag-hide-mini-toolbar.md)**
+  - 拖拽状态（isDragging）全局管理
+  - 画布拖拽和节点拖拽事件监听
+  - Mini Toolbar 自动隐藏逻辑
+  - 平滑淡入淡出动画（150ms）
+  - opacity 和 pointerEvents 动画实现
+
 ## 🔗 文档关系图
 
 ```mermaid
@@ -287,78 +295,83 @@ graph TD
 
 ### 按关键词索引
 
-| 关键词                                  | 相关文档                                                                           |
-| --------------------------------------- | ---------------------------------------------------------------------------------- |
-| UUID, short_id, 唯一性, base36          | [ID 设计](./id-design.md)                                                          |
-| 数据库, Schema, PostgreSQL, Supabase    | [数据库设计](./database-schema.md)                                                 |
-| mindmaps, mindmap_nodes, user_profiles  | [数据库设计](./database-schema.md)                                                 |
-| 约束, 索引, 触发器, 外键                | [数据库设计](./database-schema.md)                                                 |
-| 三层存储, Dirty Flag, 增量同步          | [持久化中间件设计](./persistence-middleware-design.md)                             |
-| 冲突检测, 版本管理, applyToIndexedDB    | [持久化中间件设计](./persistence-middleware-design.md)                             |
-| Command Pattern, 命令模式               | [Command 层架构](./command-layer-design.md)                                        |
-| ActionBased, ImperativeCommand          | [Command 层架构](./command-layer-design.md)                                        |
-| CommandManager, 命令执行                | [Command 层架构](./command-layer-design.md)                                        |
-| 快捷键, react-hotkeys-hook, 键盘事件    | [命令参考](./command-reference.md)                                                 |
-| 节点操作, 导航, 编辑命令                | [命令参考](./command-reference.md)                                                 |
-| CompositeCommand, 组合命令, 批量操作    | [Command 层架构 - 批量操作](./command-layer-design.md#批量操作---compositecommand) |
-| 原子性, 可撤销性, AI 批量操作           | [Command 层架构 - 批量操作](./command-layer-design.md#批量操作---compositecommand) |
-| 布局, 三栏, 大纲视图, 图形视图          | [布局设计](./editor-ui-layout-design.md)                                           |
-| react-arborist, 虚拟化, Tree            | [布局设计](./editor-ui-layout-design.md)                                           |
-| React Flow, 图形渲染                    | [布局设计](./editor-ui-layout-design.md)                                           |
-| ResizeObserver, 响应式                  | [布局设计](./editor-ui-layout-design.md)                                           |
-| localStorage, 布局持久化                | [布局设计](./editor-ui-layout-design.md)                                           |
-| 折叠节点, 高亮, 导航                    | [布局设计](./editor-ui-layout-design.md)                                           |
-| Zustand, Immer, 状态管理                | [布局设计](./editor-ui-layout-design.md)                                           |
-| AI SDK, useChat, 流式响应               | [AI 助手系统](./ai-assistant-system-design.md)                                     |
-| AIMessage, AIOperation, 对话持久化      | [AI 助手系统](./ai-assistant-system-design.md)                                     |
-| IndexedDB, idb, 本地存储                | [AI 助手系统](./ai-assistant-system-design.md)                                     |
-| operationsApplied, metadata, 操作状态   | [AI 助手系统](./ai-assistant-system-design.md)                                     |
-| LLM, 提示词, 系统提示                   | [AI 助手系统](./ai-assistant-system-design.md)                                     |
-| 参数转换, UUID, short_id                | [AI 助手系统](./ai-assistant-system-design.md)                                     |
-| 操作验证, validateOperations            | [AI 助手系统](./ai-assistant-system-design.md)                                     |
-| 取消操作, operationsCancelled           | [AI 助手系统](./ai-assistant-system-design.md)                                     |
-| AI 模型配置, AIModelConfig              | [AI 助手系统](./ai-assistant-system-design.md)                                     |
-| 动态命令生成, generateAICommandsPrompt  | [AI 助手系统](./ai-assistant-system-design.md)                                     |
-| LayoutEngine, LayoutService, 布局计算   | [节点布局设计](./node-layout-engine-design.md)                                     |
-| NodeLayout, NodeSize, SizeGetter        | [节点布局设计](./node-layout-engine-design.md)                                     |
-| dagre, 分层布局, 同级对齐               | [节点布局设计](./node-layout-engine-design.md)                                     |
-| order_index, 兄弟节点排序               | [节点布局设计](./node-layout-engine-design.md)                                     |
-| Action 订阅, 自动响应                   | [节点布局设计](./node-layout-engine-design.md)                                     |
-| 最大宽度, 自动折行, break-words         | [节点最大宽度设计](./node-max-width-design.md)                                     |
-| 多行高度预测, 可用宽度, lineCount       | [节点最大宽度设计](./node-max-width-design.md)                                     |
-| 样式同步, STYLE_CONSTANTS               | [节点最大宽度设计](./node-max-width-design.md)                                     |
-| Viewport, 视口, 坐标系转换              | [视口管理设计](./viewport-management-design.md)                                    |
-| 双向同步, 值比较, 防抖                  | [视口管理设计](./viewport-management-design.md)                                    |
-| 缩放, 平移, 聚焦, fitView               | [视口管理设计](./viewport-management-design.md)                                    |
-| XMind, 导出, ZIP, XML                   | [XMind 导出设计](./export-xmind-design.md)                                         |
-| JSZip, content.xml, manifest.xml        | [XMind 导出设计](./export-xmind-design.md)                                         |
-| 文件下载, Blob API, 浏览器下载          | [XMind 导出设计](./export-xmind-design.md)                                         |
-| 树遍历, 节点排序, order_index           | [XMind 导出设计](./export-xmind-design.md)                                         |
-| XML 转义, 特殊字符, 文件名清理          | [XMind 导出设计](./export-xmind-design.md)                                         |
-| Markdown, 复制, 导出                    | [复制为 Markdown 设计](./copy-as-markdown-design.md)                               |
-| Markdown 标题转义, 特殊字符转义         | [复制为 Markdown 设计](./copy-as-markdown-design.md)                               |
-| 笔记代码块包裹, # 符号处理              | [复制为 Markdown 设计](./copy-as-markdown-design.md)                               |
-| 自适应代码块标记, 反引号                | [复制为 Markdown 设计](./copy-as-markdown-design.md)                               |
-| 深度优先遍历, DFS                       | [复制为 Markdown 设计](./copy-as-markdown-design.md)                               |
-| Clipboard API, 剪贴板                   | [复制为 Markdown 设计](./copy-as-markdown-design.md)                               |
-| 层级对应标题, 无限层级                  | [复制为 Markdown 设计](./copy-as-markdown-design.md)                               |
-| 节点可见性, ensureNodeVisible           | [视口管理设计](./viewport-management-design.md)                                    |
-| SetViewportAction, 视图命令             | [视口管理设计](./viewport-management-design.md)                                    |
-| MiniToolbar, 迷你工具栏, Portal         | [节点卡片设计](./mindmap-node-card-design.md)                                      |
-| 节点卡片, CustomMindNode, 状态图标      | [节点卡片设计](./mindmap-node-card-design.md)                                      |
-| nodeToScreenCoords, 坐标转换            | [节点卡片设计](./mindmap-node-card-design.md)                                      |
-| 错误页面, 404, 403, 错误处理            | [错误处理设计](./error-handling-design.md)                                         |
-| UnauthorizedError, MindmapNotFoundError | [错误处理设计](./error-handling-design.md)                                         |
-| Server Actions 错误, 错误序列化         | [错误处理设计](./error-handling-design.md)                                         |
-| 错误消息检查, instanceof 替代方案       | [错误处理设计](./error-handling-design.md)                                         |
-| Auth session missing, 认证错误          | [错误处理设计](./error-handling-design.md)                                         |
-| redirect 参数, 登录跳转, 回跳机制       | [错误处理设计](./error-handling-design.md)                                         |
-| 防止访问缓存, 安全机制, 认证检查        | [错误处理设计](./error-handling-design.md)                                         |
-| ErrorPage 组件, 蜘蛛插图                | [错误处理设计](./error-handling-design.md)                                         |
-| layoutReady, 加载体验, 加载动画         | [思维导图加载体验优化](./mindmap-loading-experience.md)                            |
-| LoadingSpinner, 状态清除, 内容闪烁      | [思维导图加载体验优化](./mindmap-loading-experience.md)                            |
-| fitView 时机, 早期返回, 初始定位        | [思维导图加载体验优化](./mindmap-loading-experience.md)                            |
-| exactOptionalPropertyTypes, undefined   | [思维导图加载体验优化](./mindmap-loading-experience.md)                            |
+| 关键词                                    | 相关文档                                                                           |
+| ----------------------------------------- | ---------------------------------------------------------------------------------- |
+| UUID, short_id, 唯一性, base36            | [ID 设计](./id-design.md)                                                          |
+| 数据库, Schema, PostgreSQL, Supabase      | [数据库设计](./database-schema.md)                                                 |
+| mindmaps, mindmap_nodes, user_profiles    | [数据库设计](./database-schema.md)                                                 |
+| 约束, 索引, 触发器, 外键                  | [数据库设计](./database-schema.md)                                                 |
+| 三层存储, Dirty Flag, 增量同步            | [持久化中间件设计](./persistence-middleware-design.md)                             |
+| 冲突检测, 版本管理, applyToIndexedDB      | [持久化中间件设计](./persistence-middleware-design.md)                             |
+| Command Pattern, 命令模式                 | [Command 层架构](./command-layer-design.md)                                        |
+| ActionBased, ImperativeCommand            | [Command 层架构](./command-layer-design.md)                                        |
+| CommandManager, 命令执行                  | [Command 层架构](./command-layer-design.md)                                        |
+| 快捷键, react-hotkeys-hook, 键盘事件      | [命令参考](./command-reference.md)                                                 |
+| 节点操作, 导航, 编辑命令                  | [命令参考](./command-reference.md)                                                 |
+| CompositeCommand, 组合命令, 批量操作      | [Command 层架构 - 批量操作](./command-layer-design.md#批量操作---compositecommand) |
+| 原子性, 可撤销性, AI 批量操作             | [Command 层架构 - 批量操作](./command-layer-design.md#批量操作---compositecommand) |
+| 布局, 三栏, 大纲视图, 图形视图            | [布局设计](./editor-ui-layout-design.md)                                           |
+| react-arborist, 虚拟化, Tree              | [布局设计](./editor-ui-layout-design.md)                                           |
+| React Flow, 图形渲染                      | [布局设计](./editor-ui-layout-design.md)                                           |
+| ResizeObserver, 响应式                    | [布局设计](./editor-ui-layout-design.md)                                           |
+| localStorage, 布局持久化                  | [布局设计](./editor-ui-layout-design.md)                                           |
+| 折叠节点, 高亮, 导航                      | [布局设计](./editor-ui-layout-design.md)                                           |
+| Zustand, Immer, 状态管理                  | [布局设计](./editor-ui-layout-design.md)                                           |
+| AI SDK, useChat, 流式响应                 | [AI 助手系统](./ai-assistant-system-design.md)                                     |
+| AIMessage, AIOperation, 对话持久化        | [AI 助手系统](./ai-assistant-system-design.md)                                     |
+| IndexedDB, idb, 本地存储                  | [AI 助手系统](./ai-assistant-system-design.md)                                     |
+| operationsApplied, metadata, 操作状态     | [AI 助手系统](./ai-assistant-system-design.md)                                     |
+| LLM, 提示词, 系统提示                     | [AI 助手系统](./ai-assistant-system-design.md)                                     |
+| 参数转换, UUID, short_id                  | [AI 助手系统](./ai-assistant-system-design.md)                                     |
+| 操作验证, validateOperations              | [AI 助手系统](./ai-assistant-system-design.md)                                     |
+| 取消操作, operationsCancelled             | [AI 助手系统](./ai-assistant-system-design.md)                                     |
+| AI 模型配置, AIModelConfig                | [AI 助手系统](./ai-assistant-system-design.md)                                     |
+| 动态命令生成, generateAICommandsPrompt    | [AI 助手系统](./ai-assistant-system-design.md)                                     |
+| LayoutEngine, LayoutService, 布局计算     | [节点布局设计](./node-layout-engine-design.md)                                     |
+| NodeLayout, NodeSize, SizeGetter          | [节点布局设计](./node-layout-engine-design.md)                                     |
+| dagre, 分层布局, 同级对齐                 | [节点布局设计](./node-layout-engine-design.md)                                     |
+| order_index, 兄弟节点排序                 | [节点布局设计](./node-layout-engine-design.md)                                     |
+| Action 订阅, 自动响应                     | [节点布局设计](./node-layout-engine-design.md)                                     |
+| 最大宽度, 自动折行, break-words           | [节点最大宽度设计](./node-max-width-design.md)                                     |
+| 多行高度预测, 可用宽度, lineCount         | [节点最大宽度设计](./node-max-width-design.md)                                     |
+| 样式同步, STYLE_CONSTANTS                 | [节点最大宽度设计](./node-max-width-design.md)                                     |
+| Viewport, 视口, 坐标系转换                | [视口管理设计](./viewport-management-design.md)                                    |
+| 双向同步, 值比较, 防抖                    | [视口管理设计](./viewport-management-design.md)                                    |
+| 缩放, 平移, 聚焦, fitView                 | [视口管理设计](./viewport-management-design.md)                                    |
+| XMind, 导出, ZIP, XML                     | [XMind 导出设计](./export-xmind-design.md)                                         |
+| JSZip, content.xml, manifest.xml          | [XMind 导出设计](./export-xmind-design.md)                                         |
+| 文件下载, Blob API, 浏览器下载            | [XMind 导出设计](./export-xmind-design.md)                                         |
+| 树遍历, 节点排序, order_index             | [XMind 导出设计](./export-xmind-design.md)                                         |
+| XML 转义, 特殊字符, 文件名清理            | [XMind 导出设计](./export-xmind-design.md)                                         |
+| Markdown, 复制, 导出                      | [复制为 Markdown 设计](./copy-as-markdown-design.md)                               |
+| Markdown 标题转义, 特殊字符转义           | [复制为 Markdown 设计](./copy-as-markdown-design.md)                               |
+| 笔记代码块包裹, # 符号处理                | [复制为 Markdown 设计](./copy-as-markdown-design.md)                               |
+| 自适应代码块标记, 反引号                  | [复制为 Markdown 设计](./copy-as-markdown-design.md)                               |
+| 深度优先遍历, DFS                         | [复制为 Markdown 设计](./copy-as-markdown-design.md)                               |
+| Clipboard API, 剪贴板                     | [复制为 Markdown 设计](./copy-as-markdown-design.md)                               |
+| 层级对应标题, 无限层级                    | [复制为 Markdown 设计](./copy-as-markdown-design.md)                               |
+| 节点可见性, ensureNodeVisible             | [视口管理设计](./viewport-management-design.md)                                    |
+| SetViewportAction, 视图命令               | [视口管理设计](./viewport-management-design.md)                                    |
+| MiniToolbar, 迷你工具栏, Portal           | [节点卡片设计](./mindmap-node-card-design.md)                                      |
+| 节点卡片, CustomMindNode, 状态图标        | [节点卡片设计](./mindmap-node-card-design.md)                                      |
+| nodeToScreenCoords, 坐标转换              | [节点卡片设计](./mindmap-node-card-design.md)                                      |
+| 错误页面, 404, 403, 错误处理              | [错误处理设计](./error-handling-design.md)                                         |
+| UnauthorizedError, MindmapNotFoundError   | [错误处理设计](./error-handling-design.md)                                         |
+| Server Actions 错误, 错误序列化           | [错误处理设计](./error-handling-design.md)                                         |
+| 错误消息检查, instanceof 替代方案         | [错误处理设计](./error-handling-design.md)                                         |
+| Auth session missing, 认证错误            | [错误处理设计](./error-handling-design.md)                                         |
+| redirect 参数, 登录跳转, 回跳机制         | [错误处理设计](./error-handling-design.md)                                         |
+| 防止访问缓存, 安全机制, 认证检查          | [错误处理设计](./error-handling-design.md)                                         |
+| ErrorPage 组件, 蜘蛛插图                  | [错误处理设计](./error-handling-design.md)                                         |
+| layoutReady, 加载体验, 加载动画           | [思维导图加载体验优化](./mindmap-loading-experience.md)                            |
+| LoadingSpinner, 状态清除, 内容闪烁        | [思维导图加载体验优化](./mindmap-loading-experience.md)                            |
+| fitView 时机, 早期返回, 初始定位          | [思维导图加载体验优化](./mindmap-loading-experience.md)                            |
+| exactOptionalPropertyTypes, undefined     | [思维导图加载体验优化](./mindmap-loading-experience.md)                            |
+| isDragging, 拖拽状态, 拖拽隐藏            | [拖拽时隐藏 Mini Toolbar](./drag-hide-mini-toolbar.md)                             |
+| onMoveStart, onMoveEnd, 画布拖拽          | [拖拽时隐藏 Mini Toolbar](./drag-hide-mini-toolbar.md)                             |
+| onNodeDragStart, onNodeDragStop, 节点拖拽 | [拖拽时隐藏 Mini Toolbar](./drag-hide-mini-toolbar.md)                             |
+| setDragging, 拖拽状态管理                 | [拖拽时隐藏 Mini Toolbar](./drag-hide-mini-toolbar.md)                             |
+| opacity, pointerEvents, 淡入淡出动画      | [拖拽时隐藏 Mini Toolbar](./drag-hide-mini-toolbar.md)                             |
 
 ### 常见问题对应文档
 
@@ -441,11 +454,16 @@ graph TD
 | 首次加载后节点如何自动居中？            | [思维导图加载体验优化](./mindmap-loading-experience.md)                            |
 | layoutReady 何时设置？                  | [思维导图加载体验优化](./mindmap-loading-experience.md)                            |
 | fitView 为什么执行了两次？              | [思维导图加载体验优化](./mindmap-loading-experience.md)                            |
+| 如何在拖拽时隐藏 UI 元素？              | [拖拽时隐藏 Mini Toolbar](./drag-hide-mini-toolbar.md)                             |
+| 如何监听画布拖拽事件？                  | [拖拽时隐藏 Mini Toolbar](./drag-hide-mini-toolbar.md)                             |
+| 如何实现平滑的显示/隐藏动画？           | [拖拽时隐藏 Mini Toolbar](./drag-hide-mini-toolbar.md)                             |
+| 为什么使用 opacity 而不是条件渲染？     | [拖拽时隐藏 Mini Toolbar](./drag-hide-mini-toolbar.md)                             |
 
 ## 📅 更新记录
 
 | 日期       | 更新内容                                                                                                      | 更新者      |
 | ---------- | ------------------------------------------------------------------------------------------------------------- | ----------- |
+| 2025-12-06 | 添加拖拽时隐藏 Mini Toolbar 设计文档（拖拽状态管理、事件监听、平滑动画实现）                                  | Claude Code |
 | 2025-12-06 | 添加思维导图加载体验优化设计文档（LoadingSpinner 组件、layoutReady 标志、状态清除机制、fitView 时机控制）     | Claude Code |
 | 2025-12-02 | 添加复制为 Markdown 功能设计文档（Markdown 导出、特殊字符转义、笔记格式化、Clipboard API 集成）               | Claude Code |
 | 2025-11-30 | 添加错误处理设计文档（错误页面、错误类型、Server Actions 错误序列化、登录跳转、安全机制）                     | Claude Code |

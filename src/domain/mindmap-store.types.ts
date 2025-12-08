@@ -62,6 +62,9 @@ export interface EditorState {
   // 视口状态（派生状态，不持久化）
   viewport: Viewport;
 
+  // 拖拽状态（派生状态，不持久化）
+  isDragging: boolean; // 是否正在拖拽（画布或节点）
+
   // 焦点状态
   focusedArea: FocusedAreaId; // UI 焦点区域
   currentNode: string; // short_id
@@ -91,4 +94,7 @@ export interface MindmapStore {
 
   // 布局管理（由 LayoutService 调用）
   updateLayouts(layouts: Map<string, NodeLayout>): void; // 更新布局状态（不持久化，不触发 undo）
+
+  // 拖拽状态管理
+  setDragging(isDragging: boolean): void; // 设置拖拽状态（不持久化，不触发 undo）
 }

@@ -60,6 +60,11 @@ interface MiniToolbarProps {
   zoom: number;
 
   /**
+   * 是否可见
+   */
+  visible: boolean;
+
+  /**
    * 测试 ID
    */
   testId?: string;
@@ -68,7 +73,7 @@ interface MiniToolbarProps {
 /**
  * MiniToolbar 组件
  */
-export function MiniToolbar({ node, zoom, testId }: MiniToolbarProps) {
+export function MiniToolbar({ node, zoom, visible, testId }: MiniToolbarProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(
     null
@@ -143,7 +148,7 @@ export function MiniToolbar({ node, zoom, testId }: MiniToolbarProps) {
     }
   );
 
-  // hover 状态且有 portal 容器时，使用 Portal 渲染到顶层
+  // 使用 Portal 渲染到顶层
   if (portalContainer && portalPosition) {
     return createPortal(
       <div
@@ -154,6 +159,8 @@ export function MiniToolbar({ node, zoom, testId }: MiniToolbarProps) {
           transform: `scale(${portalPosition.scale})`,
           transformOrigin: "bottom left",
           zIndex: 10000,
+          opacity: visible ? 1 : 0,
+          pointerEvents: visible ? "auto" : "none",
         }}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}

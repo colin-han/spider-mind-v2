@@ -204,6 +204,7 @@ export const useMindmapStore = create<MindmapStore>()(
             height: 600, // 默认值，会在 MindmapGraphViewer 初始化时更新
             zoom: 1,
           },
+          isDragging: false, // 拖拽状态，初始为 false
           focusedArea: "graph",
           currentNode: rootNode.short_id,
           isLoading: false,
@@ -330,6 +331,19 @@ export const useMindmapStore = create<MindmapStore>()(
           return;
         }
         state.currentEditor.layouts = layouts;
+      });
+    },
+
+    /**
+     * 设置拖拽状态
+     * 直接更新 state，不持久化，不触发 undo
+     */
+    setDragging: (isDragging) => {
+      set((state) => {
+        if (!state.currentEditor) {
+          return;
+        }
+        state.currentEditor.isDragging = isDragging;
       });
     },
   }))
