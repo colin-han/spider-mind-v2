@@ -314,7 +314,8 @@ generate_branch_list() {
     # 添加底部菜单（用空行分隔，视觉上区分）
     echo ""
     echo "📤 推送develop分支代码 (p)"
-    echo "🗑️  批量删除已合并分支 (ctrl-d)"
+    echo "🚀 发布新版本 (v)"
+    echo "🗑️ 批量删除已合并分支 (ctrl-d)"
     echo "🔄 刷新列表 (F2)"
     echo "👋 退出 (q)"
 }
@@ -813,7 +814,7 @@ run_interactive_mode() {
         # fzf 选择（过滤空行）
         local selected=$(echo "$branch_list" | grep -v '^[[:space:]]*$' | fzf \
             --height=100% \
-            --header="Feature 分支管理 | Enter:菜单 F2:刷新 i:详情 b:合并develop m:合并到develop d:差异 r:删除 ctrl-d:批量删除 p:推送 q:退出" \
+            --header="Feature 分支管理 | Enter:菜单 F2:刷新 i:详情 b:合并develop m:合并到develop d:差异 r:删除 ctrl-d:批量删除 p:推送 v:发布 q:退出" \
             --bind="f2:reload($RELOAD_CMD)" \
             --bind="enter:execute-silent(echo menu > $ACTION_FILE; echo {..} > $SELECTED_FILE)+abort" \
             --bind="i:execute-silent(echo info > $ACTION_FILE; echo {..} > $SELECTED_FILE)+abort" \
@@ -822,6 +823,7 @@ run_interactive_mode() {
             --bind="d:execute-silent(echo diff > $ACTION_FILE; echo {..} > $SELECTED_FILE)+abort" \
             --bind="r:execute-silent(echo remove > $ACTION_FILE; echo {..} > $SELECTED_FILE)+abort" \
             --bind="p:execute-silent(echo push > $ACTION_FILE)+abort" \
+            --bind="v:execute-silent(echo release > $ACTION_FILE)+abort" \
             --bind="ctrl-d:execute-silent(echo batch-delete > $ACTION_FILE)+abort" \
             --bind="q:abort" \
             --prompt="选择分支: " \
@@ -850,6 +852,12 @@ run_interactive_mode() {
                             *"📤 推送develop分支代码"*)
                                 clear
                                 push_code
+                                echo ""
+                                read -p "按回车继续..."
+                                ;;
+                            *"🚀 发布新版本"*)
+                                clear
+                                ./scripts/release.sh
                                 echo ""
                                 read -p "按回车继续..."
                                 ;;
@@ -928,6 +936,12 @@ run_interactive_mode() {
                     echo ""
                     read -p "按回车继续..."
                     ;;
+                release)
+                    clear
+                    ./scripts/release.sh
+                    echo ""
+                    read -p "按回车继续..."
+                    ;;
             esac
         else
             # 检查是否选择了菜单项
@@ -936,6 +950,12 @@ run_interactive_mode() {
                     *"📤 推送develop分支代码"*)
                         clear
                         push_code
+                        echo ""
+                        read -p "按回车继续..."
+                        ;;
+                    *"🚀 发布新版本"*)
+                        clear
+                        ./scripts/release.sh
                         echo ""
                         read -p "按回车继续..."
                         ;;
