@@ -12,7 +12,7 @@
  * - 布局计算 (由 Dagre 完成)
  */
 
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback } from "react";
 import { Handle, Position, type NodeProps, useViewport } from "@xyflow/react";
 import { useMindmapEditorState, useMindmapStore } from "@/domain/mindmap-store";
 import { CollapseNodeAction } from "@/domain/actions/ephemeral/collapse-node";
@@ -55,9 +55,6 @@ function CustomMindNodeComponent({ data }: NodeProps) {
   // 获取当前缩放级别
   const { zoom } = useViewport();
 
-  // hover 状态追踪
-  const [isHovered, setIsHovered] = useState(false);
-
   // 将 data 断言为 CustomNodeData 类型
   const nodeData = data as CustomNodeData;
 
@@ -65,7 +62,7 @@ function CustomMindNodeComponent({ data }: NodeProps) {
   const isExpanded = !editorState.collapsedNodes.has(nodeData.shortId);
   const isRoot = !nodeData.parentId;
   const isDragging = editorState.isDragging;
-  const showToolbar = !isDragging && (isSelected || isHovered);
+  const showToolbar = !isDragging && isSelected;
 
   // 获取完整节点数据（用于工具栏）
   const node = editorState.nodes.get(nodeData.shortId);
@@ -115,8 +112,6 @@ function CustomMindNodeComponent({ data }: NodeProps) {
             isRoot,
         }
       )}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
     >
       {/* 迷你工具栏 - 始终渲染，通过 visible 控制显示 */}
       {node && (
