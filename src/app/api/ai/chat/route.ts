@@ -5,9 +5,10 @@
  */
 
 import { NextRequest } from "next/server";
-import { convertToModelMessages, streamText } from "ai";
+import { convertToModelMessages, streamText, tool } from "ai";
 import { getAIModel } from "@/lib/config/ai-models";
 import { buildSystemPrompt } from "@/lib/ai/system-prompts";
+import { SuggestOperationsArgsSchema } from "@/lib/ai/tools";
 import type { AINodeContext, AIModelKey } from "@/lib/types/ai";
 
 /**
@@ -93,6 +94,14 @@ export async function POST(req: NextRequest) {
       system: systemPrompt,
       messages: coreMessages,
       temperature: 0.7,
+      tools: {
+        suggestOperations: tool({
+          description:
+            "提供思维导图操作建议。当用户请���修改思维导图时使用此工具。",
+          inputSchema: SuggestOperationsArgsSchema,
+        }),
+      },
+      toolChoice: "auto",
     });
 
     // 返回 UI Message Stream Response

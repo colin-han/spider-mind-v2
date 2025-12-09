@@ -1,15 +1,17 @@
 import type { CommandDefinition } from "../../command-registry";
 import type { MindmapStore } from "../../mindmap-store.types";
+import { EmptyParamsSchema } from "../../command-schema";
 import { SetViewportAction } from "../../actions/ephemeral/set-viewport";
 
-export const fitView: CommandDefinition = {
+export const fitView: CommandDefinition<typeof EmptyParamsSchema> = {
   id: "view.fitView",
   name: "适应视图",
   description: "调整视图以显示全部内容",
   category: "view",
   actionBased: true,
   undoable: false,
-  handler: (root: MindmapStore) => {
+  paramsSchema: EmptyParamsSchema,
+  handler: (root: MindmapStore, _params) => {
     const state = root.currentEditor!;
     const viewport = state.viewport;
 

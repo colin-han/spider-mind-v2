@@ -1,15 +1,17 @@
 import type { CommandDefinition } from "../../command-registry";
 import type { MindmapStore } from "../../mindmap-store.types";
+import { EmptyParamsSchema } from "../../command-schema";
 import { SetViewportAction } from "../../actions/ephemeral/set-viewport";
 
-export const zoomOut: CommandDefinition = {
+export const zoomOut: CommandDefinition<typeof EmptyParamsSchema> = {
   id: "view.zoomOut",
   name: "缩小视图",
   description: "缩小画布视图约 17%",
   category: "view",
   actionBased: true,
   undoable: false,
-  handler: (root: MindmapStore) => {
+  paramsSchema: EmptyParamsSchema,
+  handler: (root: MindmapStore, _params) => {
     const viewport = root.currentEditor!.viewport;
     const newZoom = Math.max(0.1, viewport.zoom / 1.2);
 

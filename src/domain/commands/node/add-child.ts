@@ -1,4 +1,4 @@
-import { MindmapStore } from "../../mindmap-store.types";
+import { z } from "zod";
 import { CommandDefinition, registerCommand } from "../../command-registry";
 import { generateShortId } from "@/lib/utils/short-id";
 import { AddNodeAction } from "../../actions/persistent/add-node";
@@ -8,7 +8,13 @@ import { ExpandNodeAction } from "../../actions/ephemeral/expand-node";
 import { getChildNodes } from "../../editor-utils";
 import { EnsureCurrentNodeVisibleAction } from "../../actions/ephemeral/ensure-current-node-visible";
 
-type AddChildNodeParams = [string, number?, string?];
+export const AddChildNodeParamsSchema = z.object({
+  parentId: z.string().optional().describe("父节点的 ID，默认为当前选中节点"),
+  position: z.number().optional().describe("插入位置（在兄弟节点中的索引）"),
+  title: z.string().optional().describe("节点标题"),
+});
+
+export type AddChildNodeParams = z.infer<typeof AddChildNodeParamsSchema>;
 
 function normalizePosition(siblingsCount: number, position?: number) {
   if (position === undefined) {
@@ -23,33 +29,17 @@ function normalizePosition(siblingsCount: number, position?: number) {
   return position;
 }
 
-export const addChildNodeCommand: CommandDefinition = {
+export const addChildNodeCommand: CommandDefinition<
+  typeof AddChildNodeParamsSchema
+> = {
   id: "node.addChild",
   name: "添加子节点",
   description: "添加单个子节点",
   category: "node",
   actionBased: true,
-  parameters: [
-    {
-      name: "parentId",
-      type: "string",
-      description: "父节点的 ID",
-    },
-    {
-      name: "position",
-      type: "number",
-      description: "插入位置（在兄弟节点中的索引）",
-      optional: true,
-    },
-    {
-      name: "title",
-      type: "string",
-      description: "节点标题",
-      optional: true,
-    },
-  ],
-  handler: (root: MindmapStore, params?: unknown[]) => {
-    const [parentId, position, title] = params as AddChildNodeParams;
+  paramsSchema: AddChildNodeParamsSchema,
+  handler: (root, params) => {
+    const { parentId, position, title } = params;
     const normalizedParentId = parentId || root.currentEditor!.currentNode;
     const parentNode = root.currentEditor?.nodes.get(normalizedParentId);
     if (!parentNode) {

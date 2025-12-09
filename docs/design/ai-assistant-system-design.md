@@ -17,7 +17,7 @@
 | ----------------- | ---------------------------------------------------- | -------------------------------------------------------------- |
 | AIMessage         | 持久化的 AI 对话消息，包含 AI SDK 标准字段和同步字段 | 用户消息、AI 响应，存储在 IndexedDB 和 Supabase                |
 | AINodeContext     | 传递给 AI 的节点上下文信息                           | 包含当前节点（含 note）、父节点链（含 note）、兄弟节点、子节点 |
-| AIOperation       | AI 返回的操作建议，本质是待执行的 Command            | `{commandId: "node.addChild", params: [...]}`                  |
+| AIOperation       | AI 返回的操作建议，本质是待执行的 Command            | `{commandId: "node.addChild", params: {...}}`                  |
 | operationsApplied | 消息元数据标记，表示用户是否已执行该消息中的操作     | 防止重复执行，状态持久化                                       |
 | dirty flag        | 同步状态标记，表示数据是否需要同步到云端             | `dirty: true` 表示待同步                                       |
 
@@ -188,8 +188,8 @@ interface AIMessage {
 interface AIOperation {
   id: string;
   commandId: string; // 如 "node.addChild"
-  params: unknown[]; // 命令参数
-  description: string; // 用户可读描述
+  params: Record<string, unknown>; // 命令参数（对象形式）
+  description: string; // 用��可读描述
 
   preview?: {
     summary: string;
@@ -329,25 +329,31 @@ AI 返回的操作中使用的是 UUID（用于数据库持久化），但命令
 ```typescript
 function transformOperationsParams(operations: AIOperation[]): AIOperation[] {
   return operations.map((op) => {
+    const params = { ...op.params };
+
     // 根据命令类型转换参数
     if (isNodeCommand(op.commandId)) {
-      // 节点命令：第一个参数（节点ID）从 UUID 转换为 short_id
-      const params = [...op.params];
-      if (params[0] && typeof params[0] === "string") {
-        params[0] = convertUUIDToShortId(params[0]);
+      // 节点命令：将 parentId 参数从 UUID 转换为 short_id
+      if (params.parentId && typeof params.parentId === "string") {
+        params.parentId = convertUUIDToShortId(params.parentId);
       }
-      return { ...op, params };
+      // 将 nodeId 参数从 UUID 转换为 short_id（如果存在）
+      if (params.nodeId && typeof params.nodeId === "string") {
+        params.nodeId = convertUUIDToShortId(params.nodeId);
+      }
     }
-    return op;
+
+    return { ...op, params };
   });
 }
 ```
 
 **关键点**：
 
-- 只转换节点相关命令的第一个参数（父节点 ID）
+- 转换节点相关命令中的 `parentId` 和 `nodeId` 参数（从 UUID 到 short_id）
 - NodeTree 对象中的节点不需要 ID（系统自动生成）
 - 转换失败时抛出错误，防止执行无效操作
+- 其他参数（如 title、position 等）保持不变
 
 #### 6. 操作验证
 
@@ -370,8 +376,8 @@ function validateOperations(operations: AIOperation[]): ValidationResult {
 
     // 2. 检查节点是否存在（针对节点命令）
     if (isNodeCommand(op.commandId)) {
-      const nodeId = op.params[0];
-      if (!nodeExists(nodeId)) {
+      const nodeId = op.params.nodeId || op.params.parentId;
+      if (nodeId && !nodeExists(nodeId)) {
         return { valid: false, error: `Node not found: ${nodeId}` };
       }
     }
@@ -439,17 +445,29 @@ const availableCommands = generateAICommandsPrompt(["node", "navigation"]);
     {
       "id": "op-1",
       "commandId": "node.addChild",
-      "params": ["b1520189-176f-4592-b64a-bb60d7420836", null, "节点1"]
+      "params": {
+        "parentId": "b1520189-176f-4592-b64a-bb60d7420836",
+        "title": "节点1"
+      },
+      "description": "添加子节点：节点1"
     },
     {
       "id": "op-2",
       "commandId": "node.addChild",
-      "params": ["b1520189-176f-4592-b64a-bb60d7420836", null, "节点2"]
+      "params": {
+        "parentId": "b1520189-176f-4592-b64a-bb60d7420836",
+        "title": "节点2"
+      },
+      "description": "添加子节点：节点2"
     },
     {
       "id": "op-3",
       "commandId": "node.addChild",
-      "params": ["b1520189-176f-4592-b64a-bb60d7420836", null, "节点3"]
+      "params": {
+        "parentId": "b1520189-176f-4592-b64a-bb60d7420836",
+        "title": "节点3"
+      },
+      "description": "添加子节点：节点3"
     }
   ]
 }
@@ -457,7 +475,19 @@ const availableCommands = generateAICommandsPrompt(["node", "navigation"]);
 // 不推荐：打包成一个操作
 {
   "operations": [
-    {"id": "op-1", "commandId": "node.addChildTrees", "params": ["parentId", [...]]}
+    {
+      "id": "op-1",
+      "commandId": "node.addChildTrees",
+      "params": {
+        "parentId": "b1520189-176f-4592-b64a-bb60d7420836",
+        "children": [
+          { "title": "节点1" },
+          { "title": "节点2" },
+          { "title": "节点3" }
+        ]
+      },
+      "description": "批量添加 3 个子节点"
+    }
   ]
 }
 ```
@@ -504,8 +534,9 @@ const availableCommands = generateAICommandsPrompt(["node", "navigation"]);
 
 - `transformOperationsParams()` - UUID → short_id 转换
 - `convertUUIDToShortId()` - 从 store 中查找节点的 short_id
-- 只转换节点命令的第一个参数（节点 ID）
+- 转换节点命令参数对象中的 `parentId` 和 `nodeId` 字段
 - NodeTree 中的节点不需要转换（系统自动生成）
+- 其他参数（如 `title`、`position`）保持不变
 
 ### 3. 操作验证实现
 
@@ -795,9 +826,19 @@ const handleOperationsCancelled = async (messageId, operations) => {
 
 ## FAQ
 
-**Q: 为什么 node.addChild 的参数是 [parentId, null, title] 而不是 [parentId, title]？**
+**Q: node.addChild 的参数格式是什么？**
 
-A: `node.addChild` 命令的参数顺序是 `[parentId, position?, title?]`，第二个参数是插入位置。使用 `null` 表示默认位置（末尾），第三个参数才是标题。
+A: `node.addChild` 命令使用对象参数：
+
+```json
+{
+  "parentId": "uuid-or-short-id", // 父节点ID（可选，默认当前节点）
+  "position": 0, // 插入位置（可选，默认末尾）
+  "title": "节点标题" // 节点标题（可选）
+}
+```
+
+所有参数都是可选的，可以只传入需要的参数。例如只指定标题：`{"title": "新节点"}`。
 
 **Q: 如何避免用户重复执行同一组操作？**
 
@@ -845,6 +886,7 @@ A: 当前支持 GPT-4 Turbo、GPT-3.5 Turbo、Claude 3.5 Sonnet、Claude 3 Haiku
 
 | 日期       | 版本 | 修改内容                                                                                                                           | 作者        |
 | ---------- | ---- | ---------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| 2025-12-08 | 1.3  | 更新 AIOperation 参数格式为对象形式；更新操作示例、参数转换和验证逻辑；更新 FAQ                                                    | Claude Code |
 | 2025-11-24 | 1.2  | 补充参数转换机制、操作验证、取消操作流程、AI 模型配置、动态命令生成、流式输出优化、UI 交互细节等实现内容，使文档与代码实现完全一致 | Claude Code |
 | 2025-11-16 | 1.1  | 为 currentNode 和 parentChain 添加 note 字段，增强 AI 上下文理解能力                                                               | Claude Code |
 | 2025-11-16 | 1.0  | 初始版本，整合对话持久化、操作系统、UI 设计                                                                                        | Claude Code |

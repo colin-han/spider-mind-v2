@@ -13,7 +13,7 @@ export function CustomControls() {
       <div className="react-flow__controls">
         <button
           className="react-flow__controls-button react-flow__controls-zoomin"
-          onClick={() => zoomIn()}
+          onClick={() => zoomIn({})}
           title="Zoom In (Cmd+=)"
           type="button"
         >
@@ -21,7 +21,7 @@ export function CustomControls() {
         </button>
         <button
           className="react-flow__controls-button react-flow__controls-zoomout"
-          onClick={() => zoomOut()}
+          onClick={() => zoomOut({})}
           title="Zoom Out (Cmd+-)"
           type="button"
         >
@@ -29,7 +29,7 @@ export function CustomControls() {
         </button>
         <button
           className="react-flow__controls-button react-flow__controls-fitview"
-          onClick={() => fitView()}
+          onClick={() => fitView({})}
           title="Fit View (Cmd+1)"
           type="button"
         >
@@ -37,7 +37,7 @@ export function CustomControls() {
         </button>
         <button
           className="react-flow__controls-button"
-          onClick={() => focusNode()}
+          onClick={() => focusNode({})}
           title="Focus Current Node (Cmd+L)"
           type="button"
         >

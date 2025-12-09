@@ -91,7 +91,7 @@ export const NodePanel = () => {
         setEditingTitle(originalTitle);
       } else if (node && editingTitle !== node.title) {
         // 否则保存修改
-        updateTitle(node.short_id, editingTitle);
+        updateTitle({ nodeId: node.short_id, newTitle: editingTitle });
       }
     },
   });
@@ -183,7 +183,7 @@ export const NodePanel = () => {
                 const trimmedNote = editingNote.trim();
                 const newNote = trimmedNote === "" ? null : editingNote;
                 if (newNote !== node?.note) {
-                  updateNote(node!.short_id, newNote);
+                  updateNote({ nodeId: node!.short_id, newNote });
                 }
               }}
               placeholder="节点详细说明（支持 Markdown）"
@@ -251,10 +251,10 @@ export const NodePanel = () => {
             onBlur={() => {
               // 只有当值确实改变时才调用 command
               if (editingTitle !== node.title) {
-                updateTitle(node.short_id, editingTitle);
+                updateTitle({ nodeId: node.short_id, newTitle: editingTitle });
               }
             }}
-            onFocus={() => setFocusedArea("title-editor")}
+            onFocus={() => setFocusedArea({ area: "title-editor" })}
             onCompositionStart={() => {
               // IME 输入开始
             }}

@@ -1,31 +1,31 @@
-import { MindmapStore } from "../../mindmap-store.types";
+import { z } from "zod";
 import { CommandDefinition, registerCommand } from "../../command-registry";
 import { RemoveNodeAction } from "../../actions/persistent/remove-node";
 import { SetCurrentNodeAction } from "../../actions/ephemeral/set-current-node";
 import { getDescendantNodes, getChildNodes } from "../../editor-utils";
 import { EnsureCurrentNodeVisibleAction } from "../../actions/ephemeral/ensure-current-node-visible";
 
-type DeleteNodeParams = [string?];
+export const DeleteNodeParamsSchema = z.object({
+  nodeId: z.string().optional().describe("要删除的节点 ID"),
+});
+
+export type DeleteNodeParams = z.infer<typeof DeleteNodeParamsSchema>;
 
 /**
  * 删除节点及其所有子节点
  */
-export const deleteNodeCommand: CommandDefinition = {
+export const deleteNodeCommand: CommandDefinition<
+  typeof DeleteNodeParamsSchema
+> = {
   id: "node.delete",
   name: "删除节点",
   description: "删除节点及其所有子节点",
   category: "node",
   actionBased: true,
-  parameters: [
-    {
-      name: "nodeId",
-      type: "string",
-      description: "要删除的节点 ID",
-    },
-  ],
+  paramsSchema: DeleteNodeParamsSchema,
 
-  handler: (root: MindmapStore, params?: unknown[]) => {
-    const [nodeId] = (params as DeleteNodeParams) || [];
+  handler: (root, params) => {
+    const { nodeId } = params;
     const targetNodeId = nodeId || root.currentEditor!.currentNode;
     const targetNode = root.currentEditor?.nodes.get(targetNodeId);
 
@@ -91,14 +91,14 @@ export const deleteNodeCommand: CommandDefinition = {
     return actions;
   },
 
-  when: (root: MindmapStore) => {
+  when: (root) => {
     const currentNode = root.currentEditor?.nodes.get(
       root.currentEditor.currentNode
     );
     return currentNode?.parent_short_id != null; // 不是根节点
   },
 
-  getDescription: (root: MindmapStore) => {
+  getDescription: (root) => {
     const currentNode = root.currentEditor?.nodes.get(
       root.currentEditor.currentNode
     );

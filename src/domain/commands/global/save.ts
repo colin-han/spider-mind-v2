@@ -1,5 +1,6 @@
 import { MindmapStore } from "../../mindmap-store.types";
 import { CommandDefinition, registerCommand } from "../../command-registry";
+import { EmptyParamsSchema } from "../../command-schema";
 import {
   fetchServerVersion,
   uploadMindmapChanges,
@@ -19,15 +20,16 @@ import { SetSavingStatusAction } from "../../actions/ephemeral/set-saving-status
  * 5. 如果无冲突 → 上传到服务器
  * 6. 更新 IndexedDB（设置 dirty=false，更新 server_updated_at）
  */
-export const saveMindmapCommand: CommandDefinition = {
+export const saveMindmapCommand: CommandDefinition<typeof EmptyParamsSchema> = {
   id: "global.save",
   name: "保存思维导图",
   description: "将未保存的修改同步到服务器",
   category: "global",
   actionBased: false,
   undoable: false, // 保存操作不可撤销
+  paramsSchema: EmptyParamsSchema,
 
-  handler: async (root: MindmapStore) => {
+  handler: async (root: MindmapStore, _params) => {
     const { currentEditor } = root;
     const db = await getDB();
 

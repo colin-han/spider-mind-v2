@@ -81,7 +81,7 @@ function Node({ node, style, dragHandle }: NodeRendererProps<TreeNode>) {
 
   const handleClick = useCallback(async () => {
     // 使用命令设置当前节点（自动包含策略A滚动逻辑）
-    await setCurrentNode(node.id);
+    await setCurrentNode({ nodeId: node.id });
 
     // 设置焦点区域
     await acceptActions([

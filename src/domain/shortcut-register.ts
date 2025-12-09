@@ -25,18 +25,18 @@ export function registerShortcut(
 export function registerShortcut(
   key: string,
   commandId: string,
-  params?: unknown[],
+  params?: Record<string, unknown>,
   preventDefault?: boolean
 ): void;
 export function registerShortcut(def: ShortcutDefinition): void;
 export function registerShortcut(
   arg: string | ShortcutDefinition,
   commandId?: string,
-  params?: unknown[] | boolean,
+  params?: Record<string, unknown> | boolean,
   preventDefault?: boolean
 ) {
   if (typeof arg === "string") {
-    if (Array.isArray(params)) {
+    if (typeof params === "object" && !Array.isArray(params)) {
       registerShortcutImpl({
         key: arg,
         run: () => ({
@@ -51,7 +51,7 @@ export function registerShortcut(
         key: arg,
         run: () => ({
           commandId: commandId!,
-          params: [],
+          params: {},
           preventDefault:
             typeof params === "boolean" ? params : (preventDefault ?? false),
         }),
@@ -71,7 +71,7 @@ export function registerNonEditShortcut(
     key,
     run: () => ({
       commandId,
-      params: [],
+      params: {},
       preventDefault: preventDefault ?? false,
     }),
     when: (root) => {
@@ -100,14 +100,14 @@ export function registerShortcutForArea(
   areaId: FocusedAreaId,
   key: string,
   commandId: string,
-  params?: unknown[],
+  params?: Record<string, unknown>,
   preventDefault?: boolean
 ) {
   registerShortcutImpl({
     key,
     run: () => ({
       commandId,
-      params: params ?? [],
+      params: params ?? {},
       preventDefault: preventDefault ?? false,
     }),
     when: (root) => {

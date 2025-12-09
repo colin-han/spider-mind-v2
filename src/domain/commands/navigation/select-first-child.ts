@@ -1,23 +1,26 @@
-import { MindmapStore, EditorAction } from "../../mindmap-store.types";
+import { EditorAction } from "../../mindmap-store.types";
 import { CommandDefinition, registerCommand } from "../../command-registry";
 import { SetCurrentNodeAction } from "../../actions/ephemeral/set-current-node";
 import { ExpandNodeAction } from "../../actions/ephemeral/expand-node";
 import { getChildNodes } from "../../editor-utils";
 import { ensureNodeVisibleAction } from "../../utils/viewport-utils";
+import { EmptyParamsSchema } from "../../command-schema";
 
 /**
  * 选择第一个子节点
  */
-export const selectFirstChildCommand: CommandDefinition = {
+export const selectFirstChildCommand: CommandDefinition<
+  typeof EmptyParamsSchema
+> = {
   id: "navigation.selectFirstChild",
   name: "选择第一个子节点",
   description: "跳转到第一个子节点",
   category: "navigation",
   actionBased: true,
   undoable: false,
-  parameters: [],
+  paramsSchema: EmptyParamsSchema,
 
-  handler: (root: MindmapStore) => {
+  handler: (root) => {
     const state = root.currentEditor;
     if (!state) return;
 
@@ -63,7 +66,7 @@ export const selectFirstChildCommand: CommandDefinition = {
     return actions;
   },
 
-  when: (root: MindmapStore) => {
+  when: (root) => {
     const currentNode = root.currentEditor?.nodes.get(
       root.currentEditor.currentNode
     );

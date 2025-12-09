@@ -1,30 +1,30 @@
-import { MindmapStore } from "../../mindmap-store.types";
+import { z } from "zod";
 import { CommandDefinition, registerCommand } from "../../command-registry";
 import { CollapseNodeAction } from "../../actions/ephemeral/collapse-node";
 import { ExpandNodeAction } from "../../actions/ephemeral/expand-node";
 import { getChildNodes } from "../../editor-utils";
 
-type ToggleCollapseParams = [string?];
+export const ToggleCollapseParamsSchema = z.object({
+  nodeId: z.string().optional().describe("要切换折叠状态的节点 ID"),
+});
+export type ToggleCollapseParams = z.infer<typeof ToggleCollapseParamsSchema>;
+
 /**
  * 切换折叠状态
  */
-export const toggleCollapseCommand: CommandDefinition = {
+export const toggleCollapseCommand: CommandDefinition<
+  typeof ToggleCollapseParamsSchema
+> = {
   id: "navigation.toggleCollapse",
   name: "切换折叠状态",
   description: "切换节点的展开/折叠状态",
   category: "navigation",
   actionBased: true,
   undoable: false,
-  parameters: [
-    {
-      name: "nodeId",
-      type: "string",
-      description: "要切换折叠状态的节点 ID",
-    },
-  ],
+  paramsSchema: ToggleCollapseParamsSchema,
 
-  handler: (root: MindmapStore, params?: unknown[]) => {
-    const [nodeId] = (params as ToggleCollapseParams) || [];
+  handler: (root, params) => {
+    const { nodeId } = params;
     const targetNodeId = nodeId || root.currentEditor!.currentNode;
     const currentNode = root.currentEditor?.nodes.get(targetNodeId);
     if (!currentNode) {
@@ -46,8 +46,8 @@ export const toggleCollapseCommand: CommandDefinition = {
     }
   },
 
-  when: (root: MindmapStore, params?: unknown[]) => {
-    const [nodeId] = (params as ToggleCollapseParams) || [];
+  when: (root, params) => {
+    const { nodeId } = params;
     const targetNodeId = nodeId || root.currentEditor!.currentNode;
     const currentNode = root.currentEditor?.nodes.get(targetNodeId);
     if (!currentNode) {

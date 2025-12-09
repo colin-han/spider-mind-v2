@@ -134,7 +134,7 @@ export function CommandButton({
   // 处理点击
   const handleClick = () => {
     if (!disabled && command) {
-      executeCommand().catch((error) => {
+      executeCommand({}).catch((error) => {
         console.error(`Failed to execute command ${commandId}:`, error);
       });
     }

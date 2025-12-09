@@ -1,4 +1,4 @@
-import { MindmapStore } from "../../mindmap-store.types";
+import { z } from "zod";
 import { CommandDefinition, registerCommand } from "../../command-registry";
 import { generateShortId } from "@/lib/utils/short-id";
 import { AddNodeAction } from "../../actions/persistent/add-node";
@@ -7,33 +7,28 @@ import { SetCurrentNodeAction } from "../../actions/ephemeral/set-current-node";
 import { getChildNodes } from "../../editor-utils";
 import { EnsureCurrentNodeVisibleAction } from "../../actions/ephemeral/ensure-current-node-visible";
 
-type AddSiblingNodeParams = [string | undefined, string | undefined];
+export const AddSiblingBelowParamsSchema = z.object({
+  nodeId: z.string().optional().describe("参考节点的 ID"),
+  title: z.string().optional().describe("新节点的标题"),
+});
+
+export type AddSiblingBelowParams = z.infer<typeof AddSiblingBelowParamsSchema>;
 
 /**
  * 添加兄弟节点（在下方）
  */
-export const addSiblingBelowCommand: CommandDefinition = {
+export const addSiblingBelowCommand: CommandDefinition<
+  typeof AddSiblingBelowParamsSchema
+> = {
   id: "node.addSiblingBelow",
   name: "在下方添加兄弟节点",
   description: "在指定节点下方添加兄弟节点",
   category: "node",
   actionBased: true,
-  parameters: [
-    {
-      name: "nodeId",
-      type: "string",
-      description: "参考节点的 ID",
-    },
-    {
-      name: "title",
-      type: "string",
-      description: "新节点的标题",
-      optional: true,
-    },
-  ],
+  paramsSchema: AddSiblingBelowParamsSchema,
 
-  handler: (root: MindmapStore, params?: unknown[]) => {
-    const [nodeId, title] = (params as AddSiblingNodeParams) || [];
+  handler: (root, params) => {
+    const { nodeId, title } = params;
     const targetNodeId = nodeId || root.currentEditor!.currentNode;
     const targetNode = root.currentEditor?.nodes.get(targetNodeId);
 
@@ -100,7 +95,7 @@ export const addSiblingBelowCommand: CommandDefinition = {
     return actions;
   },
 
-  when: (root: MindmapStore) => {
+  when: (root) => {
     const currentNode = root.currentEditor?.nodes.get(
       root.currentEditor.currentNode
     );

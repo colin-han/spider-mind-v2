@@ -1,29 +1,28 @@
-import { MindmapStore } from "../../mindmap-store.types";
+import { z } from "zod";
 import { CommandDefinition, registerCommand } from "../../command-registry";
 import { ExpandNodeAction } from "../../actions/ephemeral/expand-node";
 
-type ExpandNodeParams = [string?];
+export const ExpandNodeParamsSchema = z.object({
+  nodeId: z.string().optional().describe("要展开的节点 ID"),
+});
+export type ExpandNodeParams = z.infer<typeof ExpandNodeParamsSchema>;
 
 /**
  * 展开节点
  */
-export const expandNodeCommand: CommandDefinition = {
+export const expandNodeCommand: CommandDefinition<
+  typeof ExpandNodeParamsSchema
+> = {
   id: "navigation.expandNode",
   name: "展开节点",
   description: "展开当前节点的子节点",
   category: "navigation",
   actionBased: true,
   undoable: false,
-  parameters: [
-    {
-      name: "nodeId",
-      type: "string",
-      description: "要展开的节点 ID",
-    },
-  ],
+  paramsSchema: ExpandNodeParamsSchema,
 
-  handler: (root: MindmapStore, params?: unknown[]) => {
-    const [nodeId] = (params as ExpandNodeParams) || [];
+  handler: (root, params) => {
+    const { nodeId } = params;
     const targetNodeId = nodeId || root.currentEditor!.currentNode;
     const currentNode = root.currentEditor?.nodes.get(targetNodeId);
     if (!currentNode) {
@@ -38,8 +37,8 @@ export const expandNodeCommand: CommandDefinition = {
     return [new ExpandNodeAction(targetNodeId)];
   },
 
-  when: (root: MindmapStore, params?: unknown[]) => {
-    const [nodeId] = (params as ExpandNodeParams) || [];
+  when: (root, params) => {
+    const { nodeId } = params;
     const targetNodeId = nodeId || root.currentEditor!.currentNode;
     const currentNode = root.currentEditor?.nodes.get(targetNodeId);
     if (!currentNode) {

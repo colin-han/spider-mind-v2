@@ -90,7 +90,10 @@ export interface MindmapStore {
 
   openMindmap(mindmapId: string): Promise<void>; // 打开指定 mindmap （id是short_id），创建新的EditorState。并清理undo/redo栈。
   acceptActions(actions: EditorAction[]): Promise<void>; // 批量应用 EditorActions 到当前编辑器状态（单事务保证原子性）
-  executeCommand(commandId: string, params?: unknown[]): Promise<void>;
+  executeCommand(
+    commandId: string,
+    params?: Record<string, unknown>
+  ): Promise<void>;
 
   // 布局管理（由 LayoutService 调用）
   updateLayouts(layouts: Map<string, NodeLayout>): void; // 更新布局状态（不持久化，不触发 undo）

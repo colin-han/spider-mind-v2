@@ -1,4 +1,4 @@
-import { MindmapStore, EditorAction } from "../../mindmap-store.types";
+import { EditorAction } from "../../mindmap-store.types";
 import { CommandDefinition, registerCommand } from "../../command-registry";
 import { SetCurrentNodeAction } from "../../actions/ephemeral/set-current-node";
 import {
@@ -7,21 +7,24 @@ import {
   isNodeVisible,
 } from "../../editor-utils";
 import { ensureNodeVisibleAction } from "../../utils/viewport-utils";
+import { EmptyParamsSchema } from "../../command-schema";
 
 /**
  * 选择下一个同深度的节点
  * 在深度优先遍历顺序中，选择后一个具有相同深度的节点
  */
-export const selectNextSiblingCommand: CommandDefinition = {
+export const selectNextSiblingCommand: CommandDefinition<
+  typeof EmptyParamsSchema
+> = {
   id: "navigation.selectNextSibling",
   name: "选择下一个节点",
   description: "跳转到下一个同深度的节点",
   category: "navigation",
   actionBased: true,
   undoable: false,
-  parameters: [],
+  paramsSchema: EmptyParamsSchema,
 
-  handler: (root: MindmapStore) => {
+  handler: (root) => {
     const state = root.currentEditor;
     if (!state) return;
 
@@ -77,7 +80,7 @@ export const selectNextSiblingCommand: CommandDefinition = {
     return;
   },
 
-  when: (root: MindmapStore) => {
+  when: (root) => {
     const currentNode = root.currentEditor?.nodes.get(
       root.currentEditor.currentNode
     );

@@ -1,30 +1,30 @@
-import { MindmapStore } from "../../mindmap-store.types";
+import { z } from "zod";
 import { CommandDefinition, registerCommand } from "../../command-registry";
 import { UpdateNodeAction } from "../../actions/persistent/update-node";
 import { getChildNodes } from "../../editor-utils";
 import { EnsureCurrentNodeVisibleAction } from "../../actions/ephemeral/ensure-current-node-visible";
 
-type MoveNodeParams = [string?];
+export const MoveNodeDownParamsSchema = z.object({
+  nodeId: z.string().optional().describe("要移动的节点 ID"),
+});
+
+export type MoveNodeDownParams = z.infer<typeof MoveNodeDownParamsSchema>;
 
 /**
  * 下移节点
  */
-export const moveNodeDownCommand: CommandDefinition = {
+export const moveNodeDownCommand: CommandDefinition<
+  typeof MoveNodeDownParamsSchema
+> = {
   id: "node.moveDown",
   name: "下移节点",
   description: "在兄弟节点中向下移动",
   category: "node",
   actionBased: true,
-  parameters: [
-    {
-      name: "nodeId",
-      type: "string",
-      description: "要移动的节点 ID",
-    },
-  ],
+  paramsSchema: MoveNodeDownParamsSchema,
 
-  handler: (root: MindmapStore, params?: unknown[]) => {
-    const [nodeId] = (params as MoveNodeParams) || [];
+  handler: (root, params) => {
+    const { nodeId } = params;
     const targetNodeId = nodeId || root.currentEditor!.currentNode;
     const targetNode = root.currentEditor?.nodes.get(targetNodeId);
 
@@ -75,7 +75,7 @@ export const moveNodeDownCommand: CommandDefinition = {
     return actions;
   },
 
-  when: (root: MindmapStore) => {
+  when: (root) => {
     const currentNode = root.currentEditor?.nodes.get(
       root.currentEditor.currentNode
     );

@@ -1,30 +1,29 @@
-import { MindmapStore } from "../../mindmap-store.types";
+import { z } from "zod";
 import { CommandDefinition, registerCommand } from "../../command-registry";
 import { CollapseNodeAction } from "../../actions/ephemeral/collapse-node";
 import { getChildNodes } from "../../editor-utils";
 
-type CollapseNodeParams = [string?];
+export const CollapseNodeParamsSchema = z.object({
+  nodeId: z.string().optional().describe("要折叠的节点 ID"),
+});
+export type CollapseNodeParams = z.infer<typeof CollapseNodeParamsSchema>;
 
 /**
  * 折叠节点
  */
-export const collapseNodeCommand: CommandDefinition = {
+export const collapseNodeCommand: CommandDefinition<
+  typeof CollapseNodeParamsSchema
+> = {
   id: "navigation.collapseNode",
   name: "折叠节点",
   description: "折叠当前节点的子节点",
   category: "navigation",
   actionBased: true,
   undoable: false,
-  parameters: [
-    {
-      name: "nodeId",
-      type: "string",
-      description: "要折叠的节点 ID",
-    },
-  ],
+  paramsSchema: CollapseNodeParamsSchema,
 
-  handler: (root: MindmapStore, params?: unknown[]) => {
-    const [nodeId] = (params as CollapseNodeParams) || [];
+  handler: (root, params) => {
+    const { nodeId } = params;
     const targetNodeId = nodeId || root.currentEditor!.currentNode;
     const targetNode = root.currentEditor?.nodes.get(targetNodeId);
     if (!targetNode) {
@@ -45,8 +44,8 @@ export const collapseNodeCommand: CommandDefinition = {
     return [new CollapseNodeAction(targetNodeId)];
   },
 
-  when: (root: MindmapStore, params?: unknown[]) => {
-    const [nodeId] = (params as CollapseNodeParams) || [];
+  when: (root, params) => {
+    const { nodeId } = params;
     const targetNodeId = nodeId || root.currentEditor!.currentNode;
     const currentNode = root.currentEditor?.nodes.get(targetNodeId);
     if (!currentNode) {

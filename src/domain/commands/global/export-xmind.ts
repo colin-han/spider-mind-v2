@@ -1,7 +1,7 @@
 /**
  * 导出思维导图为 XMind 格式
  *
- * XMind 文件是一个 ZIP 压缩包，包含以下内容：
+ * XMind 文件是一个 ZIP 压缩包,包含以下内容：
  * - mimetype: MIME 类型声明
  * - META-INF/manifest.xml: 元数据清单
  * - content.xml: 思维导图内容（XML 格式）
@@ -9,6 +9,7 @@
 
 import { MindmapStore } from "../../mindmap-store.types";
 import { CommandDefinition, registerCommand } from "../../command-registry";
+import { EmptyParamsSchema } from "../../command-schema";
 import JSZip from "jszip";
 import {
   buildContentXml,
@@ -18,15 +19,16 @@ import {
 /**
  * 导出思维导图为 XMind 格式
  */
-export const exportXMindCommand: CommandDefinition = {
+export const exportXMindCommand: CommandDefinition<typeof EmptyParamsSchema> = {
   id: "global.exportXMind",
   name: "导出为 XMind",
   description: "导出当前思维导图为 XMind 格式",
   category: "global",
   actionBased: false,
   undoable: false,
+  paramsSchema: EmptyParamsSchema,
 
-  handler: async (root: MindmapStore) => {
+  handler: async (root: MindmapStore, _params) => {
     const { currentEditor } = root;
 
     if (!currentEditor) {

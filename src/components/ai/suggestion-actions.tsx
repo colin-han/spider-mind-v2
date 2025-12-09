@@ -40,11 +40,14 @@ export function SuggestionActions({ suggestions }: SuggestionActionsProps) {
             // 临时方案：逐个创建
             for (const child of suggestion.params.children) {
               const childNode = child as { title: string };
-              // node.addChild params: [parentId, position?, title?]
+              // node.addChild params: { parentId?, position?, title? }
               // 使用 currentNode 作为 parentId
               await commandManager.executeCommand({
                 commandId: "node.addChild",
-                params: [editor.currentNode, undefined, childNode.title],
+                params: {
+                  parentId: editor.currentNode,
+                  title: childNode.title,
+                },
               });
             }
           }
@@ -53,10 +56,13 @@ export function SuggestionActions({ suggestions }: SuggestionActionsProps) {
         case "update_title":
           // 更新节点标题
           if (suggestion.params?.newTitle) {
-            // node.updateTitle params: [nodeId, newTitle]
+            // node.updateTitle params: { nodeId?, newTitle? }
             await commandManager.executeCommand({
               commandId: "node.updateTitle",
-              params: [editor.currentNode, suggestion.params.newTitle],
+              params: {
+                nodeId: editor.currentNode,
+                newTitle: suggestion.params.newTitle,
+              },
             });
           }
           break;

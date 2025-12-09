@@ -12,16 +12,10 @@ import {
   removeJSONSuggestions,
 } from "@/lib/ai/parse-suggestions";
 import { SuggestionActions } from "./suggestion-actions";
-import {
-  extractOperations,
-  extractExplanation,
-  hasOperationsTag,
-  hasCompleteOperations,
-} from "@/lib/ai/parse-operations";
 import { OperationsPanel } from "./operations-panel";
 import { useState } from "react";
 import type { AIMessage } from "@/lib/types/ai";
-import type { AIOperation } from "@/domain/ai";
+import type { OperationWithId } from "@/lib/ai/tools";
 
 interface MessageBubbleProps {
   message: UIMessage;
@@ -29,11 +23,11 @@ interface MessageBubbleProps {
   onOperationsApplied?: (
     messageId: string,
     selectedIds: string[],
-    operations: AIOperation[]
+    operations: OperationWithId[]
   ) => void;
   onOperationsCancelled?: (
     messageId: string,
-    operations: AIOperation[]
+    operations: OperationWithId[]
   ) => void;
 }
 
@@ -54,20 +48,45 @@ export function MessageBubble({
       .join("");
   };
 
-  const textContent = getTextContent();
+  // AI SDK v5: Extract tool calls from parts
+  const getToolCalls = () => {
+    return message.parts.filter(
+      (part): part is Extract<typeof part, { type: string }> =>
+        typeof part === "object" &&
+        part !== null &&
+        "type" in part &&
+        typeof part.type === "string" &&
+        part.type.startsWith("tool-")
+    );
+  };
 
-  // 检测是否包含 operations
-  const hasOperations = !isUser && hasOperationsTag(textContent);
-  const operationsComplete =
-    hasOperations && hasCompleteOperations(textContent);
-  const operations = operationsComplete ? extractOperations(textContent) : [];
-  const operationsLoading = hasOperations && !operationsComplete;
+  const textContent = getTextContent();
+  const toolCalls = !isUser ? getToolCalls() : [];
+
+  // 检查是否有 suggestOperations tool call
+  const suggestOperationsCall = toolCalls.find(
+    (call) => call.type === "tool-suggestOperations"
+  );
+
+  // 提取操作列表
+  const operations: OperationWithId[] = suggestOperationsCall
+    ? (
+        suggestOperationsCall as unknown as {
+          input: { operations: OperationWithId[] };
+        }
+      ).input?.operations || []
+    : [];
+
+  const hasOperations = operations.length > 0;
+
+  // Tool calls 是原子的，不会有 loading 状态
+  const operationsLoading = false;
 
   // 检查操作是否已执行或已取消（从 metadata 中读取）
   const operationsAlreadyApplied = metadata?.operationsApplied === true;
   const operationsCancelled = metadata?.operationsCancelled === true;
 
-  // 解析 AI 响应中的结构化建议（仅当不是 operations 时）
+  // 解析 AI 响应中的结构化建议（仅当不是 tool call 时）
   const suggestions =
     !isUser && !hasOperations ? parseAISuggestions(textContent) : null;
 
@@ -75,11 +94,8 @@ export function MessageBubble({
   let displayContent: string;
   if (isUser) {
     displayContent = textContent;
-  } else if (hasOperations) {
-    // 如果包含 operations，只显示 explanation 部分
-    displayContent = extractExplanation(textContent);
   } else {
-    // 否则移除 JSON 建议块
+    // 移除 JSON 建议块（保留所有文本内容）
     displayContent = removeJSONSuggestions(textContent);
   }
 

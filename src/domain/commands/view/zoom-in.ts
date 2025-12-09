@@ -1,15 +1,17 @@
 import type { CommandDefinition } from "../../command-registry";
 import type { MindmapStore } from "../../mindmap-store.types";
+import { EmptyParamsSchema } from "../../command-schema";
 import { SetViewportAction } from "../../actions/ephemeral/set-viewport";
 
-export const zoomIn: CommandDefinition = {
+export const zoomIn: CommandDefinition<typeof EmptyParamsSchema> = {
   id: "view.zoomIn",
   name: "放大视图",
   description: "放大画布视图 20%",
   category: "view",
   actionBased: true,
   undoable: false,
-  handler: (root: MindmapStore) => {
+  paramsSchema: EmptyParamsSchema,
+  handler: (root: MindmapStore, _params) => {
     const viewport = root.currentEditor!.viewport;
     const newZoom = Math.min(2.0, viewport.zoom * 1.2);
 

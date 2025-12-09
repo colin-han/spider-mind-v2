@@ -241,7 +241,10 @@ export const useMindmapStore = create<MindmapStore>()(
         throw error;
       }
     },
-    executeCommand: async (commandId: string, params?: unknown[]) => {
+    executeCommand: async (
+      commandId: string,
+      params?: Record<string, unknown>
+    ) => {
       console.log(
         "[MindmapStore] executeCommand",
         commandId,
@@ -250,7 +253,7 @@ export const useMindmapStore = create<MindmapStore>()(
       );
       get().commandManager!.executeCommand({
         commandId,
-        params,
+        params: params ?? {},
       });
     },
 
@@ -363,12 +366,24 @@ export const useCommandManager = (): CommandManager => {
   return store.commandManager!;
 };
 
-export const useCommand = (
+/**
+ * 获取命令执行函数
+ *
+ * @param commandId - 命令 ID
+ * @returns 执行函数，接收对象参数
+ *
+ * @example
+ * const addChild = useCommand('node.addChild');
+ * await addChild({ parentId: 'xxx', title: '新节点' });
+ */
+export const useCommand = <
+  TParams extends Record<string, unknown> = Record<string, unknown>,
+>(
   commandId: string
-): ((...params: unknown[]) => Promise<void>) => {
+): ((params: TParams) => Promise<void>) => {
   const manager = useCommandManager();
   return useCallback(
-    (...params) =>
+    (params: TParams) =>
       manager.executeCommand({
         commandId,
         params,

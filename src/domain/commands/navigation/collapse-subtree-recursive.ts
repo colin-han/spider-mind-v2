@@ -1,31 +1,32 @@
-import { MindmapStore } from "../../mindmap-store.types";
+import { z } from "zod";
 import { CommandDefinition, registerCommand } from "../../command-registry";
 import { CollapseNodeAction } from "../../actions/ephemeral/collapse-node";
 import { getChildNodes, getDescendantNodes } from "../../editor-utils";
 
-type CollapseSubtreeRecursiveParams = [string?];
+export const CollapseSubtreeRecursiveParamsSchema = z.object({
+  nodeId: z.string().optional().describe("要递归折叠的节点 ID"),
+});
+export type CollapseSubtreeRecursiveParams = z.infer<
+  typeof CollapseSubtreeRecursiveParamsSchema
+>;
 
 /**
  * 递归折叠子树
  * 折叠当前节点及其所有子孙节点
  */
-export const collapseSubtreeRecursiveCommand: CommandDefinition = {
+export const collapseSubtreeRecursiveCommand: CommandDefinition<
+  typeof CollapseSubtreeRecursiveParamsSchema
+> = {
   id: "navigation.collapseSubtreeRecursive",
   name: "递归折叠子树",
   description: "折叠当前节点及其所有子孙节点",
   category: "navigation",
   actionBased: true,
   undoable: false,
-  parameters: [
-    {
-      name: "nodeId",
-      type: "string",
-      description: "要递归折叠的节点 ID",
-    },
-  ],
+  paramsSchema: CollapseSubtreeRecursiveParamsSchema,
 
-  handler: (root: MindmapStore, params?: unknown[]) => {
-    const [nodeId] = (params as CollapseSubtreeRecursiveParams) || [];
+  handler: (root, params) => {
+    const { nodeId } = params;
     const targetNodeId = nodeId || root.currentEditor!.currentNode;
     const targetNode = root.currentEditor?.nodes.get(targetNodeId);
     if (!targetNode) {
@@ -72,8 +73,8 @@ export const collapseSubtreeRecursiveCommand: CommandDefinition = {
     return nodesToCollapse.map((id) => new CollapseNodeAction(id));
   },
 
-  when: (root: MindmapStore, params?: unknown[]) => {
-    const [nodeId] = (params as CollapseSubtreeRecursiveParams) || [];
+  when: (root, params) => {
+    const { nodeId } = params;
     const targetNodeId = nodeId || root.currentEditor!.currentNode;
     const currentNode = root.currentEditor?.nodes.get(targetNodeId);
     if (!currentNode) {

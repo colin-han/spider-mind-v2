@@ -1,5 +1,6 @@
+import { z } from "zod";
 import { CommandDefinition, registerCommand } from "../../command-registry";
-import { MindmapStore, EditorAction } from "../../mindmap-store.types";
+import { EditorAction } from "../../mindmap-store.types";
 import { MindmapNode } from "@/lib/types";
 import { AddNodeAction } from "../../actions/persistent/add-node";
 import { SetCurrentNodeAction } from "../../actions/ephemeral/set-current-node";
@@ -16,6 +17,23 @@ export interface NodeTree {
   children?: NodeTree[];
 }
 
+// 使用 z.lazy() 定义递归类型
+// 由于 exactOptionalPropertyTypes 配置，需要使用类型断言
+const NodeTreeSchema = z.lazy(() =>
+  z.object({
+    title: z.string().describe("节点标题"),
+    note: z.string().optional().describe("节点笔记"),
+    children: z.array(NodeTreeSchema).optional().describe("子节点列表"),
+  })
+) as z.ZodType<NodeTree>;
+
+export const AddChildTreesParamsSchema = z.object({
+  parentId: z.string().describe("父节点的 ID"),
+  children: z.array(NodeTreeSchema).describe("子节点树数组"),
+});
+
+export type AddChildTreesParams = z.infer<typeof AddChildTreesParamsSchema>;
+
 /**
  * 创建节点树命令
  *
@@ -26,19 +44,19 @@ export interface NodeTree {
  * 使用示例：
  * ```typescript
  * // 批量创建子节点（替代 addChildren）
- * executeCommand("node.addChildTrees", [
+ * executeCommand("node.addChildTrees", {
  *   parentId,
- *   [
+ *   children: [
  *     { title: "节点1" },
  *     { title: "节点2", note: "笔记" },
  *     { title: "节点3" }
  *   ]
- * ]);
+ * });
  *
  * // 创建多级树
- * executeCommand("node.addChildTrees", [
+ * executeCommand("node.addChildTrees", {
  *   parentId,
- *   [
+ *   children: [
  *     {
  *       title: "前端",
  *       children: [
@@ -54,38 +72,28 @@ export interface NodeTree {
  *       ]
  *     }
  *   ]
- * ]);
+ * });
  * ```
  */
-export const addChildTreesCommand: CommandDefinition = {
+export const addChildTreesCommand: CommandDefinition<
+  typeof AddChildTreesParamsSchema
+> = {
   id: "node.addChildTrees",
   name: "批量添加子树",
   description: "批量添加子节点或创建多级树",
   category: "node",
   actionBased: true,
-  parameters: [
-    {
-      name: "parentId",
-      type: "string",
-      description: "父节点的 ID",
-    },
-    {
-      name: "children",
-      type: "NodeTree[]",
-      description: "子节点树数组",
-    },
-  ],
+  paramsSchema: AddChildTreesParamsSchema,
 
-  when: (root: MindmapStore, params?: unknown[]) => {
+  when: (root, params) => {
     if (!root.currentEditor) return false;
-    if (!params || params.length < 2) return false;
 
-    const [parentId] = params as [string, NodeTree[]];
+    const { parentId } = params;
     return root.currentEditor.nodes.has(parentId);
   },
 
-  handler: (root: MindmapStore, params?: unknown[]): EditorAction[] => {
-    const [parentId, children] = params as [string, NodeTree[]];
+  handler: (root, params): EditorAction[] => {
+    const { parentId, children } = params;
 
     const parentNode = root.currentEditor?.nodes.get(parentId);
     if (!parentNode) return [];
@@ -157,8 +165,8 @@ export const addChildTreesCommand: CommandDefinition = {
     return actions;
   },
 
-  getDescription: (_root: MindmapStore, params?: unknown[]) => {
-    const children = params?.[1] as NodeTree[] | undefined;
+  getDescription: (_root, params) => {
+    const { children } = params;
 
     if (!children || children.length === 0) {
       return "创建节点树";

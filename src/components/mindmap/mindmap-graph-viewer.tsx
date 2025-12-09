@@ -181,6 +181,17 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
         return;
       }
 
+      // 检查焦点是否在 input 或 textarea 内（防止在 chat panel 等输入框中触发）
+      const activeElement = document.activeElement;
+      if (
+        activeElement &&
+        (activeElement.tagName === "INPUT" ||
+          activeElement.tagName === "TEXTAREA" ||
+          (activeElement as HTMLElement).isContentEditable)
+      ) {
+        return;
+      }
+
       // IME 输入过程中不处理
       if (event.isComposing) {
         return;
@@ -192,7 +203,7 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
         enterAutoEditMode();
 
         // 切换到编辑模式
-        setFocusedArea("title-editor");
+        setFocusedArea({ area: "title-editor" });
 
         // 阻止事件传播到其他监听器，但不阻止默认行为（让 IME 正常启动）
         event.stopPropagation();
@@ -245,8 +256,8 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
   // 单击节点 - 选中
   const onNodeClick = useCallback(
     (_event: React.MouseEvent, node: Node) => {
-      setCurrentNode(node.id);
-      setFocusedArea("graph");
+      setCurrentNode({ nodeId: node.id });
+      setFocusedArea({ area: "graph" });
     },
     [setCurrentNode, setFocusedArea]
   );
@@ -254,15 +265,15 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
   // 双击节点 - 选中节点（编辑在 NodePanel 中自动响应）
   const onNodeDoubleClick = useCallback(
     (_event: React.MouseEvent, node: Node) => {
-      setCurrentNode(node.id);
-      setFocusedArea("title-editor");
+      setCurrentNode({ nodeId: node.id });
+      setFocusedArea({ area: "title-editor" });
     },
     [setCurrentNode, setFocusedArea]
   );
 
   // 点击空白区域 - 设置焦点到图形视图
   const onPaneClick = useCallback(() => {
-    setFocusedArea("graph");
+    setFocusedArea({ area: "graph" });
   }, [setFocusedArea]);
 
   // 画布拖拽开始
@@ -466,7 +477,11 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
       }
 
       // 执行移动（使用新的命令系统）
-      moveNode(draggedNodeId, newParentId, position).catch((error) => {
+      moveNode({
+        nodeId: draggedNodeId,
+        targetParentId: newParentId,
+        position,
+      }).catch((error) => {
         console.error("[MindmapGraphViewer] Failed to move node:", error);
       });
     },
@@ -565,13 +580,13 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
           zoom: nodeVp.zoom,
         };
 
-        setViewportCmd(
-          nodeVp.x,
-          nodeVp.y,
-          nodeVp.width,
-          nodeVp.height,
-          nodeVp.zoom
-        );
+        setViewportCmd({
+          x: nodeVp.x,
+          y: nodeVp.y,
+          width: nodeVp.width,
+          height: nodeVp.height,
+          zoom: nodeVp.zoom,
+        });
       }, 50);
     },
     [setViewportCmd, isSimilarViewport]
@@ -623,13 +638,13 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
           zoom: nodeVp.zoom,
         };
 
-        setViewportCmd(
-          nodeVp.x,
-          nodeVp.y,
-          nodeVp.width,
-          nodeVp.height,
-          nodeVp.zoom
-        );
+        setViewportCmd({
+          x: nodeVp.x,
+          y: nodeVp.y,
+          width: nodeVp.width,
+          height: nodeVp.height,
+          zoom: nodeVp.zoom,
+        });
       }, 350); // 等待 fitView 动画完成
     }
   }, [
