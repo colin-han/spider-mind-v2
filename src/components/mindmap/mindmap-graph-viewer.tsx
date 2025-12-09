@@ -473,7 +473,8 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
       } else {
         // highlight: 成为目标节点的子节点
         newParentId = targetNode.short_id;
-        position = Infinity; // 插入到最后
+        // 使用大数字代替 Infinity（move 命令会自动限制到实际子节点数量）
+        position = Number.MAX_SAFE_INTEGER;
       }
 
       // 执行移动（使用新的命令系统）
