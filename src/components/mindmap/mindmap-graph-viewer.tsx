@@ -48,6 +48,7 @@ import {
 import { calibrateFontMetrics } from "@/lib/utils/mindmap/layout-predictor";
 import { isPrintableCharacter } from "@/lib/utils/keyboard";
 import { enterAutoEditMode } from "@/lib/auto-edit-manager";
+import { ViewStateManager } from "@/lib/view-state-manager";
 
 /**
  * MindmapGraphViewer Props
@@ -553,6 +554,9 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
       }
 
       debounceTimeoutRef.current = setTimeout(() => {
+        // 🆕 只有在首次加载完成后才允许同步，防止 React Flow 初始化时覆盖 localStorage 的 viewport
+        if (!hasInitializedRef.current) return;
+
         const container = containerRef.current;
         if (!container) return;
 
@@ -588,9 +592,21 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
           height: nodeVp.height,
           zoom: nodeVp.zoom,
         });
+
+        // 🆕 保存 viewport 到 localStorage
+        const mindmapId = editorState?.currentMindmap.id;
+        if (mindmapId) {
+          ViewStateManager.save(mindmapId, {
+            viewport: {
+              x: nodeVp.x,
+              y: nodeVp.y,
+              zoom: nodeVp.zoom,
+            },
+          });
+        }
       }, 50);
     },
-    [setViewportCmd, isSimilarViewport]
+    [setViewportCmd, isSimilarViewport, editorState]
   );
 
   // 仅在首次加载时适应视图
@@ -612,10 +628,35 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
     if (!editorState.layoutReady) return;
 
     if (nodes.length > 0 && !hasInitializedRef.current) {
+      // 🆕 检查是否有保存的视图状态
+      // 如果 viewport 不是默认值（x:0, y:0, zoom:1），说明已经从 localStorage 加载了
+      const hasRestoredViewport =
+        viewport.x !== 0 || viewport.y !== 0 || viewport.zoom !== 1;
+
+      if (hasRestoredViewport) {
+        // 使用保存的视图状态，不执行 fitView
+        console.log(
+          `[MindmapGraphViewer] Restored viewport from localStorage for mindmap ${mindmapId}`
+        );
+        // 🆕 记录恢复的 viewport 值，防止 debouncedSync 覆盖
+        lastSyncedViewportRef.current = {
+          x: viewport.x,
+          y: viewport.y,
+          zoom: viewport.zoom,
+        };
+        // 🆕 延迟设置 hasInitializedRef，等待 Store → React Flow 同步动画完成（200ms）
+        setTimeout(() => {
+          hasInitializedRef.current = true;
+        }, 250);
+        // Store → React Flow 的同步已经在上面的 useEffect 中处理
+        return;
+      }
+
       hasInitializedRef.current = true;
-      // 布局已准备好，直接执行 fitView，不需要延迟
+
+      // 首次打开，执行 fitView
       console.log(
-        `[MindmapGraphViewer] Calling fitView for mindmap ${mindmapId}...`
+        `[MindmapGraphViewer] First time opening mindmap ${mindmapId}, calling fitView...`
       );
       fitView({ padding: 0.2, duration: 300 });
       console.log("[MindmapGraphViewer] fitView called");
@@ -646,6 +687,15 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
           height: nodeVp.height,
           zoom: nodeVp.zoom,
         });
+
+        // 🆕 保存 viewport 到 localStorage（首次打开后）
+        ViewStateManager.save(mindmapId, {
+          viewport: {
+            x: nodeVp.x,
+            y: nodeVp.y,
+            zoom: nodeVp.zoom,
+          },
+        });
       }, 350); // 等待 fitView 动画完成
     }
   }, [
@@ -655,6 +705,9 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
     getViewport,
     setViewportCmd,
     editorState,
+    viewport.x,
+    viewport.y,
+    viewport.zoom,
   ]);
 
   return (
@@ -678,7 +731,8 @@ export const MindmapGraphViewer = memo(function MindmapGraphViewer(
         onMoveEnd={onMoveEnd}
         onViewportChange={debouncedSync}
         disableKeyboardA11y={true}
-        fitView
+        // 🆕 移除 fitView 属性，改为在 useEffect 中手动控制
+        // 这样可以在恢复保存的 viewport 时不被自动 fitView 覆盖
         minZoom={0.1}
         maxZoom={2}
         // 妙控板手势支持

@@ -11,7 +11,7 @@
 | [编辑器 UI 布局设计](./editor-ui-layout-design.md)           | 编辑器界面布局和组件协作        | ✅ 已确认 | 2025-10-19 |
 | [节点布局引擎设计](./node-layout-engine-design.md)           | 节点布局计算引擎和服务          | ✅ 已确认 | 2025-01-23 |
 | [节点最大宽度设计](./node-max-width-design.md)               | 节点宽度限制和自动折行          | ✅ 已确认 | 2025-11-29 |
-| [视口管理设计](./viewport-management-design.md)              | 视口状态管理和双向同步          | ✅ 已确认 | 2025-11-23 |
+| [视口管理设计](./viewport-management-design.md)              | 视口状态管理和双向同步          | ✅ 已确认 | 2025-12-13 |
 | [Command 层架构设计](./command-layer-design.md)              | 命令系统架构和实现              | ✅ 已确认 | 2025-11-23 |
 | [命令参考手册](./command-reference.md)                       | 所有命令和快捷键快速查询        | ✅ 已确认 | 2025-11-23 |
 | [持久化中间件设计](./persistence-middleware-design.md)       | 三层存储和Dirty Flag机制        | ✅ 已确认 | 2025-11-24 |
@@ -368,6 +368,8 @@ graph TD
 | 层级对应标题, 无限层级                    | [复制为 Markdown 设计](./copy-as-markdown-design.md)                               |
 | 节点可见性, ensureNodeVisible             | [视口管理设计](./viewport-management-design.md)                                    |
 | SetViewportAction, 视图命令               | [视口管理设计](./viewport-management-design.md)                                    |
+| ViewState, ViewStateManager, 视图状态     | [视口管理设计](./viewport-management-design.md)                                    |
+| 视图状态持久化, localStorage 持久化       | [视口管理设计](./viewport-management-design.md)                                    |
 | MiniToolbar, 迷你工具栏, Portal           | [节点卡片设计](./mindmap-node-card-design.md)                                      |
 | 节点卡片, CustomMindNode, 状态图标        | [节点卡片设计](./mindmap-node-card-design.md)                                      |
 | nodeToScreenCoords, 坐标转换              | [节点卡片设计](./mindmap-node-card-design.md)                                      |
@@ -440,6 +442,8 @@ graph TD
 | 如何防止视口同步循环？                  | [视口管理设计](./viewport-management-design.md)                                    |
 | 如何实现缩放、平移命令？                | [视口管理设计](./viewport-management-design.md)                                    |
 | 如何确保节点在视口中可见？              | [视口管理设计](./viewport-management-design.md)                                    |
+| 视图状态如何持久化？                    | [视口管理设计](./viewport-management-design.md)                                    |
+| 为什么视图状态使用 localStorage？       | [视口管理设计](./viewport-management-design.md)                                    |
 | 如何导出思维导图为 XMind？              | [XMind 导出设计](./export-xmind-design.md)                                         |
 | XMind 文件格式是什么？                  | [XMind 导出设计](./export-xmind-design.md)                                         |
 | 如何生成 ZIP 文件？                     | [XMind 导出设计](./export-xmind-design.md)                                         |
@@ -480,6 +484,7 @@ graph TD
 
 | 日期       | 更新内容                                                                                                                                           | 更新者      |
 | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| 2025-12-13 | 更新视口管理设计文档（添加视图状态持久化设计：ViewState 数据模型、localStorage 存储策略、保存/加载时机、状态验证、ReactFlow fitView 注意事项）     | Claude Code |
 | 2025-12-08 | 添加 AI 操作 Tool Calling 设计文档（Vercel AI SDK v5 Tool Calling、配置驱动 Schema 生成、操作执行器、批量事务处理）                                | Claude Code |
 | 2025-12-08 | 更新命令系统参数格式：command-layer-design.md、command-reference.md、ai-assistant-system-design.md（从数组参数改为对象参数，使用 Zod Schema 定义） | Claude Code |
 | 2025-12-06 | 添加思维导图加载体验优化设计文档（LoadingSpinner 组件、layoutReady 标志、状态清除机制、fitView 时机控制）                                          | Claude Code |

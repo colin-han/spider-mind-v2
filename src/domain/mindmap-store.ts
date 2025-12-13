@@ -191,22 +191,46 @@ export const useMindmapStore = create<MindmapStore>()(
           throw new Error(`Root node not found for mindmap ${mindmapId}`);
         }
 
-        // 6. 构造 EditorState
+        // 6. 加载并验证视图状态
+        const { ViewStateManager } = await import("@/lib/view-state-manager");
+        const { validateViewState } = await import(
+          "@/lib/view-state-validator"
+        );
+
+        const savedViewState = ViewStateManager.load(mindmapToLoad.id);
+        const validatedViewState = savedViewState
+          ? validateViewState(savedViewState, nodesToLoad, rootNode.short_id)
+          : null;
+
+        // 7. 构造 EditorState
         const editorState: EditorState = {
           currentMindmap: mindmapToLoad,
           nodes: new Map(nodesToLoad.map((n) => [n.short_id, n])),
-          collapsedNodes: new Set(),
+          // 使用保存的折叠状态，如果没有则为空集合
+          collapsedNodes: validatedViewState
+            ? new Set(validatedViewState.collapsedNodes)
+            : new Set(),
           layouts: new Map(), // 布局状态，初始为空，由 LayoutService 计算后更新
-          viewport: {
-            x: 0,
-            y: 0,
-            width: 800, // 默认值，会在 MindmapGraphViewer 初始化时更新
-            height: 600, // 默认值，会在 MindmapGraphViewer 初始化时更新
-            zoom: 1,
-          },
+          // 使用保存的视口状态，如果没有则使用默认值
+          viewport: validatedViewState
+            ? {
+                x: validatedViewState.viewport.x,
+                y: validatedViewState.viewport.y,
+                width: 800, // 默认值，会在 MindmapGraphViewer 初始化时更新
+                height: 600, // 默认值，会在 MindmapGraphViewer 初始化时更新
+                zoom: validatedViewState.viewport.zoom,
+              }
+            : {
+                x: 0,
+                y: 0,
+                width: 800, // 默认值，会在 MindmapGraphViewer 初始化时更新
+                height: 600, // 默认值，会在 MindmapGraphViewer 初始化时更新
+                zoom: 1,
+              },
           isDragging: false, // 拖拽状态，初始为 false
           focusedArea: "graph",
-          currentNode: rootNode.short_id,
+          // 使用保存的当前节点，如果没有或无效则使用根节点
+          currentNode: validatedViewState?.currentNode ?? rootNode.short_id,
           isLoading: false,
           // 如果从服务器加载，数据总是已保存状态；如果从本地加载，检查 dirty 标志
           isSaved: loadedFromServer ? true : !localMindmap?.dirty,
@@ -215,13 +239,13 @@ export const useMindmapStore = create<MindmapStore>()(
           version: 0,
         };
 
-        // 7. 更新状态
+        // 8. 更新状态
         set((state) => {
           state.currentEditor = editorState;
           state.isLoading = false;
         });
 
-        // 8. 初始化布局服务
+        // 9. 初始化布局服务
         const store = get();
         const { layoutService } = store;
         if (layoutService && store.currentEditor) {
@@ -230,7 +254,7 @@ export const useMindmapStore = create<MindmapStore>()(
           console.log("[MindmapStore] LayoutService initialized");
         }
 
-        // 9. 清空历史栈
+        // 10. 清空历史栈
         get().historyManager?.clear();
       } catch (error) {
         console.error("[openMindmap] Failed to open mindmap:", error);
@@ -322,6 +346,15 @@ export const useMindmapStore = create<MindmapStore>()(
 
       // 🆕 4. 通知异步订阅者（异步）
       await actionSubscriptionManager.notifyAsync(actions, mindmapId);
+
+      // 🆕 5. 保存视图状态到 localStorage
+      const { saveViewStateAfterActions } = await import(
+        "@/lib/view-state-saver"
+      );
+      const currentState = get();
+      if (currentState.currentEditor) {
+        saveViewStateAfterActions(actions, currentState.currentEditor);
+      }
     },
 
     /**

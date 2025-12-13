@@ -4,25 +4,28 @@
 
 - 作者：Claude Code
 - 创建日期：2025-11-23
-- 最后更新：2025-11-23
+- 最后更新：2025-12-13
 - 相关文档：
   - [Command 层架构设计](./command-layer-design.md)
   - [命令参考手册](./command-reference.md)
   - [编辑器 UI 布局设计](./editor-ui-layout-design.md)
+  - [持久化中间件设计](./persistence-middleware-design.md)
 
 ## 关键概念
 
 > 本节定义该设计文档引入的新概念，不包括外部库或其他文档已定义的概念。
 
-| 概念              | 定义                                                     | 示例/说明                                            |
-| ----------------- | -------------------------------------------------------- | ---------------------------------------------------- |
-| Viewport（视口）  | 描述用户当前可见区域的状态对象，包含位置、尺寸和缩放比例 | `{x, y, width, height, zoom}`                        |
-| 节点坐标系        | 使用节点原始坐标的坐标系统（缩放前）                     | 与节点的 x, y 坐标一致                               |
-| 屏幕坐标系        | React Flow 使用的屏幕坐标系统（缩放后）                  | `rfX = -nodeX * zoom`                                |
-| 双向同步          | Store ↔ React Flow 之间的视口状态同步机制               | 命令更新 Store → React Flow，用户交互更新 RF → Store |
-| 值比较防抖        | 通过比较新旧值的相似性来防止同步循环的机制               | 差值小于 0.0001 则跳过同步                           |
-| 节点可见性检测    | 判断节点是否在当前视口内（带边距）的逻辑                 | `ensureNodeVisibleAction()`                          |
-| SetViewportAction | 用于更新视口状态的 Action，支持部分更新                  | 只更新 x 和 y，保持其他字段不变                      |
+| 概念              | 定义                                                                         | 示例/说明                                            |
+| ----------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------- |
+| Viewport（视口）  | 描述用户当前可见区域的状态对象，包含位置、尺寸和缩放比例                     | `{x, y, width, height, zoom}`                        |
+| 节点坐标系        | 使用节点原始坐标的坐标系统（缩放前）                                         | 与节点的 x, y 坐标一致                               |
+| 屏幕坐标系        | React Flow 使用的屏幕坐标系统（缩放后）                                      | `rfX = -nodeX * zoom`                                |
+| 双向同步          | Store ↔ React Flow 之间的视口状态同步机制                                   | 命令更新 Store → React Flow，用户交互更新 RF → Store |
+| 值比较防抖        | 通过比较新旧值的相似性来防止同步循环的机制                                   | 差值小于 0.0001 则跳过同步                           |
+| 节点可见性检测    | 判断节点是否在当前视口内（带边距）的逻辑                                     | `ensureNodeVisibleAction()`                          |
+| SetViewportAction | 用于更新视口状态的 Action，支持部分更新                                      | 只更新 x 和 y，保持其他字段不变                      |
+| ViewState         | 持久化到 localStorage 的视图状态，包含 viewport、collapsedNodes、currentNode | `viewState:{mindmapId}`                              |
+| ViewStateManager  | 管理视图状态的 localStorage 持久化，支持容量管理和过期清理                   | 最多 50 个，90 天过期                                |
 
 **原则**：
 
@@ -60,6 +63,8 @@
 - ✅ 导航命令自动确保目标节点可见
 - ✅ 防止同步循环（使用值比较机制）
 - ✅ 支持用户在 React Flow 中的直接交互（鼠标拖拽、滚轮缩放）
+- ✅ 视图状态持久化到 localStorage（zoom、pan、collapsedNodes、currentNode）
+- ✅ 重新打开思维导图时恢复上次的视图状态
 
 ## 快速参考
 
@@ -547,9 +552,9 @@ SetViewportAction 支持部分更新，避免不必要的字段修改：
 new SetViewportAction({ x: newX }, { x: oldX });
 ```
 
-### 4. 首次加载的 fitView
+### 4. 首次加载的 fitView 与视图状态恢复
 
-思维导图首次加载时需要调用 fitView，但之后的操作不应自动 fitView：
+思维导图加载时，需要区分首次打开和重新打开：
 
 ```typescript
 useEffect(() => {
@@ -560,19 +565,193 @@ useEffect(() => {
   }
 
   if (!hasInitializedRef.current && nodes.length > 0) {
-    hasInitializedRef.current = true;
-    setTimeout(() => {
-      const rfInstance = getReactFlowInstance();
-      if (rfInstance) {
-        rfInstance.fitView({ padding: 0.1, duration: 200 });
-        // 同步 fitView 后的视口状态到 lastSyncedViewportRef
-      }
-    }, 100);
+    // 检查是否有保存的视图状态（viewport 非默认值）
+    const hasRestoredViewport =
+      viewport.x !== 0 || viewport.y !== 0 || viewport.zoom !== 1;
+
+    if (hasRestoredViewport) {
+      // 使用保存的视图状态，不执行 fitView
+      lastSyncedViewportRef.current = {
+        x: viewport.x,
+        y: viewport.y,
+        zoom: viewport.zoom,
+      };
+      // 延迟设置初始化标志，等待 Store→ReactFlow 同步完成
+      setTimeout(() => {
+        hasInitializedRef.current = true;
+      }, 250);
+    } else {
+      // 首次打开，执行 fitView
+      hasInitializedRef.current = true;
+      setTimeout(() => {
+        const rfInstance = getReactFlowInstance();
+        if (rfInstance) {
+          rfInstance.fitView({ padding: 0.1, duration: 200 });
+        }
+      }, 100);
+    }
   }
-}, [mindmapId, nodes.length]);
+}, [mindmapId, nodes.length, viewport]);
 ```
 
-### 5. 导航命令的节点聚焦
+**关键点**：
+
+- 通过检查 viewport 是否为默认值（x:0, y:0, zoom:1）来判断是首次打开还是重新打开
+- 重新打开时不执行 fitView，而是使用 Store 中保存的 viewport
+- 延迟设置 `hasInitializedRef.current`，避免在 Store→ReactFlow 同步动画期间触发 debouncedSync
+
+### 5. 视图状态持久化
+
+视图状态通过 `ViewStateManager` 持久化到 localStorage，独立于三层存储架构（内存→IndexedDB→Supabase）。
+
+#### 数据模型
+
+```typescript
+// src/lib/view-state-manager.ts
+export interface ViewState {
+  viewport: {
+    x: number; // 视口左边缘 X 坐标（节点坐标系）
+    y: number; // 视口上边缘 Y 坐标（节点坐标系）
+    zoom: number; // 缩放比例 (0.1 - 2.0)
+  };
+  collapsedNodes: string[]; // 折叠的节点 short_id 列表
+  currentNode: string; // 当前选中节点的 short_id
+  lastUpdated: string; // 最后更新时间（ISO 8601）
+  version: number; // 数据版本号（当前为 1）
+}
+```
+
+#### 存储策略
+
+- **localStorage key**: `viewState:{mindmapId}`
+- **容量限制**: 最多 50 个思维导图
+- **过期清理**: 90 天未访问的状态自动删除
+- **索引管理**: `viewStateIndex` 记录每个状态的访问时间和大小
+
+#### 保存时机
+
+1. **viewport 变化**: 在 `debouncedSync` 中保存（防抖 50ms）
+2. **collapsedNodes 变化**: 在 `acceptActions` 后通过 `saveViewStateAfterActions` 保存
+3. **currentNode 变化**: 同上
+
+```typescript
+// src/lib/view-state-saver.ts
+export function saveViewStateAfterActions(
+  actions: EditorAction[],
+  editorState: EditorState
+): void {
+  const actionTypes = actions.map((a) => a.type);
+  const mindmapId = editorState.currentMindmap.id;
+
+  // 检查是否有需要保存的 Action 类型
+  const hasCollapseAction = actionTypes.some(
+    (t) => t === "collapseNode" || t === "expandNode"
+  );
+  const hasCurrentNodeAction = actionTypes.includes("setCurrentNode");
+
+  if (hasCollapseAction) {
+    ViewStateManager.save(mindmapId, {
+      collapsedNodes: Array.from(editorState.collapsedNodes),
+    });
+  }
+
+  if (hasCurrentNodeAction) {
+    ViewStateManager.save(mindmapId, {
+      currentNode: editorState.currentNode,
+    });
+  }
+}
+```
+
+#### 加载时机
+
+在 `openMindmap` 中加载并验证视图状态：
+
+```typescript
+// src/domain/mindmap-store.ts
+const savedViewState = ViewStateManager.load(mindmapId);
+const validatedViewState = savedViewState
+  ? validateViewState(savedViewState, nodesToLoad, rootNode.short_id)
+  : null;
+
+// 应用到 EditorState
+const editorState: EditorState = {
+  // ...
+  collapsedNodes: validatedViewState
+    ? new Set(validatedViewState.collapsedNodes)
+    : new Set(),
+  viewport: validatedViewState
+    ? { x: validatedViewState.viewport.x, y: validatedViewState.viewport.y, ... }
+    : { x: 0, y: 0, ... },
+  currentNode: validatedViewState?.currentNode ?? rootNode.short_id,
+};
+```
+
+#### 验证逻辑
+
+`validateViewState` 确保恢复的状态有效：
+
+1. **折叠节点验证**: 移除已删除的节点
+2. **当前节点验证**: 如果节点不存在则使用根节点
+3. **可见性检查**: 如果当前节点被折叠，找到最近的可见祖先
+4. **zoom 范围限制**: 确保在 0.1-2.0 范围内
+
+```typescript
+// src/lib/view-state-validator.ts
+export function validateViewState(
+  savedState: ViewState,
+  nodes: MindmapNode[],
+  rootNodeId: string
+): ViewState | null {
+  // 1. 验证折叠节点
+  const validCollapsedNodes = savedState.collapsedNodes.filter((id) =>
+    nodeMap.has(id)
+  );
+
+  // 2. 验证当前节点
+  let currentNode = savedState.currentNode;
+  if (!nodeMap.has(currentNode)) {
+    currentNode = rootNodeId;
+  }
+
+  // 3. 检查当前节点是否被折叠
+  if (isNodeCollapsed(currentNode, validCollapsedNodes, nodeMap)) {
+    currentNode = findVisibleAncestor(
+      currentNode,
+      validCollapsedNodes,
+      nodeMap
+    );
+  }
+
+  // 4. 限制 zoom 范围
+  const zoom = Math.max(0.1, Math.min(2.0, savedState.viewport.zoom));
+
+  return {
+    ...savedState,
+    collapsedNodes: validCollapsedNodes,
+    currentNode,
+    viewport: { ...savedState.viewport, zoom },
+  };
+}
+```
+
+#### ReactFlow fitView 属性
+
+**重要**: ReactFlow 组件上**不能**设置 `fitView` 属性，否则会在每次渲染时覆盖恢复的 viewport：
+
+```jsx
+<ReactFlow
+  nodes={nodes}
+  edges={edges}
+  // ❌ 不要设置 fitView 属性
+  // fitView
+  // ✅ fitView 逻辑在 useEffect 中手动控制
+  minZoom={0.1}
+  maxZoom={2.0}
+>
+```
+
+### 6. 导航命令的节点聚焦
 
 所有导航命令（如 `navigation.nextSibling`）都应确保目标节点可见：
 
@@ -593,7 +772,7 @@ handler: (root: MindmapStore) => {
 };
 ```
 
-### 6. 动画时长的平衡
+### 7. 动画时长的平衡
 
 - Store → RF：200ms（用户感知流畅）
 - RF → Store：防抖 50ms（减少频繁更新）
@@ -776,9 +955,15 @@ function CustomControls() {
 
 ## FAQ
 
-### Q: 为什么视口状态不持久化到 IndexedDB？
+### Q: 视图状态保存在哪里？为什么不使用 IndexedDB？
 
-A: 视口状态是派生状态，每次打开思维导图时应该自动 fitView，而不是恢复上次的视口位置。这样用户总是能看到完整的思维导图，而不是上次关闭时的局部视图。
+A: 视图状态保存在 localStorage，而不是 IndexedDB。原因：
+
+- **数据量小**：每个状态约 500 字节，50 个思维导图约 25KB
+- **同步 API 更简单**：getItem/setItem 无需 async/await
+- **读取速度更快**：<1ms，适合页面加载时恢复
+- **与内容数据分离**：IndexedDB 用于核心数据，localStorage 用于 UI 偏好
+- **不需要云端同步**：视图状态是设备相关的偏好设置
 
 ### Q: 如何添加新的视图命令？
 
